@@ -3,8 +3,7 @@
   "appName": "MESUT IPTV",
   "webDir": "www",
   "server": {
-    "androidScheme": "https",
-    "cleartext": false
+    "androidScheme": "https"
   },
   "plugins": {
     "CapacitorHttp": {

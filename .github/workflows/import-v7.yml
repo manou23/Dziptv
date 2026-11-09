@@ -1,0 +1,110 @@
+name: Import MESUT IPTV V7 project
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_url:
+        description: "Direct public GitHub Release asset URL for mesut_iptv_v7_stage1.zip"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mesut-v7-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Download and validate V7 archive
+        env:
+          ARCHIVE_URL: ${{ inputs.archive_url }}
+        run: |
+          case "$ARCHIVE_URL" in
+            https://github.com/*/releases/download/*) ;;
+            *) echo "::error::Use a direct HTTPS GitHub Release asset URL."; exit 1 ;;
+          esac
+          curl --fail --location --retry 3 "$ARCHIVE_URL" --output "$RUNNER_TEMP/mesut_v7.zip"
+          python3 - <<'PY'
+          import zipfile, os
+          p = os.path.join(os.environ["RUNNER_TEMP"], "mesut_v7.zip")
+          with zipfile.ZipFile(p) as z:
+              names = z.namelist()
+              if not any(n.rstrip("/") == "pubspec.yaml" for n in names):
+                  raise SystemExit("Archive does not contain root pubspec.yaml")
+              if not any(n.rstrip("/") == "lib/main.dart" for n in names):
+                  raise SystemExit("Archive does not contain lib/main.dart")
+              for n in names:
+                  parts = n.replace("\\", "/").split("/")
+                  if n.startswith("/") or ".." in parts:
+                      raise SystemExit("Unsafe archive path: " + n)
+              z.testzip() and (_ for _ in ()).throw(SystemExit("ZIP integrity check failed"))
+          print("V7 archive validated.")
+          PY
+          mkdir "$RUNNER_TEMP/mesut_v7"
+          unzip -q "$RUNNER_TEMP/mesut_v7.zip" -d "$RUNNER_TEMP/mesut_v7"
+
+      - name: Prepare project settings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("$RUNNER_TEMP") / "mesut_v7" / "lib" / "app_info.dart"
+          s = p.read_text(encoding="utf-8")
+          s = s.replace("const String kUpdateRepo = '';",
+                        "const String kUpdateRepo = 'manou23/Dziptv';")
+          p.write_text(s, encoding="utf-8")
+          # Do not allow the signing-key workflow to publish a keystore artifact
+          # while this repository is public.
+          k = Path("$RUNNER_TEMP") / "mesut_v7" / ".github" / "workflows" / "keystore.yml"
+          if k.exists():
+              t = k.read_text(encoding="utf-8")
+              t = t.replace("  keystore:\n", "  keystore:\n    if: ${{ github.event.repository.private == true }}\n", 1)
+              k.write_text(t, encoding="utf-8")
+          PY
+
+      - name: Replace old project while preserving README.md
+        run: |
+          before="$(sha256sum README.md | cut -d' ' -f1)"
+          cp README.md "$RUNNER_TEMP/README.md"
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$RUNNER_TEMP/mesut_v7/." .
+          cp "$RUNNER_TEMP/README.md" README.md
+          after="$(sha256sum README.md | cut -d' ' -f1)"
+          test "$before" = "$after"
+          cat > .gitignore <<'EOF'
+          .dart_tool/
+          .flutter-plugins
+          .flutter-plugins-dependencies
+          .packages
+          build/
+          .DS_Store
+          *.jks
+          *.keystore
+          keystore.base64.txt
+          android/.gradle/
+          android/local.properties
+          EOF
+          test -f pubspec.yaml
+          test -f lib/main.dart
+          test -f .github/workflows/build.yml
+          echo "README.md SHA256 preserved: $after"
+          echo "New Flutter project files:"
+          find lib -maxdepth 1 -type f | sort
+
+      - name: Commit complete V7 replacement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Replace legacy app with MESUT IPTV V7 Flutter project"
+          git push origin HEAD:main

@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate web source and build scripts
+        run: |
+          python3 scripts/check-web.py
+          python3 -m py_compile scripts/patch-tv.py
+
       - name: Generate Android project
         run: |
           if [ ! -d android ]; then

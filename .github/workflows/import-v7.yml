@@ -58,14 +58,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("$RUNNER_TEMP") / "mesut_v7" / "lib" / "app_info.dart"
+          import os
+          root = Path(os.environ["RUNNER_TEMP"]) / "mesut_v7"
+          p = root / "lib" / "app_info.dart"
           s = p.read_text(encoding="utf-8")
           s = s.replace("const String kUpdateRepo = '';",
                         "const String kUpdateRepo = 'manou23/Dziptv';")
           p.write_text(s, encoding="utf-8")
           # Do not allow the signing-key workflow to publish a keystore artifact
           # while this repository is public.
-          k = Path("$RUNNER_TEMP") / "mesut_v7" / ".github" / "workflows" / "keystore.yml"
+          k = root / ".github" / "workflows" / "keystore.yml"
           if k.exists():
               t = k.read_text(encoding="utf-8")
               t = t.replace("  keystore:\n", "  keystore:\n    if: ${{ github.event.repository.private == true }}\n", 1)

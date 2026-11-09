@@ -11,23 +11,22 @@ if not manifest.exists():
 
 text = manifest.read_text(encoding="utf-8")
 if "android.software.leanback" not in text:
-    application = re.search(r"<application\\b", text)
+    application = re.search(r"<application\b", text)
     if not application:
         raise SystemExit("Could not locate <application> in AndroidManifest.xml")
     features = (
-        '    <uses-feature android:name="android.software.leanback" android:required="false" />\\n'
-        '    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />\\n'
+        '    <uses-feature android:name="android.software.leanback" android:required="false" />\n'
+        '    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />\n'
     )
     text = text[:application.start()] + features + text[application.start():]
 
 launcher = '<category android:name="android.intent.category.LAUNCHER" />'
 leanback = '<category android:name="android.intent.category.LEANBACK_LAUNCHER" />'
 if leanback not in text and launcher in text:
-    text = text.replace(launcher, launcher + "\\n                " + leanback, 1)
+    text = text.replace(launcher, launcher + "\n                " + leanback, 1)
 
-# Many IPTV providers still expose HTTP endpoints. Enable cleartext for compatibility;
-# the app warns users when they connect to an HTTP server.
-app_tag = re.search(r"<application\\b[^>]*>", text)
+# Compatibility for IPTV providers that still expose HTTP endpoints.
+app_tag = re.search(r"<application\b[^>]*>", text)
 if app_tag and "android:usesCleartextTraffic" not in app_tag.group(0):
     replacement = app_tag.group(0)[:-1] + ' android:usesCleartextTraffic="true">'
     text = text[:app_tag.start()] + replacement + text[app_tag.end():]

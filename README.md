@@ -48,9 +48,9 @@
 
 ### أحدث إصدار
 
-**[افتح صفحة الإصدارات لتحميل APK](https://github.com/manou23/Dziptv/releases/latest)**
+**[⬇ صفحة الإصدارات الرسمية](https://github.com/manou23/Dziptv/releases/latest)**  ·  **[⬇ تنزيل APK من أحدث عملية بناء](https://github.com/manou23/Dziptv/actions/workflows/android.yml)**
 
-إذا لم يظهر إصدار منشور بعد، فتابع صفحة الإصدارات؛ ستُنشر ملفات التثبيت الرسمية هناك بعد نجاح عملية البناء والتحقق منها.
+إذا لم يظهر إصدار منشور بعد، افتح صفحة البناء، واختر أحدث تشغيل ناجح، ثم نزّل ملف **MESUT-IPTV-Android-APK** من قسم Artifacts. تُنشر الإصدارات الرسمية في صفحة Releases عند اعتماد رقم إصدار.
 
 </div>
 

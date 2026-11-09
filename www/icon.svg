@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101827"/><stop offset="1" stop-color="#070A12"/></linearGradient>
+ <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF4D6D"/><stop offset="1" stop-color="#E50914"/></linearGradient>
+ <filter id="shadow"><feGaussianBlur stdDeviation="12"/></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<circle cx="256" cy="224" r="150" fill="#E50914" opacity=".16" filter="url(#shadow)"/>
+<path d="M144 142h224a24 24 0 0 1 24 24v150a24 24 0 0 1-24 24H144a24 24 0 0 1-24-24V166a24 24 0 0 1 24-24Z" fill="#182235" stroke="#34445D" stroke-width="8"/>
+<path d="m224 184 104 57-104 57V184Z" fill="url(#accent)"/>
+<path d="M178 382h156" stroke="#FF4D6D" stroke-width="14" stroke-linecap="round"/>
+<text x="256" y="438" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="38" font-weight="800" text-anchor="middle" letter-spacing="6">MESUT</text>
+</svg>

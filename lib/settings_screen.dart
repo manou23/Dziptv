@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'app_info.dart';
 import 'home_layout_screen.dart';
+import 'channel_manager_screen.dart';
 import 'legal_screen.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -423,6 +424,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('حذف الرمز السري'),
                 onTap: _removePin,
               )),
+            _section('إدارة القنوات'),
+            _box(ListTile(
+              leading: const Icon(Icons.tune_rounded),
+              title: const Text('مدير القنوات الذكي'),
+              subtitle: const Text('إخفاء وإظهار تصنيفات القنوات والأفلام والمسلسلات'),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => ChannelManagerScreen(service: widget.service),
+                ),
+              ),
+            )),
             _section('الرئيسية'),
             _box(ListTile(
               leading: const Icon(Icons.dashboard_customize_rounded),

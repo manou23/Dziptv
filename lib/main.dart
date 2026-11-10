@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'theme.dart';
 import 'store.dart';
-import 'ads.dart';
 import 'i18n.dart';
 import 'login_screen.dart';
 import 'profiles_screen.dart';
@@ -34,7 +33,6 @@ Future<void> main() async {
   }
 
   runApp(MesutApp(start: start));
-  Ads.init(); // بعد ظهور التطبيق (لازم لنموذج الموافقة)
 }
 
 class _StartupError extends StatelessWidget {

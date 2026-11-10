@@ -227,7 +227,7 @@ class Store {
     }
     list[index] = next;
     await _saveAccounts(list);
-    await _p.setInt('active', previousActive.clamp(0, list.length - 1));
+    await _p.setInt('active', previousActive.clamp(0, list.length - 1).toInt());
     await _markCloudProfilesChanged();
   }
 

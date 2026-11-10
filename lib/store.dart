@@ -444,17 +444,18 @@ class Store {
     // Stream URLs are deliberately never uploaded to the MESUT cloud.
     final historyRecord = records['watch_history'];
     if (historyRecord is List) {
+      final localByKey = <String, Map<String, dynamic>>{
+        for (final entry in _histRaw())
+          if (entry['key'] != null)
+            entry['key'].toString(): Map<String, dynamic>.from(entry),
+      };
       final merged = <String, Map<String, dynamic>>{};
-      for (final entry in _histRaw()) {
-        final key = entry['key']?.toString();
-        if (key != null && key.isNotEmpty) merged[key] = Map<String, dynamic>.from(entry);
-      }
       for (final value in historyRecord) {
         if (value is! Map) continue;
         final remote = Map<String, dynamic>.from(value);
         final key = remote['key']?.toString();
         if (key == null || key.isEmpty) continue;
-        final local = merged[key] ?? <String, dynamic>{};
+        final local = localByKey[key] ?? <String, dynamic>{};
         merged[key] = {
           ...local,
           ...remote,

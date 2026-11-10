@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'app_config.dart';
 
 const kBg = Color(0xFF070B1A);
 const kViolet = Color(0xFF7C5CFF);
@@ -68,7 +67,7 @@ class _TvFocusState extends State<TvFocus> {
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(widget.radius);
     return Focus(
-      autofocus: widget.autofocus || kIsTvBuild && widget.key == null,
+      autofocus: widget.autofocus,
       onFocusChange: (v) => setState(() => _f = v),
       child: AnimatedScale(
         scale: _f ? 1.06 : 1,

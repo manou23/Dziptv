@@ -143,20 +143,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// فحص سريع للرابط لمعرفة رد السيرفر (بدون إظهار كلمة المرور)
   Future<String> _probe() async {
+    final client = http.Client();
     try {
-      final c = http.Client();
-      final req = http.Request('GET', Uri.parse(_item.url))
+      final request = http.Request('GET', Uri.parse(_item.url))
         ..followRedirects = false
         ..headers['User-Agent'] = kUserAgent
         ..headers['Range'] = 'bytes=0-1023';
-      final r = await c.send(req).timeout(const Duration(seconds: 15));
-      final loc = r.headers['location'];
-      c.close();
-      final ext = _item.url.split('.').last;
-      return 'HTTP ${r.statusCode} | ${r.headers['content-type'] ?? '-'} | .$ext'
-          '${loc != null ? ' | -> ${Uri.tryParse(loc)?.host ?? loc}' : ''}';
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 15));
+      final location = response.headers['location'];
+      final extension = Uri.tryParse(_item.url)?.pathSegments.isNotEmpty == true
+          ? Uri.parse(_item.url).pathSegments.last.split('.').last
+          : 'stream';
+      final redirectHost =
+          location == null ? null : Uri.tryParse(location)?.host;
+      return 'HTTP ${response.statusCode} | '
+          '${response.headers['content-type'] ?? '-'} | .$extension'
+          '${redirectHost != null && redirectHost.isNotEmpty ? ' | -> $redirectHost' : ''}';
+    } on TimeoutException {
+      return 'انتهت مهلة فحص اتصال البث';
     } catch (e) {
-      return 'probe: $e';
+      // Never show the raw exception: HTTP errors may contain credential-bearing URLs.
+      return 'تعذر فحص اتصال البث (${e.runtimeType})';
+    } finally {
+      client.close();
     }
   }
 

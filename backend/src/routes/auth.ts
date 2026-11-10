@@ -7,7 +7,7 @@ import { prisma } from "../services/prisma";
 const router = Router();
 const credentialsSchema = z.object({
   email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),
-  password: z.string().min(10).max(128)
+  password: z.string().min(10).max(128).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must be at most 72 UTF-8 bytes")
 });
 
 function issueToken(userId: string): string {

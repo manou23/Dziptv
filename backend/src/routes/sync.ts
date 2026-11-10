@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { requireAuth } from "../middleware/auth";
 import { prisma } from "../services/prisma";
 import type { AuthenticatedRequest } from "../types";
@@ -9,7 +10,7 @@ router.use(requireAuth);
 
 const allowedKeys = ["favorites", "watch_history", "settings"] as const;
 const syncSchema = z.object({
-  value: z.unknown()
+  value: z.union([z.record(z.unknown()), z.array(z.unknown())])
 });
 
 router.get("/", async (req: AuthenticatedRequest, res, next) => {
@@ -35,7 +36,7 @@ router.put("/:key", async (req: AuthenticatedRequest, res, next) => {
     }
     const record = await prisma.syncRecord.upsert({
       where: { userId_key: { userId: req.userId!, key: req.params.key } },
-      create: { userId: req.userId!, key: req.params.key, value: parsed.data.value as object },
+      create: { userId: req.userId!, key: req.params.key, value: parsed.data.value as Prisma.InputJsonValue },
       update: { value: parsed.data.value as object, version: { increment: 1 } },
       select: { key: true, value: true, version: true, updatedAt: true }
     });

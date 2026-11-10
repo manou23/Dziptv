@@ -53,11 +53,19 @@ jobs:
           login_token="$(jq -r '.token // empty' <<<"$logged_in")"
           test -n "$login_token"
 
-          curl --fail --silent --show-error --max-time 35 \
+          device="$(curl --fail --silent --show-error --max-time 35 \
             -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
             -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID" '{deviceKey:$key,name:"CI Smoke Test",platform:"android"}')" \
-            "$API_BASE/api/v1/devices/register"
+            "$API_BASE/api/v1/devices/register")"
+          device_id="$(jq -r '.device.id // empty' <<<"$device")"
+          test -n "$device_id"
+          device_list="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/devices")"
+          jq -e --arg id "$device_id" '.devices[] | select(.id == $id)' <<<"$device_list"
+          curl --fail --silent --show-error --output /dev/null --max-time 35 \
+            -X DELETE -H "Authorization: Bearer $login_token" \
+            "$API_BASE/api/v1/devices/$device_id"
 
           curl --fail --silent --show-error --max-time 35 \
             -X PUT -H "Authorization: Bearer $login_token" \

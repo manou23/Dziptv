@@ -49,8 +49,10 @@ jobs:
         if: ${{ hashFiles('test/**') != '' }}
         run: flutter test
 
-      - name: Build Android APK
-        run: flutter build apk --debug
+      - name: Build Android APK with MESUT API
+        run: >-
+          flutter build apk --debug
+          --dart-define=MESUT_API_BASE_URL=https://mesut-iptv-api.onrender.com
 
       - name: Upload Flutter APK
         uses: actions/upload-artifact@v4

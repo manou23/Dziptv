@@ -257,6 +257,28 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     }
   }
 
+  Widget _avatarContent(Account account, String initial) {
+    final fallback = Center(
+      child: Text(initial, style: const TextStyle(
+        fontSize: kIsTvBuild ? 54 : 40,
+        fontWeight: FontWeight.bold,
+      )),
+    );
+    if (account.avatar.isEmpty) return fallback;
+    try {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),
+        child: Image.memory(
+          base64Decode(account.avatar),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
+        ),
+      );
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   Widget _tile(int i, Account a) {
     final c = _palette[i % _palette.length];
     final name = a.name.trim().isEmpty ? '?' : a.name.trim();
@@ -283,14 +305,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                         colors: c,
                       ),
                     ),
-                    child: a.avatar.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),
-                            child: Image.memory(base64Decode(a.avatar), fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(child: Text(initial, style: const TextStyle(fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold))),
-                            ),
-                          )
-                        : Center(child: Text(initial, style: const TextStyle(fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold))),
+                    child: _avatarContent(a, initial),
                   ),
                   if (_edit)
                     Container(

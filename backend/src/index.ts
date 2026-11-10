@@ -26,6 +26,14 @@ app.use(cors({
 app.use(express.json({ limit: "256kb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "mesut-iptv-api" }));
+app.get("/health/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ready", service: "mesut-iptv-api", database: "connected" });
+  } catch {
+    res.status(503).json({ status: "not_ready", service: "mesut-iptv-api", database: "unavailable" });
+  }
+});
 app.use("/api/v1/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false }), authRoutes);
 app.use("/api/v1/devices", deviceRoutes);
 app.use("/api/v1/sync", syncRoutes);

@@ -6,6 +6,8 @@ import 'store.dart';
 import 'i18n.dart';
 import 'login_screen.dart';
 import 'profiles_screen.dart';
+import 'mesut_account_screen.dart';
+import 'mesut_cloud_api.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,8 +26,24 @@ Future<void> main() async {
     ));
     await Store.init();
     I18n.init();
-    // أول تشغيل بدون حسابات: مباشرة لشاشة الدخول، وإلا شاشة الحسابات
-    start = Store.accounts().isEmpty ? const LoginScreen() : const ProfilesScreen();
+    // حساب MESUT إلزامي قبل السماح بإضافة حساب Xtream أو دخول التطبيق.
+    final mesutSignedIn = await MesutCloudApi.isSignedIn;
+    if (!mesutSignedIn) {
+      start = MesutAccountScreen(
+        onAuthenticated: () {
+          Navigator.of(_appNavigatorKey.currentContext!).pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+              builder: (_) => Store.accounts().isEmpty
+                  ? const LoginScreen()
+                  : const ProfilesScreen(),
+            ),
+            (route) => false,
+          );
+        },
+      );
+    } else {
+      start = Store.accounts().isEmpty ? const LoginScreen() : const ProfilesScreen();
+    }
   } catch (e, s) {
     // بدل أن يغلق التطبيق: نعرض سبب الخطأ على الشاشة
     runApp(_StartupError('$e\n\n$s'));
@@ -56,6 +74,8 @@ class _StartupError extends StatelessWidget {
     );
   }
 }
+
+final GlobalKey<NavigatorState> _appNavigatorKey = GlobalKey<NavigatorState>();
 
 class MesutApp extends StatelessWidget {
   final Widget start;
@@ -89,6 +109,7 @@ class MesutApp extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
         ),
+        navigatorKey: _appNavigatorKey,
         home: start,
       ),
     );

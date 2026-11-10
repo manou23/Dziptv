@@ -1,16 +1,16 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-const kBg = Color(0xFF070B1A);
-const kViolet = Color(0xFF7C5CFF);
-const kAccent = Color(0xFF2D9CFF); // أزرق كهربائي (اللون المميز)
+const kBg = Color(0xFF080D1B);
+const kViolet = Color(0xFF8668FF);
+const kAccent = Color(0xFF35B8FF); // أزرق كهربائي (اللون المميز)
 const kGold = Color(0xFFFFC857); // للنجوم والتقييم فقط
 
 const kBgGradient = BoxDecoration(
   gradient: LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0xFF1B1450), Color(0xFF070B1A)],
+    colors: [Color(0xFF182044), Color(0xFF0B1228), Color(0xFF080D1B)],
   ),
 );
 
@@ -70,7 +70,7 @@ class _TvFocusState extends State<TvFocus> {
       onFocusChange: (v) => setState(() => _f = v),
       child: AnimatedScale(
         scale: _f ? 1.06 : 1,
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 180),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(

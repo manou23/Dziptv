@@ -49,7 +49,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                 labelText: tr('رمز PIN (4 إلى 6 أرقام)'),
                 counterText: '',
                 suffixIcon: IconButton(
-                  tooltip: hidePin ? 'إظهار PIN' : 'إخفاء PIN',
+                  tooltip: tr(hidePin ? 'إظهار PIN' : 'إخفاء PIN'),
                   icon: Icon(hidePin ? Icons.visibility_rounded : Icons.visibility_off_rounded),
                   onPressed: () => setDialogState(() => hidePin = !hidePin),
                 ),

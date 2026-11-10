@@ -198,7 +198,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     final name = a.name.trim().isEmpty ? '?' : a.name.trim();
     final initial = String.fromCharCode(name.runes.first).toUpperCase();
     return SizedBox(
-      width: 124,
+      width: kIsTvBuild ? 160 : 116,
       child: Column(
         children: [
           SizedBox(
@@ -221,7 +221,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     child: Center(
                       child: Text(initial,
                           style: const TextStyle(
-                              fontSize: 46, fontWeight: FontWeight.bold)),
+                              fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   if (_edit)
@@ -250,7 +250,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14)),
+              style: TextStyle(fontSize: kIsTvBuild ? 17 : 13, fontWeight: FontWeight.w600)),
           if (!_edit)
             FutureBuilder<bool>(
               future: ProfilePinService.hasPin(a.id),
@@ -282,7 +282,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
 
   Widget _addTile() {
     return SizedBox(
-      width: 112,
+      width: kIsTvBuild ? 136 : 96,
       child: Column(
         children: [
           SizedBox(
@@ -298,7 +298,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Center(
-                  child: Icon(Icons.add_rounded, size: 52, color: Colors.white70),
+                  child: Icon(Icons.add_rounded, size: kIsTvBuild ? 60 : 44, color: Colors.white70),
                 ),
               ),
             ),
@@ -345,18 +345,18 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(kIsTvBuild ? 34 : 18),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('من يشاهد؟',
                             style: const TextStyle(
-                                fontSize: 28, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 36),
+                                fontSize: kIsTvBuild ? 34 : 26, fontWeight: FontWeight.w800)),
+                        SizedBox(height: kIsTvBuild ? 42 : 26),
                         Wrap(
                           alignment: WrapAlignment.center,
-                          spacing: 24,
-                          runSpacing: 28,
+                          spacing: kIsTvBuild ? 32 : 16,
+                          runSpacing: kIsTvBuild ? 34 : 22,
                           children: [
                             for (var i = 0; i < accs.length; i++) _tile(i, accs[i]),
                             if (!_edit) _addTile(),

@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(9),
             gradient: const LinearGradient(
               begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [Color(0xFFB21D2B), Color(0xFF74101C)],
+              colors: [kViolet, kAccent],
             ),
           ),
           child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 27),
@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFF252A36),
+              color: const kPanel,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.white24),
             ),
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsetsDirectional.only(end: 9),
           child: Material(
-            color: selected ? Colors.white : const Color(0xFF242832),
+            color: selected ? Colors.white : const kPanel2,
             borderRadius: BorderRadius.circular(7),
             child: InkWell(
               borderRadius: BorderRadius.circular(7),
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                 child: Text(label, style: TextStyle(
-                  color: selected ? const Color(0xFF101116) : Colors.white,
+                  color: selected ? const kBg : Colors.white,
                   fontSize: 12, fontWeight: FontWeight.w800,
                 )),
               ),
@@ -271,11 +271,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
                 gradient: const LinearGradient(
                   begin: Alignment.topRight, end: Alignment.bottomLeft,
-                  colors: [Color(0xFF35151D), Color(0xFF15171D), Color(0xFF090A0D)],
+                  colors: [Color(0xFF1A2760), kPanel, kBg],
                 ),
               ),
               child: Center(child: snapshot.connectionState == ConnectionState.waiting
-                ? const CircularProgressIndicator(color: Color(0xFFE50914))
+                ? const CircularProgressIndicator(color: kViolet)
                 : const Padding(
                     padding: EdgeInsets.all(24),
                     child: Text('أضف اشتراكك لعرض مكتبة الأفلام',
@@ -302,9 +302,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (movie.image.isNotEmpty)
                         Image.network(movie.image, fit: BoxFit.cover,
                           cacheWidth: 900,
-                          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF25212A)))
+                          errorBuilder: (_, __, ___) => Container(color: const kPanel2))
                       else
-                        Container(color: const Color(0xFF25212A)),
+                        Container(color: const kPanel2),
                       const DecoratedBox(decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE50914),
+                                color: const kViolet,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text('اختيار MESUT',
@@ -338,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 shadows: [Shadow(color: Colors.black54, blurRadius: 12)])),
                             const SizedBox(height: 10),
                             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFE5C46B), size: 15),
+                              const Icon(Icons.auto_awesome_rounded, color: kAccent, size: 15),
                               const SizedBox(width: 5),
                               Text(movie.rating.isNotEmpty ? movie.rating : 'من مكتبتك',
                                 style: const TextStyle(fontSize: 12, color: Colors.white70,
@@ -351,8 +351,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: const Icon(Icons.play_arrow_rounded, size: 22),
                                 label: const Text('تشغيل'),
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
+                                  backgroundColor: kViolet,
+                                  foregroundColor: Colors.white,
                                   minimumSize: const Size(126, 44),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                   textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
@@ -365,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 label: const Text('التفاصيل'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white54),
+                                  side: const BorderSide(color: kAccent),
                                   minimumSize: const Size(126, 44),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                   textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: i == _featuredIndex ? 19 : 5,
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: i == _featuredIndex ? const Color(0xFFE50914) : Colors.white54,
+                                    color: i == _featuredIndex ? const kViolet : Colors.white54,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
@@ -431,8 +431,8 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.symmetric(vertical: 4, horizontal: 3),
               child: Row(children: [
                 Text('عرض الكل', style: TextStyle(fontSize: 11,
-                  color: Color(0xFFB8BAC2), fontWeight: FontWeight.w700)),
-                Icon(Icons.chevron_right_rounded, size: 17, color: Color(0xFFB8BAC2)),
+                  color: kMuted, fontWeight: FontWeight.w700)),
+                Icon(Icons.chevron_right_rounded, size: 17, color: kMuted),
               ]),
             )),
         ]),
@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(child: ClipRRect(
                     borderRadius: BorderRadius.circular(7),
                     child: Stack(fit: StackFit.expand, children: [
-                      Container(color: const Color(0xFF252832)),
+                      Container(color: const kPanel2),
                       if (item.image.isNotEmpty)
                         Image.network(item.image, fit: BoxFit.cover, cacheWidth: 300,
                           errorBuilder: (_, __, ___) => const SizedBox.shrink()),
@@ -763,9 +763,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final order = Store.homeOrder();
       final hidden = Store.homeHidden();
       return Scaffold(
-        backgroundColor: const Color(0xFF090A0D),
+        backgroundColor: const kBg,
         body: Container(
-          color: const Color(0xFF090A0D),
+          color: const kBg,
           child: SafeArea(
             bottom: false,
             child: ListView(

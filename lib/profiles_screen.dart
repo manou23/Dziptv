@@ -20,6 +20,199 @@ class ProfilesScreen extends StatefulWidget {
   State<ProfilesScreen> createState() => _ProfilesScreenState();
 }
 
+class _AvatarPickerDialog extends StatelessWidget {
+  final Account account;
+  final List<Map<String, String>> avatars;
+  final List<List<Color>> palette;
+  final int columns;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onCancel;
+  final VoidCallback onReset;
+  final VoidCallback onConfirm;
+
+  const _AvatarPickerDialog({
+    required this.account,
+    required this.avatars,
+    required this.palette,
+    required this.columns,
+    required this.selected,
+    required this.onSelected,
+    required this.onCancel,
+    required this.onReset,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = avatars.indexWhere((item) => item['id'] == selected);
+    final preview = active >= 0 ? avatars[active] : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white30,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 15),
+          const Text(
+            'صورة البروفايل',
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'اختر الشخصية التي تمثلك',
+            style: TextStyle(fontSize: 12, color: Colors.white60),
+          ),
+          const SizedBox(height: 15),
+          if (preview != null)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 54, height: 54,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: palette[active % palette.length],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: const Color(0xFFB58CFF), width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(preview['emoji']!, style: const TextStyle(fontSize: 31)),
+                ),
+                const SizedBox(width: 11),
+                Text(
+                  preview['label']!,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                const SizedBox(width: 7),
+                const Icon(Icons.check_circle_rounded, color: Color(0xFFB58CFF), size: 18),
+              ],
+            ),
+          const SizedBox(height: 15),
+          Flexible(
+            child: GridView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 4),
+              itemCount: avatars.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: .94,
+              ),
+              itemBuilder: (context, index) {
+                final avatar = avatars[index];
+                final isSelected = selected == avatar['id'];
+                return Material(
+                  color: isSelected ? const Color(0xFF30264C) : const Color(0xFF22252D),
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => onSelected(avatar['id']!),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFFB58CFF) : Colors.white10,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(7),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Center(
+                              child: Container(
+                                width: 58, height: 58,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: palette[index % palette.length],
+                                    begin: Alignment.topRight,
+                                    end: Alignment.bottomLeft,
+                                  ),
+                                  borderRadius: BorderRadius.circular(17),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: palette[index % palette.length].last.withOpacity(.25),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  avatar['emoji']!,
+                                  style: const TextStyle(fontSize: 34),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            avatar['label']!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                              color: isSelected ? Colors.white : Colors.white70,
+                            ),
+                          ),
+                          if (isSelected)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 3),
+                              child: Icon(Icons.check_circle_rounded,
+                                size: 15, color: Color(0xFFB58CFF)),
+                            )
+                          else
+                            const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (account.avatar.isNotEmpty)
+                TextButton(
+                  onPressed: onReset,
+                  child: const Text('الافتراضية'),
+                ),
+              const Spacer(),
+              TextButton(onPressed: onCancel, child: const Text('إلغاء')),
+              const SizedBox(width: 7),
+              FilledButton.icon(
+                onPressed: onConfirm,
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('حفظ'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF7650D9),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
   bool _syncingCloud = false;
@@ -141,6 +334,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       return;
     }
     await ProfilePinService.setPin(account.id, pin);
+    await Store.notifyCloudProfilesChanged();
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
@@ -161,6 +355,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       return;
     }
     await ProfilePinService.remove(account.id);
+    await Store.notifyCloudProfilesChanged();
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
@@ -187,73 +382,43 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   Future<void> _editProfileImage(Account account) async {
     final selected = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('اختر صورة البروفايل'),
-        content: SizedBox(
-          width: kIsTvBuild ? 440 : 320,
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 10,
-            runSpacing: 12,
-            children: [
-              for (final avatar in _profileAvatars)
-                InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => Navigator.pop(dialogContext, avatar['id']),
-                  child: SizedBox(
-                    width: kIsTvBuild ? 112 : 88,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: kIsTvBuild ? 76 : 64,
-                          height: kIsTvBuild ? 76 : 64,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: _palette[_profileAvatars.indexOf(avatar) % _palette.length],
-                              begin: Alignment.topRight,
-                              end: Alignment.bottomLeft,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: account.avatar == avatar['id']
-                                  ? Colors.white
-                                  : Colors.white24,
-                              width: account.avatar == avatar['id'] ? 3 : 1,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            avatar['emoji']!,
-                            style: TextStyle(fontSize: kIsTvBuild ? 38 : 32),
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          avatar['label']!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: kIsTvBuild ? 14 : 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+      builder: (dialogContext) {
+        final width = MediaQuery.of(dialogContext).size.width;
+        final columns = kIsTvBuild ? 4 : (width < 360 ? 2 : 3);
+        String? chosen = account.avatar;
+        return Dialog(
+          backgroundColor: const Color(0xFF17191F),
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: kIsTvBuild ? 70 : 18,
+            vertical: 24,
           ),
-        ),
-        actions: [
-          if (account.avatar.isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, ''),
-              child: Text('إعادة الافتراضي'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+            side: const BorderSide(color: Colors.white12),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: kIsTvBuild ? 650 : 460,
+              maxHeight: MediaQuery.of(dialogContext).size.height * .82,
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('إلغاء'),
+            child: StatefulBuilder(
+              builder: (context, setPickerState) {
+                return _AvatarPickerDialog(
+                  account: account,
+                  avatars: _profileAvatars,
+                  palette: _palette,
+                  columns: columns,
+                  selected: chosen,
+                  onSelected: (value) => setPickerState(() => chosen = value),
+                  onCancel: () => Navigator.pop(dialogContext),
+                  onReset: () => Navigator.pop(dialogContext, ''),
+                  onConfirm: () => Navigator.pop(dialogContext, chosen),
+                );
+              },
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
     if (!mounted || selected == null) return;
     await Store.updateAccountAvatar(account.id, selected);
@@ -346,6 +511,77 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     }
   }
 
+  Future<void> _manageProfile(Account account, int index) async {
+    final hasPin = await ProfilePinService.hasPin(account.id);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF17191F),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white30,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(account.name, style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w800,
+              )),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.face_retouching_natural_rounded),
+                title: Text('تغيير صورة البروفايل'),
+                subtitle: Text('اختر صورة من الصور المدمجة'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _editProfileImage(account);
+                },
+              ),
+              ListTile(
+                leading: Icon(hasPin ? Icons.lock_reset_rounded : Icons.lock_outline_rounded),
+                title: Text(hasPin ? 'تغيير رمز PIN' : 'إضافة رمز PIN'),
+                subtitle: Text(hasPin ? 'تحديث رمز الحماية الحالي' : 'حماية هذا البروفايل برمز'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _configurePin(account);
+                },
+              ),
+              if (hasPin)
+                ListTile(
+                  leading: const Icon(Icons.lock_open_rounded),
+                  title: Text('إزالة رمز PIN'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _removePin(account);
+                  },
+                ),
+              const Divider(color: Colors.white12),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                title: Text('حذف البروفايل', style: const TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _delete(index);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _tile(int i, Account a) {
     final c = _palette[i % _palette.length];
     final name = a.name.trim().isEmpty ? '?' : a.name.trim();
@@ -360,7 +596,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             child: TvFocus(
               radius: kIsTvBuild ? 20 : 11,
               autofocus: kIsTvBuild && i == 0,
-              onTap: () => _edit ? _delete(i) : _open(i),
+              onTap: () => _edit ? _manageProfile(a, i) : _open(i),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -376,9 +612,10 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                   ),
                   if (_edit)
                     Container(
-                      color: Colors.black54,
+                      color: Colors.black45,
                       child: const Center(
-                          child: Icon(Icons.delete_outline_rounded, size: 40)),
+                        child: Icon(Icons.edit_rounded, size: 34, color: Colors.white),
+                      ),
                     ),
                   if (!_edit)
                     FutureBuilder<bool>(
@@ -387,7 +624,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                           ? const Positioned(
                               top: 8,
                               right: 8,
-                              child: Icon(Icons.lock_rounded, size: 20),
+                              child: Icon(Icons.lock_rounded, size: 19),
                             )
                           : const SizedBox.shrink(),
                     ),
@@ -396,40 +633,16 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: kIsTvBuild ? 17 : 13, fontWeight: FontWeight.w600)),
-          if (!_edit)
-            FutureBuilder<bool>(
-              future: ProfilePinService.hasPin(a.id),
-              builder: (_, snapshot) => Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 2,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _editProfileImage(a),
-                    icon: const Icon(Icons.photo_camera_back_rounded, size: 17),
-                    label: Text('تغيير الصورة'),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _configurePin(a),
-                    icon: Icon(
-                      snapshot.data == true ? Icons.lock_reset_rounded : Icons.lock_open_rounded,
-                      size: 17,
-                    ),
-                    label: Text(snapshot.data == true ? 'تغيير PIN' : 'تعيين PIN'),
-                  ),
-                  if (snapshot.data == true)
-                    TextButton.icon(
-                      onPressed: () => _removePin(a),
-                      icon: const Icon(Icons.lock_open_rounded, size: 17),
-                      label: Text('إزالة PIN'),
-                    ),
-                ],
-              ),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: kIsTvBuild ? 17 : 13,
+              fontWeight: FontWeight.w600,
             ),
+          ),
         ],
       ),
     );
@@ -504,7 +717,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     if (accs.isNotEmpty)
                       TextButton(
                         onPressed: () => setState(() => _edit = !_edit),
-                        child: Text(_edit ? 'تم' : 'إدارة الحسابات'),
+                        child: Text(_edit ? 'تم' : 'إدارة البروفايلات'),
                       ),
                   ],
                 ),
@@ -516,7 +729,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('من يشاهد؟',
+                        Text(_edit ? 'إدارة البروفايلات' : 'من يشاهد؟',
                             style: const TextStyle(
                                 fontSize: kIsTvBuild ? 34 : 26, fontWeight: FontWeight.w800)),
                         SizedBox(height: kIsTvBuild ? 42 : 26),

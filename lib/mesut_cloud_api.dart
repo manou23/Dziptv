@@ -7,6 +7,13 @@ import 'package:http/http.dart' as http;
 import 'store.dart';
 import 'app_config.dart';
 
+class ProfileVaultRestoreException implements Exception {
+  final String message;
+  const ProfileVaultRestoreException(this.message);
+  @override
+  String toString() => message;
+}
+
 class MesutCloudApi {
   MesutCloudApi._();
   static const _secure = FlutterSecureStorage();
@@ -93,7 +100,12 @@ class MesutCloudApi {
     // If the network is temporarily unavailable, keep the session and retry.
     try {
       await syncNow();
+    } on ProfileVaultRestoreException {
+      // A failed vault restore must be visible; silently entering an empty
+      // profile picker makes a valid cloud account look like it has no data.
+      rethrow;
     } catch (_) {
+      // Network failures are recoverable and should not block sign-in.
       await scheduleSync();
     }
   }
@@ -289,7 +301,7 @@ class MesutCloudApi {
 
     // Restore the complete profile vault before selecting the active profile
     // and syncing per-profile favorites/history on a fresh device.
-    final localProfiles = Store.cloudProfilesSnapshot();
+    final localProfiles = await Store.cloudProfilesSnapshot();
     final localProfilesTime =
         (localProfiles['updatedAt'] as num?)?.toInt() ?? 0;
     final remoteProfilesEnvelope = remote['profiles']?['value'];
@@ -304,24 +316,26 @@ class MesutCloudApi {
             (remoteProfiles['updatedAt'] as num?)?.toInt() ?? remoteProfilesTime;
         final remoteList = remoteProfiles['profiles'];
         final localList = localProfiles['profiles'];
+        final remoteHasProfileList = remoteList is List;
         final remoteHasProfiles = remoteList is List && remoteList.isNotEmpty;
         final localHasProfiles = localList is List && localList.isNotEmpty;
 
-        // A newly installed device can have a stale local timestamp despite
-        // having no profiles. In that case the cloud vault is authoritative:
-        // always restore its non-empty profile list instead of comparing clocks.
-        // For devices that already have profiles, retain last-change ordering.
-        if (remoteHasProfiles &&
+        // A cloud vault with a newer timestamp is authoritative even when its
+        // profile list is intentionally empty (for example, deleting the last
+        // subscription from the website). A fresh device also restores the
+        // cloud list regardless of a stale local timestamp.
+        if (remoteHasProfileList &&
             (!localHasProfiles || payloadTime > localProfilesTime)) {
           await Store.applyCloudProfiles(remoteProfiles);
-          if (Store.accounts().isEmpty) {
+          if (remoteHasProfiles && Store.accounts().isEmpty) {
             throw Exception('وصلت خزنة البروفايلات لكن تعذر استيراد حساباتها؛ تحقق من بياناتها.');
           }
         }
       } catch (error) {
         // Do not silently hide decryption/import failures: they explain why
         // the profile picker would otherwise appear empty.
-        throw Exception('تعذرت استعادة بروفايلات حساب MESUT: $error');
+        throw ProfileVaultRestoreException(
+            'تعذرت استعادة بروفايلات حساب MESUT: $error');
       }
     }
 
@@ -424,7 +438,7 @@ class MesutCloudApi {
     }
     // The complete profile list and its Xtream credentials are encrypted
     // locally with AES-256-GCM before being sent to the server.
-    final profilePayload = Store.cloudProfilesSnapshot();
+    final profilePayload = await Store.cloudProfilesSnapshot();
     final localProfileTime =
         (profilePayload['updatedAt'] as num?)?.toInt() ?? 0;
     final remoteProfileTime = DateTime.tryParse(

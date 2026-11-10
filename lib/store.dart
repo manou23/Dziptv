@@ -3,6 +3,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
+import 'profile_pin_service.dart';
 
 class Store {
   static late SharedPreferences _p;
@@ -102,6 +103,23 @@ class Store {
       _pinCache = legacyPin;
     }
     await _p.remove('pin');
+
+    // One-time migration: publish existing device-local PIN hashes into the
+    // authenticated encrypted profile vault so the website can manage them.
+    if (!(_p.getBool('cloud_profile_pin_hash_v1_migrated') ?? false)) {
+      var hasExistingProfilePin = false;
+      for (final account in accounts()) {
+        if (await ProfilePinService.hasPin(account.id)) {
+          hasExistingProfilePin = true;
+          break;
+        }
+      }
+      if (hasExistingProfilePin) {
+        await _p.setInt('cloud_profiles_updated_at',
+            DateTime.now().millisecondsSinceEpoch);
+      }
+      await _p.setBool('cloud_profile_pin_hash_v1_migrated', true);
+    }
   }
 
   // ---------------- اللغة ----------------
@@ -402,6 +420,8 @@ class Store {
     await _notifyCloudChanged();
   }
 
+  static Future<void> notifyCloudProfilesChanged() => _markCloudProfilesChanged();
+
   static Future<void> _markCloudProfilesChanged() async {
     await _p.setInt('cloud_profiles_updated_at',
         DateTime.now().millisecondsSinceEpoch);
@@ -410,7 +430,7 @@ class Store {
 
   // Export every IPTV profile plus safe per-profile preferences. Credentials
   // are returned only to the caller for client-side authenticated encryption.
-  static Map<String, dynamic> cloudProfilesSnapshot() {
+  static Future<Map<String, dynamic>> cloudProfilesSnapshot() async {
     final profileList = <Map<String, dynamic>>[];
     for (final account in accounts()) {
       final prefix = '${account.id}|';
@@ -430,6 +450,7 @@ class Store {
         'url': account.url,
         'username': account.user,
         'password': account.pass,
+        'pinHash': await ProfilePinService.exportHash(account.id),
         'settings': settings,
       });
     }
@@ -470,13 +491,24 @@ class Store {
       if (restored.any((existing) => existing.id == account.id)) continue;
       await _secure.write(key: _passwordKey(account.id), value: password);
       _passwords[account.id] = password;
-      restored.add(Account(account.name, account.url, account.user, password));
+      restored.add(Account(account.name, account.url, account.user, password, avatar: account.avatar));
+      if (value.containsKey('pinHash')) {
+        await ProfilePinService.importHash(account.id, value['pinHash']?.toString());
+      }
       if (value['settings'] is Map) {
         settingsById[account.id] =
             Map<String, dynamic>.from(value['settings'] as Map);
       }
     }
     if (restored.isEmpty && raw.isNotEmpty) return;
+    final restoredIds = restored.map((account) => account.id).toSet();
+    for (final previous in accounts()) {
+      if (!restoredIds.contains(previous.id)) {
+        await _secure.delete(key: _passwordKey(previous.id));
+        _passwords.remove(previous.id);
+        await ProfilePinService.remove(previous.id);
+      }
+    }
     await _saveAccounts(restored);
     for (final account in restored) {
       final settings = settingsById[account.id] ?? {};

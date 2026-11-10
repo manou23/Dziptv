@@ -75,7 +75,7 @@ class Store {
 
   // ---------------- اللغة ----------------
   static String get lang => _p.getString('lang') ?? 'ar';
-  static Future<void> setLang(String v) async { await _p.setString('lang', v); }
+  static Future<void> setLang(String v) async { await _p.setString('lang', v); await _markCloudSettingsChanged(); }
 
   // ---------------- الحسابات ----------------
   static List<Account> accounts() => (_p.getStringList('accounts') ?? [])
@@ -139,7 +139,7 @@ class Store {
 
   // ---------------- الإعدادات ----------------
   static String get liveFormat => _p.getString('fmt') ?? 'ts';
-  static Future<void> setLiveFormat(String v) async { await _p.setString('fmt', v); }
+  static Future<void> setLiveFormat(String v) async { await _p.setString('fmt', v); await _markCloudSettingsChanged(); }
 
   static String? get pin => _pinCache;
   static Future<void> setPin(String? value) async {
@@ -227,11 +227,13 @@ class Store {
   }
   static Future<void> setHomeOrder(List<String> list) async {
     await _p.setStringList('home_order', list);
+    await _markCloudSettingsChanged();
   }
   static Set<String> homeHidden() =>
       (_p.getStringList('home_hidden') ?? []).toSet();
   static Future<void> setHomeHidden(Set<String> values) async {
     await _p.setStringList('home_hidden', values.toList());
+    await _markCloudSettingsChanged();
   }
 
   // ---------------- شوهد مؤخراً ----------------
@@ -252,6 +254,7 @@ class Store {
   static String get sportsKey => _p.getString('sports_key') ?? '3';
   static Future<void> setSportsKey(String value) async {
     await _p.setString('sports_key', value.trim().isEmpty ? '3' : value.trim());
+    await _markCloudSettingsChanged();
   }
 
   // ---------------- نسخ احتياطي آمن ----------------
@@ -304,6 +307,10 @@ class Store {
 
   // ---------------- مزامنة سحابية آمنة ----------------
   // لا نرفع كلمات مرور IPTV أو روابط البث أو صوراً قد تحتوي على روابط موقعة.
+  static Future<void> _markCloudSettingsChanged() async {
+    await _p.setInt('cloud_settings_updated_at', DateTime.now().millisecondsSinceEpoch);
+  }
+
   static Map<String, dynamic> cloudSnapshot() {
     final favorites = <String, dynamic>{};
     for (final type in ['live', 'vod', 'series']) {
@@ -331,6 +338,7 @@ class Store {
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
         'sports_key': sportsKey,
+        '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
     };
   }
@@ -370,6 +378,9 @@ class Store {
       }
       if (values['sports_key'] is String) {
         await _p.setString('sports_key', values['sports_key'] as String);
+      }
+      if (values['_updatedAt'] is num) {
+        await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());
       }
     }
   }

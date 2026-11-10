@@ -107,6 +107,7 @@ class MesutCloudApi {
   }
 
   static Future<List<Map<String, dynamic>>> listDevices() async {
+    await _registerDevice();
     final response = await http.get(
       _uri('/api/v1/devices'),
       headers: await _authHeaders(),

@@ -28,9 +28,9 @@ class LegalScreen extends StatelessWidget {
       'en': '1) The app is only a media player and provides no content.\n2) You are responsible for the subscription you add and for the legality of the content you watch.\n3) You must not use the app to infringe intellectual property or local laws.\n4) The app is provided as is, without any guarantee of continuity, and its features may change.\n5) By continuing to use the app you accept these terms.',
     },
     'privacy': {
-      'ar': 'يحفظ التطبيق على جهازك فقط: عنوان الخادم واسم المستخدم وكلمة المرور والمفضلة وسجل المشاهدة والإعدادات. لا نرسل هذه البيانات إلينا ولا إلى أي طرف آخر.\n\nيعرض التطبيق إعلانات Google AdMob التي قد تجمع معرّف الإعلانات ومعلومات الجهاز. لا نستخدم أدوات تحليلات ولا ننشئ حساباً لدى خوادمنا.\n\nتُحذف البيانات بحذف التطبيق أو مسح بياناته.',
-      'fr': "L'application enregistre uniquement sur votre appareil : l'adresse du serveur, le nom d'utilisateur, le mot de passe, les favoris, l'historique de lecture et les paramètres. Ces données ne nous sont pas envoyées ni à des tiers.\n\nL'application affiche des publicités Google AdMob, qui peuvent collecter l'identifiant publicitaire et des informations sur l'appareil. Nous n'utilisons aucun outil d'analyse et ne créons aucun compte sur nos serveurs.\n\nLes données sont supprimées en désinstallant l'application ou en effaçant ses données.",
-      'en': 'The app stores only on your device: the server address, username, password, favorites, watch history and settings. This data is not sent to us or to anyone else.\n\nThe app shows Google AdMob ads, which may collect the advertising ID and device information. We use no analytics tools and create no account on our servers.\n\nData is removed when you uninstall the app or clear its data.',
+      'ar': 'يستخدم التطبيق حساب MESUT لتسجيل الدخول والمزامنة السحابية. عند إنشاء الحساب أو تسجيل الدخول، يُرسل البريد الإلكتروني وكلمة المرور عبر اتصال HTTPS؛ وتُحفظ كلمة المرور على الخادم بصيغة تجزئة آمنة ولا تُخزّن كنص صريح.\n\nقد تتم مزامنة المفضلة وسجل المشاهدة والإعدادات وبيانات البروفايلات بين أجهزتك. تُشفّر بيانات البروفايلات، بما فيها بيانات اتصال Xtream، على جهازك قبل إرسالها إلى الخادم، ولا تُرسل كلمة مرور Xtream كنص صريح إلى خدمة المزامنة. كما يحتفظ الخادم بمعرّف الجهاز واسمه ونوعه لإدارة الأجهزة المرتبطة بحسابك.\n\nتبقى بيانات الحساب والمزامنة السحابية محفوظة بعد حذف التطبيق؛ حذف التطبيق يزيل البيانات المحلية فقط. لا تتوفر حالياً ميزة حذف الحساب من داخل التطبيق. لا نستخدم أدوات تحليلات داخل التطبيق.',
+      'fr': "L'application utilise un compte MESUT pour la connexion et la synchronisation cloud. Lors de l'inscription ou de la connexion, l'adresse e-mail et le mot de passe sont transmis via HTTPS ; le serveur conserve uniquement une empreinte sécurisée du mot de passe, jamais le texte en clair.\n\nLes favoris, l'historique de lecture, les paramètres et les profils peuvent être synchronisés entre vos appareils. Les profils, y compris les identifiants Xtream, sont chiffrés sur votre appareil avant leur envoi au serveur ; le mot de passe Xtream n'est pas envoyé en clair au service de synchronisation. Le serveur conserve également l'identifiant, le nom et le type de vos appareils associés au compte.\n\nLes données du compte et de synchronisation restent sur le serveur après la désinstallation ; celle-ci supprime uniquement les données locales. La suppression du compte depuis l'application n'est pas encore disponible. Nous n'utilisons pas d'outils d'analyse intégrés.",
+      'en': 'The app uses a MESUT account for sign-in and cloud synchronization. When you register or sign in, your email address and password are sent over HTTPS; the server stores a secure password hash, never the plain-text password.\n\nFavorites, watch history, settings, and profiles may sync across your devices. Profiles, including Xtream connection details, are encrypted on your device before upload; the Xtream password is not sent in plain text to the sync service. The server also stores the ID, name, and type of devices linked to your account.\n\nAccount and cloud-sync data remain on the server after uninstalling; uninstalling removes local data only. In-app account deletion is not currently available. We do not use in-app analytics tools.',
     },
   };
 
@@ -50,20 +50,20 @@ class LegalScreen extends StatelessWidget {
                     Text('Mesut23',
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    SelectableText(kContactEmail,
+                    SelectableText(kContactUrl,
                         textDirection: TextDirection.ltr,
                         style: const TextStyle(fontSize: 16, color: kAccent)),
                     const SizedBox(height: 14),
                     FilledButton.icon(
                       onPressed: () async {
-                        await Clipboard.setData(const ClipboardData(text: kContactEmail));
+                        await Clipboard.setData(const ClipboardData(text: kContactUrl));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(tr('تم النسخ'))));
                         }
                       },
                       icon: const Icon(Icons.copy_rounded),
-                      label: const Text('نسخ البريد'),
+                      label: const Text('نسخ رابط الدعم'),
                     ),
                   ],
                 )

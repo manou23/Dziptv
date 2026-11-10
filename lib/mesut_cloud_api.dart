@@ -57,7 +57,7 @@ class MesutCloudApi {
       _uri('/api/v1/auth/${register ? 'register' : 'login'}'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email.trim(), 'password': password}),
-    ).timeout(const Duration(seconds: 20));
+    ).timeout(const Duration(seconds: 60));
     final data = await _decode(response);
     final token = data['token']?.toString();
     final accountEmail = (data['user'] as Map?)?['email']?.toString();

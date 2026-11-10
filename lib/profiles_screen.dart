@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart';
 import 'i18n.dart';
 import 'models.dart';
 import 'theme.dart';
@@ -31,31 +32,42 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textDirection: TextDirection.ltr,
-          decoration: InputDecoration(
-            labelText: tr('رمز PIN (4 إلى 6 أرقام)'),
-            counterText: '',
+      builder: (dialogContext) {
+        var hidePin = true;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(title),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: hidePin,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              maxLength: 6,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(
+                labelText: tr('رمز PIN (4 إلى 6 أرقام)'),
+                counterText: '',
+                suffixIcon: IconButton(
+                  tooltip: hidePin ? 'إظهار PIN' : 'إخفاء PIN',
+                  icon: Icon(hidePin ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                  onPressed: () => setDialogState(() => hidePin = !hidePin),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, controller.text),
+                child: Text('تأكيد'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: Text('تأكيد'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     controller.dispose();
     return result;

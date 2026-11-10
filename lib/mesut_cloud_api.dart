@@ -7,6 +7,13 @@ import 'package:http/http.dart' as http;
 import 'store.dart';
 import 'app_config.dart';
 
+class ProfileVaultRestoreException implements Exception {
+  final String message;
+  const ProfileVaultRestoreException(this.message);
+  @override
+  String toString() => message;
+}
+
 class MesutCloudApi {
   MesutCloudApi._();
   static const _secure = FlutterSecureStorage();
@@ -93,7 +100,12 @@ class MesutCloudApi {
     // If the network is temporarily unavailable, keep the session and retry.
     try {
       await syncNow();
+    } on ProfileVaultRestoreException {
+      // A failed vault restore must be visible; silently entering an empty
+      // profile picker makes a valid cloud account look like it has no data.
+      rethrow;
     } catch (_) {
+      // Network failures are recoverable and should not block sign-in.
       await scheduleSync();
     }
   }
@@ -321,7 +333,8 @@ class MesutCloudApi {
       } catch (error) {
         // Do not silently hide decryption/import failures: they explain why
         // the profile picker would otherwise appear empty.
-        throw Exception('تعذرت استعادة بروفايلات حساب MESUT: $error');
+        throw ProfileVaultRestoreException(
+            'تعذرت استعادة بروفايلات حساب MESUT: $error');
       }
     }
 

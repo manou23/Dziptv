@@ -34,6 +34,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  PlayItem _resolveHistoryItem(HistoryEntry entry) {
+    final item = entry.item;
+    if (item.url.isNotEmpty) return item;
+    if (item.key.startsWith('vod_')) {
+      final id = item.key.substring(4);
+      return PlayItem(item.key, item.title, s.movieUrl(id, entry.ext), item.image);
+    }
+    if (item.key.startsWith('ep_')) {
+      final id = item.key.substring(3);
+      return PlayItem(item.key, item.title, s.episodeUrl(id, entry.ext), item.image);
+    }
+    return item;
+  }
+
   void _openLive([MediaItem? it]) => _push(LiveScreen(service: s, initial: it));
 
   void _openVod(MediaItem it) => _push(MovieDetailScreen(service: s, item: it));
@@ -255,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
             image: h.item.image,
             title: h.item.title,
             progress: h.dur > 0 ? (h.pos / h.dur).clamp(0.0, 1.0) : null,
-            onTap: () => _push(PlayerScreen(items: [h.item])),
+            onTap: () => _push(PlayerScreen(items: [_resolveHistoryItem(h)])),
           ),
       ]);
     }

@@ -100,6 +100,25 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     }
   }
 
+  Future<void> _syncNow() async {
+    if (mounted) setState(() { _busy = true; _message = null; });
+    try {
+      await MesutCloudApi.syncNow();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _message = 'اكتملت المزامنة بنجاح';
+      });
+      await _loadDevices();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _message = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
   Future<void> _signOut() async {
     await MesutCloudApi.signOut();
     if (!mounted) return;
@@ -155,6 +174,11 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
                 subtitle: Text('تتم مزامنة المفضلة وسجل المشاهدة والإعدادات مع حسابك تلقائياً، مع إعادة المحاولة عند انقطاع الإنترنت.'),
               ),
             ),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _syncNow,
+              icon: const Icon(Icons.sync_rounded),
+              label: const Text('مزامنة الآن'),
+            ),
             const Padding(
               padding: EdgeInsets.only(top: 16, bottom: 8),
               child: Text('الأجهزة المرتبطة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
@@ -173,12 +197,14 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
               for (final device in _devices)
                 Card(
                   child: ListTile(
-                    leading: Icon(device['deviceKey'] == _currentDeviceKey
-                        ? Icons.phone_android_rounded
-                        : Icons.devices_rounded),
+                    leading: Icon(device['platform'] == 'android_tv'
+                        ? Icons.tv_rounded
+                        : (device['deviceKey'] == _currentDeviceKey
+                            ? Icons.phone_android_rounded
+                            : Icons.devices_rounded)),
                     title: Text('${device['name'] ?? 'MESUT Device'}'),
                     subtitle: Text(
-                      '${device['platform'] ?? 'other'} · ${device['lastSeenAt'] ?? ''}',
+                      '${device['platform'] == 'android_tv' ? 'Android TV' : (device['platform'] ?? 'other')} · ${device['lastSeenAt'] ?? ''}',
                       maxLines: 2,
                     ),
                     trailing: device['deviceKey'] == _currentDeviceKey

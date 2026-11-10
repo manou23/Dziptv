@@ -298,7 +298,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('حساب MESUT السحابي'),
               subtitle: const Text('تسجيل الدخول ومزامنة الأجهزة'),
               onTap: () => Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => const MesutAccountScreen()),
+                MaterialPageRoute<void>(builder: (_) => MesutAccountScreen(
+                  onSignedOut: () => Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(builder: (_) => const MesutAccountScreen()),
+                    (route) => false,
+                  ),
+                )),
               ),
             )),
             _section('التشغيل'),

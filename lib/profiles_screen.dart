@@ -6,6 +6,7 @@ import 'store.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'profile_pin_service.dart';
 
 /// Netflix-style Xtream profiles with an independent optional PIN per profile.
 class ProfilesScreen extends StatefulWidget {
@@ -61,10 +62,10 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   }
 
   Future<bool> _unlock(Account account) async {
-    if (!await Store.hasProfilePin(account.id)) return true;
+    if (!await ProfilePinService.hasPin(account.id)) return true;
     final pin = await _askPin('أدخل PIN لفتح ${account.name}');
     if (!mounted || pin == null) return false;
-    final valid = await Store.verifyProfilePin(account.id, pin);
+    final valid = await ProfilePinService.verify(account.id, pin);
     if (!valid && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('رمز PIN غير صحيح')),
@@ -90,7 +91,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
 
     final pin = await _askPin('رمز PIN جديد');
     if (!mounted || pin == null) return;
-    if (!RegExp(r'^\\d{4,6}$').hasMatch(pin)) {
+    if (!ProfilePinService.isValidPin(pin)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('يجب أن يتكون PIN من 4 إلى 6 أرقام')),
       );
@@ -104,7 +105,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       );
       return;
     }
-    await Store.setProfilePin(account.id, pin);
+    await ProfilePinService.setPin(account.id, pin);
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +125,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       }
       return;
     }
-    await Store.removeProfilePin(account.id);
+    await ProfilePinService.remove(account.id);
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(

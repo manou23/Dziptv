@@ -13,6 +13,7 @@ import 'series_detail_screen.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'profiles_screen.dart';
+import 'services_home_screen.dart';
 import 'sports_screen.dart';
 import 'search_screen.dart';
 import 'utils.dart';
@@ -107,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: tr('تبديل الحساب'),
             icon: const Icon(Icons.switch_account_rounded),
             onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute<void>(builder: (_) => const ProfilesScreen()),
+              MaterialPageRoute<void>(builder: (_) => const ServicesHomeScreen()),
               (r) => false,
             ),
           ),

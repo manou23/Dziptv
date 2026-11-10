@@ -302,12 +302,26 @@ class MesutCloudApi {
             await _decryptProfiles(remoteProfilesEnvelope);
         final payloadTime =
             (remoteProfiles['updatedAt'] as num?)?.toInt() ?? remoteProfilesTime;
-        if (payloadTime > localProfilesTime) {
+        final remoteList = remoteProfiles['profiles'];
+        final localList = localProfiles['profiles'];
+        final remoteHasProfiles = remoteList is List && remoteList.isNotEmpty;
+        final localHasProfiles = localList is List && localList.isNotEmpty;
+
+        // A newly installed device can have a stale local timestamp despite
+        // having no profiles. In that case the cloud vault is authoritative:
+        // always restore its non-empty profile list instead of comparing clocks.
+        // For devices that already have profiles, retain last-change ordering.
+        if (remoteHasProfiles &&
+            (!localHasProfiles || payloadTime > localProfilesTime)) {
           await Store.applyCloudProfiles(remoteProfiles);
+          if (Store.accounts().isEmpty) {
+            throw Exception('وصلت خزنة البروفايلات لكن تعذر استيراد حساباتها؛ تحقق من بياناتها.');
+          }
         }
-      } catch (_) {
-        // Keep local profiles intact if a cloud vault is damaged or encrypted
-        // with a different MESUT password.
+      } catch (error) {
+        // Do not silently hide decryption/import failures: they explain why
+        // the profile picker would otherwise appear empty.
+        throw Exception('تعذرت استعادة بروفايلات حساب MESUT: $error');
       }
     }
 

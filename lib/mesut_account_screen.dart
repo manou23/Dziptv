@@ -52,19 +52,6 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     }
   }
 
-  Future<void> _sync() async {
-    setState(() { _busy = true; _message = null; });
-    try {
-      await MesutCloudApi.syncNow();
-      I18n.init();
-      if (!mounted) return;
-      setState(() { _busy = false; _message = 'اكتملت المزامنة بنجاح'; });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() { _busy = false; _message = e.toString().replaceFirst('Exception: ', ''); });
-    }
-  }
-
   Future<void> _signOut() async {
     await MesutCloudApi.signOut();
     if (!mounted) return;
@@ -113,10 +100,12 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
               title: const Text('متصل بحساب MESUT'),
               subtitle: Text(_accountEmail ?? ''),
             )),
-            FilledButton.icon(
-              onPressed: _busy || !configured ? null : _sync,
-              icon: const Icon(Icons.sync_rounded),
-              label: const Text('مزامنة الآن'),
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.sync_rounded),
+                title: Text('المزامنة التلقائية مفعّلة'),
+                subtitle: Text('تتم مزامنة المفضلة وسجل المشاهدة والإعدادات مع حسابك تلقائياً، مع إعادة المحاولة عند انقطاع الإنترنت.'),
+              ),
             ),
             OutlinedButton.icon(
               onPressed: _busy ? null : _signOut,

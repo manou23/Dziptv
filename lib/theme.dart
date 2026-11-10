@@ -2,15 +2,21 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 const kBg = Color(0xFF080D1B);
+const kPanel = Color(0xFF101A34);
+const kPanel2 = Color(0xFF121D3D);
 const kViolet = Color(0xFF8668FF);
-const kAccent = Color(0xFF35B8FF); // أزرق كهربائي (اللون المميز)
-const kGold = Color(0xFFFFC857); // للنجوم والتقييم فقط
+const kAccent = Color(0xFF35B8FF);
+const kGreen = Color(0xFF28D59A);
+const kMuted = Color(0xFFAAB5D1);
+const kLine = Color(0x1FFFFFFF);
+const kGold = Color(0xFFFFC857);
 
 const kBgGradient = BoxDecoration(
   gradient: LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0xFF182044), Color(0xFF0B1228), Color(0xFF080D1B)],
+    colors: [Color(0xFF1A2760), Color(0xFF101A34), Color(0xFF35145F), Color(0xFF080D1B)],
+    stops: [0.0, 0.42, 0.72, 1.0],
   ),
 );
 

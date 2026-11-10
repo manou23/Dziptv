@@ -7,7 +7,7 @@ import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
-/// شاشة الحسابات (مثل ملفات Netflix): كل حساب بطاقة + بطاقة فارغة لإضافة حساب جديد
+/// Netflix-style Xtream profiles with an independent optional PIN per profile.
 class ProfilesScreen extends StatefulWidget {
   const ProfilesScreen({super.key});
 
@@ -26,7 +26,116 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     [Color(0xFF3B82F6), Color(0xFF1E3A8A)],
   ];
 
+  Future<String?> _askPin(String title) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          textDirection: TextDirection.ltr,
+          decoration: InputDecoration(
+            labelText: tr('رمز PIN (4 إلى 6 أرقام)'),
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<bool> _unlock(Account account) async {
+    if (!await Store.hasProfilePin(account.id)) return true;
+    final pin = await _askPin('أدخل PIN لفتح ${account.name}');
+    if (!mounted || pin == null) return false;
+    final valid = await Store.verifyProfilePin(account.id, pin);
+    if (!valid && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('رمز PIN غير صحيح')),
+      );
+    }
+    return valid;
+  }
+
+  Future<void> _configurePin(Account account) async {
+    final hasPin = await Store.hasProfilePin(account.id);
+    if (hasPin) {
+      final current = await _askPin('أدخل PIN الحالي');
+      if (!mounted || current == null) return;
+      if (!await Store.verifyProfilePin(account.id, current)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('رمز PIN غير صحيح')),
+          );
+        }
+        return;
+      }
+    }
+
+    final pin = await _askPin('رمز PIN جديد');
+    if (!mounted || pin == null) return;
+    if (!RegExp(r'^\\d{4,6}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('يجب أن يتكون PIN من 4 إلى 6 أرقام')),
+      );
+      return;
+    }
+    final confirm = await _askPin('أعد إدخال PIN للتأكيد');
+    if (!mounted || confirm == null) return;
+    if (pin != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('الرمزان غير متطابقين')),
+      );
+      return;
+    }
+    await Store.setProfilePin(account.id, pin);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم حفظ PIN لهذا البروفايل')),
+      );
+    }
+  }
+
+  Future<void> _removePin(Account account) async {
+    final current = await _askPin('أدخل PIN الحالي لإزالته');
+    if (!mounted || current == null) return;
+    if (!await Store.verifyProfilePin(account.id, current)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('رمز PIN غير صحيح')),
+        );
+      }
+      return;
+    }
+    await Store.removeProfilePin(account.id);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تمت إزالة PIN')),
+      );
+    }
+  }
+
   Future<void> _open(int i) async {
+    final account = Store.accounts()[i];
+    if (!await _unlock(account) || !mounted) return;
     await Store.setActive(i);
     final a = Store.active;
     if (!mounted || a == null) return;
@@ -42,20 +151,24 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   }
 
   Future<void> _delete(int i) async {
+    final accounts = Store.accounts();
+    if (i < 0 || i >= accounts.length) return;
+    if (!await _unlock(accounts[i]) || !mounted) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('حذف الحساب'),
-        content: const Text('هل تريد حذف هذا الحساب؟'),
+        title: Text('حذف الحساب'),
+        content: Text('هل تريد حذف هذا الحساب؟'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
+              onPressed: () => Navigator.pop(c, false), child: Text('إلغاء')),
           FilledButton(
-              onPressed: () => Navigator.pop(c, true), child: const Text('حذف')),
+              onPressed: () => Navigator.pop(c, true), child: Text('حذف')),
         ],
       ),
     );
     if (ok != true) return;
+    await Store.removeProfilePin(accounts[i].id);
     await Store.removeAccount(i);
     if (!mounted) return;
     if (Store.accounts().isEmpty) {
@@ -71,7 +184,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     final name = a.name.trim().isEmpty ? '?' : a.name.trim();
     final initial = String.fromCharCode(name.runes.first).toUpperCase();
     return SizedBox(
-      width: 112,
+      width: 124,
       child: Column(
         children: [
           SizedBox(
@@ -103,16 +216,39 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                       child: const Center(
                           child: Icon(Icons.delete_outline_rounded, size: 40)),
                     ),
+                  if (!_edit)
+                    FutureBuilder<bool>(
+                      future: Store.hasProfilePin(a.id),
+                      builder: (_, snapshot) => snapshot.data == true
+                          ? const Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Icon(Icons.lock_rounded, size: 20),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 14)),
+          if (!_edit)
+            FutureBuilder<bool>(
+              future: Store.hasProfilePin(a.id),
+              builder: (_, snapshot) => TextButton.icon(
+                onPressed: () => _configurePin(a),
+                icon: Icon(
+                  snapshot.data == true ? Icons.lock_reset_rounded : Icons.lock_open_rounded,
+                  size: 17,
+                ),
+                label: Text(snapshot.data == true ? 'تغيير PIN' : 'تعيين PIN'),
+              ),
+            ),
         ],
       ),
     );
@@ -142,11 +278,11 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text('إضافة حساب',
+          Text('إضافة حساب',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.white70)),
+              style: const TextStyle(fontSize: 14, color: Colors.white70)),
         ],
       ),
     );
@@ -181,8 +317,8 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('من يشاهد؟',
-                            style: TextStyle(
+                        Text('من يشاهد؟',
+                            style: const TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 36),
                         Wrap(

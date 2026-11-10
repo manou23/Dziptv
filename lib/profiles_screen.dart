@@ -203,8 +203,8 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       child: Column(
         children: [
           SizedBox(
-            width: 112,
-            height: 112,
+            width: kIsTvBuild ? 136 : 96,
+            height: kIsTvBuild ? 136 : 96,
             child: TvFocus(
               radius: 20,
               onTap: () => _edit ? _delete(i) : _open(i),
@@ -287,8 +287,8 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       child: Column(
         children: [
           SizedBox(
-            width: 112,
-            height: 112,
+            width: kIsTvBuild ? 136 : 96,
+            height: kIsTvBuild ? 136 : 96,
             child: TvFocus(
               radius: 20,
               onTap: _add,

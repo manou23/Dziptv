@@ -92,7 +92,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (Store.pin == null) {
         final pin = await _askNewPin('أنشئ رمزاً سرياً من 4 أرقام لتأمين وضع الأطفال');
         if (pin == null) return;
-        if (!RegExp(r'^\\d{4}
+        if (pin.length != 4 || int.tryParse(pin) == null) {
+          _toast('يجب أن يتكون الرمز من 4 أرقام');
+          return;
+        }
+        await Store.setPin(pin);
+      }
+      await Store.setKidsMode(true);
+    } else {
+      if (!await askPin(context)) return;
+      await Store.setKidsMode(false);
+    }
+    if (mounted) setState(() {});
+    _toast(enabled ? 'تم تفعيل وضع الأطفال' : 'تم إيقاف وضع الأطفال');
+  }
+
+  Future<void> _removePin() async {
+    if (Store.kidsMode) {
+      _toast('أوقف وضع الأطفال أولاً');
+      return;
+    }
     if (!await askPin(context)) return;
     await Store.setPin(null);
     if (mounted) setState(() {});

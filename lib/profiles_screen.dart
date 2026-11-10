@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart' hide Text;
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'app_config.dart';
 import 'i18n.dart';
@@ -24,7 +23,6 @@ class ProfilesScreen extends StatefulWidget {
 class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
   bool _syncingCloud = false;
-  final ImagePicker _imagePicker = ImagePicker();
 
   Future<void> _refreshCloudProfiles() async {
     if (_syncingCloud) return;
@@ -171,42 +169,101 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     }
   }
 
+  static const _profileAvatars = <Map<String, String>>[
+    {'id': 'preset:man', 'emoji': '👨', 'label': 'رجل'},
+    {'id': 'preset:glasses', 'emoji': '🤓', 'label': 'رجل بنظارة'},
+    {'id': 'preset:woman', 'emoji': '👩', 'label': 'امرأة'},
+    {'id': 'preset:beard', 'emoji': '🧔', 'label': 'رجل بلحية'},
+    {'id': 'preset:elder', 'emoji': '👴', 'label': 'رجل كبير'},
+    {'id': 'preset:elder-woman', 'emoji': '👵', 'label': 'امرأة كبيرة'},
+    {'id': 'preset:boy', 'emoji': '👦', 'label': 'طفل'},
+    {'id': 'preset:girl', 'emoji': '👧', 'label': 'طفلة'},
+    {'id': 'preset:child', 'emoji': '🧒', 'label': 'طفل محايد'},
+    {'id': 'preset:person', 'emoji': '🙂', 'label': 'بسيط'},
+    {'id': 'preset:cool', 'emoji': '😎', 'label': 'مرح'},
+    {'id': 'preset:family', 'emoji': '👨‍👩‍👧', 'label': 'العائلة'},
+  ];
+
   Future<void> _editProfileImage(Account account) async {
-    final action = await showDialog<String>(
+    final selected = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('صورة البروفايل'),
-        content: Text('اختر صورة من جهازك لتخصيص هذا البروفايل. ستتم مزامنتها مشفرة مع حساب MESUT.'),
+        title: Text('اختر صورة البروفايل'),
+        content: SizedBox(
+          width: kIsTvBuild ? 440 : 320,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 12,
+            children: [
+              for (final avatar in _profileAvatars)
+                InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => Navigator.pop(dialogContext, avatar['id']),
+                  child: SizedBox(
+                    width: kIsTvBuild ? 112 : 88,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: kIsTvBuild ? 76 : 64,
+                          height: kIsTvBuild ? 76 : 64,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: _palette[_profileAvatars.indexOf(avatar) % _palette.length],
+                              begin: Alignment.topRight,
+                              end: Alignment.bottomLeft,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: account.avatar == avatar['id']
+                                  ? Colors.white
+                                  : Colors.white24,
+                              width: account.avatar == avatar['id'] ? 3 : 1,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            avatar['emoji']!,
+                            style: TextStyle(fontSize: kIsTvBuild ? 38 : 32),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          avatar['label']!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: kIsTvBuild ? 14 : 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: Text('إلغاء')),
           if (account.avatar.isNotEmpty)
-            TextButton(onPressed: () => Navigator.pop(dialogContext, 'remove'), child: Text('إزالة الصورة')),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(dialogContext, 'pick'),
-            icon: const Icon(Icons.photo_library_outlined),
-            label: Text('اختيار صورة'),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, ''),
+              child: Text('إعادة الافتراضي'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('إلغاء'),
           ),
         ],
       ),
     );
-    if (!mounted || action == null || action == 'cancel') return;
-    if (action == 'remove') {
-      await Store.updateAccountAvatar(account.id, '');
-    } else if (action == 'pick') {
-      try {
-        final picked = await _imagePicker.pickImage(source: ImageSource.gallery, maxWidth: 256, maxHeight: 256, imageQuality: 72);
-        if (picked == null) return;
-        final bytes = await picked.readAsBytes();
-        if (bytes.isEmpty) throw Exception('الصورة المختارة فارغة');
-        await Store.updateAccountAvatar(account.id, base64Encode(bytes));
-      } catch (error) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر اختيار الصورة: $error')));
-        return;
-      }
-    }
+    if (!mounted || selected == null) return;
+    await Store.updateAccountAvatar(account.id, selected);
     if (mounted) {
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(action == 'remove' ? 'تمت إزالة صورة البروفايل' : 'تم حفظ صورة البروفايل وستتم مزامنتها')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(selected.isEmpty
+            ? 'تمت إعادة صورة البروفايل الافتراضية'
+            : 'تم حفظ صورة البروفايل')),
+      );
     }
   }
 
@@ -265,6 +322,16 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       )),
     );
     if (account.avatar.isEmpty) return fallback;
+    final preset = _profileAvatars.where((item) => item['id'] == account.avatar);
+    if (preset.isNotEmpty) {
+      return Center(
+        child: Text(
+          preset.first['emoji']!,
+          style: TextStyle(fontSize: kIsTvBuild ? 66 : 50),
+        ),
+      );
+    }
+    // Keep showing older custom avatars already saved by previous app versions.
     try {
       return ClipRRect(
         borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),

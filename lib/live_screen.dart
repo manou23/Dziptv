@@ -103,7 +103,7 @@ class _LiveScreenState extends State<LiveScreen> {
     await Store.toggleFav('live', ch);
     if (!mounted) return;
     setState(() {
-      _favs = Store.favs('live');
+      _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
       if (_cat?.id == _favCat.id) _channels = List.of(_favs);
     });
   }
@@ -111,8 +111,9 @@ class _LiveScreenState extends State<LiveScreen> {
   // ---------- التحميل ----------
   Future<void> _loadCats() async {
     try {
-      _favs = Store.favs('live');
-      final c = await widget.service.liveCategories();
+      _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
+      final loadedCats = await widget.service.liveCategories();
+      final c = Store.kidsMode ? loadedCats.where((cat) => !isAdult(cat.name)).toList() : loadedCats;
       if (!mounted) return;
       setState(() => _cats = c);
       if (c.isNotEmpty) {
@@ -133,6 +134,7 @@ class _LiveScreenState extends State<LiveScreen> {
   }
 
   Future<void> _selectCat(Category c, {bool check = true}) async {
+    if (Store.kidsMode && isAdult(c.name)) return;
     if (check && isAdult(c.name) && Store.pin != null) {
       if (!await askPin(context)) return;
     }

@@ -9,6 +9,7 @@ import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'profile_pin_service.dart';
+import 'mesut_cloud_api.dart';
 
 /// Netflix-style Xtream profiles with an independent optional PIN per profile.
 class ProfilesScreen extends StatefulWidget {
@@ -20,6 +21,26 @@ class ProfilesScreen extends StatefulWidget {
 
 class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
+  bool _syncingCloud = false;
+
+  Future<void> _refreshCloudProfiles() async {
+    if (_syncingCloud) return;
+    setState(() => _syncingCloud = true);
+    try {
+      await MesutCloudApi.syncNow();
+      if (!mounted) return;
+      setState(() => _syncingCloud = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تحديث البروفايلات من حساب MESUT السحابي')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _syncingCloud = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
 
   static const _palette = [
     [Color(0xFF8668FF), Color(0xFF35145F)],
@@ -338,6 +359,16 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                         label: Text('الخدمات'),
                       ),
                     const Spacer(),
+                    IconButton(
+                      tooltip: 'مزامنة البروفايلات',
+                      onPressed: _syncingCloud ? null : _refreshCloudProfiles,
+                      icon: _syncingCloud
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cloud_sync_rounded),
+                    ),
                     if (accs.isNotEmpty)
                       TextButton(
                         onPressed: () => setState(() => _edit = !_edit),

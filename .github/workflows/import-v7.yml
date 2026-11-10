@@ -1,5 +1,4 @@
-# [start-flutter-v7] Begin the original Flutter V7 import/build pipeline
-name: Import and build MESUT IPTV Flutter V7
+name: MESUT IPTV Flutter V7 CI
 
 on:
   push:
@@ -7,127 +6,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: mesut-flutter-v7-import
-  cancel-in-progress: false
+  group: mesut-flutter-v7-ci
+  cancel-in-progress: true
 
 jobs:
-  import-and-build:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[start-flutter-v7]')
+  build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Checkout repository
+      - name: Checkout Flutter source
         uses: actions/checkout@v4
-        with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
-          persist-credentials: true
-          fetch-depth: 0
 
-      - name: Download and validate Flutter V7 archive
-        env:
-          ARCHIVE_URL: https://github.com/manou23/Dziptv/releases/download/v7.0.0/mesut_iptv_v7_stage1.zip
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 4 --retry-all-errors "$ARCHIVE_URL" --output "$RUNNER_TEMP/mesut_v7.zip"
-          python3 - <<'PY'
-          import os, zipfile
-          from pathlib import PurePosixPath
-          archive = os.path.join(os.environ["RUNNER_TEMP"], "mesut_v7.zip")
-          with zipfile.ZipFile(archive) as z:
-              names = z.namelist()
-              for name in names:
-                  path = PurePosixPath(name)
-                  if path.is_absolute() or ".." in path.parts:
-                      raise SystemExit("Unsafe ZIP entry: " + name)
-              candidates = []
-              for name in names:
-                  p = PurePosixPath(name)
-                  if p.name == "pubspec.yaml":
-                      root = str(p.parent)
-                      main = str(PurePosixPath(root) / "lib" / "main.dart") if root != "." else "lib/main.dart"
-                      if main in names:
-                          candidates.append(root)
-              if not candidates:
-                  raise SystemExit("The release archive does not contain a Flutter project (pubspec.yaml + lib/main.dart).")
-              if len(candidates) > 1:
-                  raise SystemExit("Archive contains multiple Flutter project roots: " + repr(candidates))
-              bad = z.testzip()
-              if bad:
-                  raise SystemExit("Corrupt ZIP member: " + bad)
-              print("Flutter project root:", candidates[0])
-              print("Archive entries:", len(names))
-              print("Archive bytes:", os.path.getsize(archive))
-          PY
-          mkdir -p "$RUNNER_TEMP/mesut_v7"
-          unzip -q "$RUNNER_TEMP/mesut_v7.zip" -d "$RUNNER_TEMP/mesut_v7"
-
-      - name: Import Flutter project and preserve repository README
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import hashlib, shutil, os
-          repo = Path.cwd()
-          stage = Path(os.environ["RUNNER_TEMP"]) / "mesut_v7"
-          pubspecs = list(stage.rglob("pubspec.yaml"))
-          if len(pubspecs) != 1:
-              raise SystemExit(f"Expected exactly one pubspec.yaml, found {len(pubspecs)}")
-          project = pubspecs[0].parent
-          if not (project / "lib" / "main.dart").is_file():
-              raise SystemExit("Flutter lib/main.dart is missing")
-          readme = repo / "README.md"
-          if not readme.is_file():
-              raise SystemExit("Existing README.md is missing; refusing to continue")
-          readme_bytes = readme.read_bytes()
-          workflow = repo / ".github" / "workflows" / "import-v7.yml"
-          workflow_bytes = workflow.read_bytes() if workflow.exists() else None
-          for item in list(repo.iterdir()):
-              if item.name == ".git":
-                  continue
-              if item.is_dir():
-                  shutil.rmtree(item)
-              else:
-                  item.unlink()
-          for item in project.iterdir():
-              if item.name == ".github":
-                  continue  # Keep repository workflows; GitHub App cannot install new workflow files.
-              target = repo / item.name
-              if item.is_dir():
-                  shutil.copytree(item, target)
-              else:
-                  shutil.copy2(item, target)
-          (repo / "README.md").write_bytes(readme_bytes)
-          if workflow_bytes is not None:
-              wf = repo / ".github" / "workflows" / "import-v7.yml"
-              wf.parent.mkdir(parents=True, exist_ok=True)
-              wf.write_bytes(workflow_bytes)
-          (repo / ".gitignore").write_text(
-              ".dart_tool/\n.flutter-plugins\n.flutter-plugins-dependencies\n"
-              ".packages\nbuild/\n.DS_Store\n*.jks\n*.keystore\n"
-              "android/.gradle/\nandroid/local.properties\n",
-              encoding="utf-8"
-          )
-          digest = hashlib.sha256(readme_bytes).hexdigest()
-          print("Imported Flutter project:", project)
-          print("README.md preserved; SHA256:", digest)
-          PY
-          test -f pubspec.yaml
-          test -f lib/main.dart
-          git add -A
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Import original MESUT IPTV V7 Flutter project"
-            git push origin HEAD:main
-          else
-            echo "Flutter source is already current; continuing with Android generation."
-          fi
-
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -139,40 +32,27 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate Android host project and apply V7 Gradle fixes
+      - name: Verify Android project
         run: |
-          set -euo pipefail
-          if [ ! -d android ]; then
-            flutter create --platforms=android --org com.mesut --project-name mesut_iptv .
-          fi
-          APP_ID=com.mesut.iptv python3 tool/patch_gradle.py
-          sed -i 's/android:label="[^"]*"/android:label="MESUT IPTV"/' android/app/src/main/AndroidManifest.xml
+          test -f pubspec.yaml
+          test -f lib/main.dart
+          test -f android/app/build.gradle.kts || test -f android/app/build.gradle
+          test -f android/app/src/main/AndroidManifest.xml
 
-      - name: Resolve Flutter dependencies and generate launcher icons
-        run: |
-          flutter pub get
-          dart run flutter_launcher_icons
+      - name: Resolve dependencies
+        run: flutter pub get
 
-      - name: Commit generated Android platform
-        run: |
-          git add android .metadata
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Add Android platform for MESUT IPTV Flutter V7"
-            git push origin HEAD:main
-          else
-            echo "Android platform already committed."
-          fi
-
-      - name: Build Android debug APK
-        run: flutter build apk --debug
+      - name: Validate Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib
 
       - name: Run Flutter tests when present
         if: ${{ hashFiles('test/**') != '' }}
-        run: flutter test --no-pub
+        run: flutter test
 
-      - name: Upload verified Flutter APK
+      - name: Build Android APK
+        run: flutter build apk --debug
+
+      - name: Upload Flutter APK
         uses: actions/upload-artifact@v4
         with:
           name: MESUT-IPTV-FLUTTER-V7-APK

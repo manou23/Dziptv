@@ -122,7 +122,7 @@ class _LiveScreenState extends State<LiveScreen> {
         setState(() => _loadingList = false);
       }
       final start = widget.initial ?? Store.lastLive();
-      if (start != null && mounted) _play(start);
+      if (start != null && mounted && (!Store.kidsMode || !isAdult(start.name))) _play(start);
     } catch (e) {
       if (mounted) {
         setState(() {

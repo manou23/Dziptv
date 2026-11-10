@@ -30,6 +30,47 @@ jobs:
             --retry 8 --retry-all-errors --retry-delay 10 \
             --max-time 35 "$API_BASE/health/ready"
 
+
+      - name: Test disposable account, device registration, and cloud sync
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          email="ci-smoke-${GITHUB_RUN_ID}@example.invalid"
+          password="$(openssl rand -hex 24)"
+          echo "Creating an isolated disposable smoke-test account..."
+          registered="$(curl --fail --silent --show-error --max-time 35 \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg email "$email" --arg password "$password" '{email:$email,password:$password}')" \
+            "$API_BASE/api/v1/auth/register")"
+          token="$(jq -r '.token // empty' <<<"$registered")"
+          test -n "$token"
+
+          logged_in="$(curl --fail --silent --show-error --max-time 35 \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg email "$email" --arg password "$password" '{email:$email,password:$password}')" \
+            "$API_BASE/api/v1/auth/login")"
+          login_token="$(jq -r '.token // empty' <<<"$logged_in")"
+          test -n "$login_token"
+
+          curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID" '{deviceKey:$key,name:"CI Smoke Test",platform:"android"}')" \
+            "$API_BASE/api/v1/devices/register"
+
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{_smokeTest:$run}}')" \
+            "$API_BASE/api/v1/sync/settings"
+
+          records="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "settings") | .value._smokeTest == $run' \
+            <<<"$records"
+
       - name: Verify protected sync endpoint rejects anonymous access
         env:
           API_BASE: https://mesut-iptv-api.onrender.com

@@ -31,7 +31,7 @@ Future<void> main() async {
     if (!mesutSignedIn) {
       start = MesutAccountScreen(
         onAuthenticated: () {
-          Navigator.of(_appNavigatorKey.currentContext!).pushAndRemoveUntil(
+          _appNavigatorKey.currentState!.pushAndRemoveUntil(
             MaterialPageRoute<void>(
               builder: (_) => Store.accounts().isEmpty
                   ? const LoginScreen()

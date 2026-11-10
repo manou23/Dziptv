@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'mesut_cloud_api.dart';
 import 'store.dart';
+import 'i18n.dart';
 
 class MesutAccountScreen extends StatefulWidget {
   const MesutAccountScreen({super.key});
@@ -48,6 +49,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     setState(() { _busy = true; _message = null; });
     try {
       await MesutCloudApi.syncNow();
+      I18n.init();
       if (!mounted) return;
       setState(() { _busy = false; _message = 'اكتملت المزامنة بنجاح'; });
     } catch (e) {

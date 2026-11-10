@@ -18,6 +18,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   String? _accountEmail, _message, _currentDeviceKey;
   List<Map<String, dynamic>> _devices = [];
   bool _loadingDevices = false;
+  bool _profileVaultReady = false;
 
   @override
   void initState() {
@@ -28,8 +29,13 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   Future<void> _loadSession() async {
     final signed = await MesutCloudApi.isSignedIn;
     final email = await MesutCloudApi.email;
+    final vaultReady = await MesutCloudApi.hasProfileEncryptionKey;
     if (!mounted) return;
-    setState(() { _signedIn = signed; _accountEmail = email; });
+    setState(() {
+      _signedIn = signed;
+      _accountEmail = email;
+      _profileVaultReady = vaultReady;
+    });
     if (signed) await _loadDevices();
   }
 
@@ -89,6 +95,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
       if (!mounted) return;
       setState(() {
         _signedIn = true;
+        _profileVaultReady = await MesutCloudApi.hasProfileEncryptionKey;
         _accountEmail = _email.text.trim();
         _busy = false;
         _message = 'تم تسجيل الدخول بنجاح. جارٍ الانتقال لإضافة اشتراك IPTV...';
@@ -162,6 +169,22 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
               child: Text('يلزم بناء التطبيق باستخدام --dart-define=MESUT_API_BASE_URL=https://عنوان-الخادم'),
             )),
           if (_signedIn) ...[
+            if (!_profileVaultReady)
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.lock_outline_rounded),
+                  title: Text('تفعيل نقل البروفايلات'),
+                  subtitle: Text('هذه الجلسة قديمة ولا تملك مفتاح التشفير. سجّل الخروج ثم ادخل مجدداً بحساب MESUT نفسه لتفعيل نقل البروفايلات وبيانات الاشتراك المشفّرة بين الأجهزة.'),
+                ),
+              )
+            else
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.verified_user_rounded),
+                  title: Text('خزنة البروفايلات مشفّرة'),
+                  subtitle: Text('تُنقل بيانات الاشتراكات مشفّرة من الجهاز إلى الجهاز، ولا يستطيع الخادم قراءة كلمات المرور.'),
+                ),
+              ),
             Card(child: ListTile(
               leading: const Icon(Icons.account_circle_rounded),
               title: const Text('متصل بحساب MESUT'),

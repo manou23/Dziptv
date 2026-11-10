@@ -113,6 +113,10 @@ class _LiveScreenState extends State<LiveScreen> {
     try {
       _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
       final loadedCats = await widget.service.liveCategories();
+      final blockedCategoryIds = {
+        ...loadedCats.where((cat) => isAdult(cat.name)).map((cat) => cat.id),
+        ...Store.hiddenCategories('live'),
+      };
       final c = loadedCats.where((cat) =>
           (!Store.kidsMode || !isAdult(cat.name)) &&
           !Store.hiddenCategories('live').contains(cat.id)).toList();
@@ -124,7 +128,11 @@ class _LiveScreenState extends State<LiveScreen> {
         setState(() => _loadingList = false);
       }
       final start = widget.initial ?? Store.lastLive();
-      if (start != null && mounted && (!Store.kidsMode || !isAdult(start.name))) _play(start);
+      if (start != null && mounted &&
+          (!Store.kidsMode || !isAdult(start.name)) &&
+          !blockedCategoryIds.contains(start.extra)) {
+        _play(start);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

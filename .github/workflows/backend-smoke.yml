@@ -65,10 +65,36 @@ jobs:
             -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{_smokeTest:$run}}')" \
             "$API_BASE/api/v1/sync/settings"
 
+          # Verify the collection metadata record used for deletion-safe sync.
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{favorites:($run|tonumber),watch_history:($run|tonumber)}}')" \
+            "$API_BASE/api/v1/sync/sync_meta"
+
+          # Empty collections are valid snapshots: clearing data must sync as deletion.
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d '{"value":{"live":[],"vod":[],"series":[]}}' \
+            "$API_BASE/api/v1/sync/favorites"
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d '{"value":[]}' \
+            "$API_BASE/api/v1/sync/watch_history"
+
           records="$(curl --fail --silent --show-error --max-time 35 \
             -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
           jq -e --arg run "$GITHUB_RUN_ID" \
             '.records[] | select(.key == "settings") | .value._smokeTest == $run' \
+            <<<"$records"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "sync_meta") | .value.favorites == ($run|tonumber) and .value.watch_history == ($run|tonumber)' \
+            <<<"$records"
+          jq -e '.records[] | select(.key == "favorites") | .value.live == [] and .value.vod == [] and .value.series == []' \
+            <<<"$records"
+          jq -e '.records[] | select(.key == "watch_history") | .value == []' \
             <<<"$records"
 
       - name: Verify protected sync endpoint rejects anonymous access

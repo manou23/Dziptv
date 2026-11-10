@@ -215,6 +215,7 @@ class Store {
         (e['pos'] as num?)?.toInt() ?? 0,
         (e['dur'] as num?)?.toInt() ?? 0,
         (e['ts'] as num?)?.toInt() ?? 0,
+        ext: (e['ext'] ?? 'mp4').toString(),
       )).toList();
 
   static int position(String key) {
@@ -228,9 +229,14 @@ class Store {
     final list = _histRaw().where((e) => e['key'] != item.key).toList();
     final finished = dur > 0 && pos > dur * 0.95;
     if (!finished && pos > 3000) {
+      final path = Uri.tryParse(item.url)?.pathSegments.last ?? '';
+      final dot = path.lastIndexOf('.');
+      final extension = dot >= 0 && dot < path.length - 1
+          ? path.substring(dot + 1)
+          : 'mp4';
       list.insert(0, {
         'key': item.key, 'title': item.title, 'url': item.url,
-        'image': item.image, 'pos': pos, 'dur': dur,
+        'image': item.image, 'pos': pos, 'dur': dur, 'ext': extension,
         'ts': DateTime.now().millisecondsSinceEpoch,
       });
     }
@@ -378,6 +384,7 @@ class Store {
       'title': entry['title'],
       'pos': entry['pos'],
       'dur': entry['dur'],
+      'ext': entry['ext'] ?? 'mp4',
       'ts': entry['ts'],
     }).toList();
     return {

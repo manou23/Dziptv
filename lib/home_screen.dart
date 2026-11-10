@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color: const kPanel,
+              color: kPanel,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.white24),
             ),
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsetsDirectional.only(end: 9),
           child: Material(
-            color: selected ? Colors.white : const kPanel2,
+            color: selected ? Colors.white : kPanel2,
             borderRadius: BorderRadius.circular(7),
             child: InkWell(
               borderRadius: BorderRadius.circular(7),
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                 child: Text(label, style: TextStyle(
-                  color: selected ? const kBg : Colors.white,
+                  color: selected ? kBg : Colors.white,
                   fontSize: 12, fontWeight: FontWeight.w800,
                 )),
               ),
@@ -302,9 +302,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (movie.image.isNotEmpty)
                         Image.network(movie.image, fit: BoxFit.cover,
                           cacheWidth: 900,
-                          errorBuilder: (_, __, ___) => Container(color: const kPanel2))
+                          errorBuilder: (_, __, ___) => Container(color: kPanel2))
                       else
-                        Container(color: const kPanel2),
+                        Container(color: kPanel2),
                       const DecoratedBox(decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                               decoration: BoxDecoration(
-                                color: const kViolet,
+                                color: kViolet,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text('اختيار MESUT',
@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: i == _featuredIndex ? 19 : 5,
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: i == _featuredIndex ? const kViolet : Colors.white54,
+                                    color: i == _featuredIndex ? kViolet : Colors.white54,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(child: ClipRRect(
                     borderRadius: BorderRadius.circular(7),
                     child: Stack(fit: StackFit.expand, children: [
-                      Container(color: const kPanel2),
+                      Container(color: kPanel2),
                       if (item.image.isNotEmpty)
                         Image.network(item.image, fit: BoxFit.cover, cacheWidth: 300,
                           errorBuilder: (_, __, ___) => const SizedBox.shrink()),
@@ -763,9 +763,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final order = Store.homeOrder();
       final hidden = Store.homeHidden();
       return Scaffold(
-        backgroundColor: const kBg,
+        backgroundColor: kBg,
         body: Container(
-          color: const kBg,
+          color: kBg,
           child: SafeArea(
             bottom: false,
             child: ListView(

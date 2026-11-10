@@ -301,7 +301,10 @@ class Store {
 
   // ---------------- الرياضة ----------------
   static bool get kidsMode => _p.getBool('kids_mode') ?? false;
-  static Future<void> setKidsMode(bool value) async { await _p.setBool('kids_mode', value); }
+  static Future<void> setKidsMode(bool value) async {
+    await _p.setBool('kids_mode', value);
+    await _markCloudSettingsChanged();
+  }
 
   static Set<String> hiddenCategories(String type) =>
       (_p.getStringList('${_pre}hidden_categories_$type') ?? <String>[]).toSet();
@@ -522,6 +525,8 @@ class Store {
         'fmt': liveFormat,
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
+        'kids_mode': kidsMode,
+        'sports_key': sportsKey,
         '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
     };
@@ -625,6 +630,12 @@ class Store {
       }
       if (values['home_hidden'] is List && (values['home_hidden'] as List).every((e) => e is String)) {
         await _p.setStringList('home_hidden', List<String>.from(values['home_hidden'] as List));
+      }
+      if (values['kids_mode'] is bool) {
+        await _p.setBool('kids_mode', values['kids_mode'] as bool);
+      }
+      if (values['sports_key'] is String) {
+        await _p.setString('sports_key', values['sports_key'] as String);
       }
       if (values['_updatedAt'] is num) {
         await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());

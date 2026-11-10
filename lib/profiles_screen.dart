@@ -385,6 +385,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       builder: (dialogContext) {
         final width = MediaQuery.of(dialogContext).size.width;
         final columns = kIsTvBuild ? 4 : (width < 360 ? 2 : 3);
+        String? chosen = account.avatar;
         return Dialog(
           backgroundColor: const Color(0xFF17191F),
           insetPadding: EdgeInsets.symmetric(
@@ -402,7 +403,6 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             ),
             child: StatefulBuilder(
               builder: (context, setPickerState) {
-                String? chosen = account.avatar;
                 return _AvatarPickerDialog(
                   account: account,
                   avatars: _profileAvatars,

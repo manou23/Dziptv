@@ -125,7 +125,7 @@
 - **بصمات SHA-256:** [الهاتف](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk.sha256) · [التلفاز](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk.sha256).
 - **[صفحة الإصدارات](https://github.com/manou23/Dziptv/releases/tag/android-latest)** · **[سجل بناء APK](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
 
-النسختان لهما معرفا تطبيق مستقلان، ويمكن تثبيتهما معاً على الجهاز نفسه. كلاهما يستخدم حساب MESUT الإلزامي والمزامنة التلقائية وحسابات Xtream المحفوظة. يتم بناء كل نسخة لمعمارية ARM64 لتقليل حجم التنزيل؛ وسيتم نشر روابطها وأحجامها الفعلية بعد نجاح البناء.
+النسختان لهما معرفا تطبيق مستقلان، ويمكن تثبيتهما معاً على الجهاز نفسه. كلاهما يستخدم حساب MESUT الإلزامي والمزامنة التلقائية وحسابات Xtream المحفوظة. الإصدار المنشور حالياً **7.1.0 (Build 10)**، وقد اكتمل بناء نسختي الهاتف وAndroid TV لمعمارية **ARM64** ونشرهما بنجاح. حجم APK الهاتف نحو **59.65 MiB** (62,567,963 بايت)، وحجم APK التلفاز نحو **59.65 MiB** (62,567,783 بايت). روابط التنزيل وبصمات SHA-256 أعلاه تشير إلى ملفات الإصدار المنشور مباشرة.
 
 ### التثبيت على Android
 

@@ -93,6 +93,8 @@ jobs:
               else:
                   item.unlink()
           for item in project.iterdir():
+              if item.name == ".github":
+                  continue  # Keep repository workflows; GitHub App cannot install new workflow files.
               target = repo / item.name
               if item.is_dir():
                   shutil.copytree(item, target)

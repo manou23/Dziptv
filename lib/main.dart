@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'theme.dart';
+import 'app_config.dart';
 import 'store.dart';
 import 'i18n.dart';
 import 'login_screen.dart';
@@ -17,7 +18,12 @@ Future<void> main() async {
 
   Widget start;
   try {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(
+      kIsTvBuild ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
+    if (kIsTvBuild) {
+      await SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    }
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,

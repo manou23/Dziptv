@@ -67,7 +67,6 @@ class _TvFocusState extends State<TvFocus> {
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(widget.radius);
     return Focus(
-      autofocus: widget.autofocus,
       onFocusChange: (v) => setState(() => _f = v),
       child: AnimatedScale(
         scale: _f ? 1.06 : 1,
@@ -86,6 +85,7 @@ class _TvFocusState extends State<TvFocus> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
+                autofocus: widget.autofocus,
                 onTap: widget.onTap,
                 onLongPress: widget.onLongPress,
                 child: widget.child,

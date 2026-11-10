@@ -260,8 +260,11 @@ class Store {
     const sensitive = {'accounts', 'url', 'user', 'pass', 'pin'};
     final data = <String, dynamic>{};
     for (final key in _p.getKeys()) {
+      // Playback history/recent entries contain stream URLs with Xtream credentials.
       if (sensitive.contains(key) ||
-          key.startsWith('account_password_')) continue;
+          key.startsWith('account_password_') ||
+          key.endsWith('|hist') ||
+          key.endsWith('|recent')) continue;
       data[key] = _p.get(key);
     }
     return jsonEncode({'app': 'mesut_iptv', 'v': 2, 'data': data});

@@ -194,6 +194,7 @@ class Store {
     if (duplicate >= 0) throw Exception('هذا الاشتراك موجود بالفعل');
 
     final old = list[index];
+    final previousActive = _p.getInt('active') ?? 0;
     final next = Account(
       replacement.name,
       replacement.url,
@@ -226,7 +227,7 @@ class Store {
     }
     list[index] = next;
     await _saveAccounts(list);
-    await _p.setInt('active', index);
+    await _p.setInt('active', previousActive.clamp(0, list.length - 1));
     await _markCloudProfilesChanged();
   }
 

@@ -83,9 +83,34 @@ class _StartupError extends StatelessWidget {
 
 final GlobalKey<NavigatorState> _appNavigatorKey = GlobalKey<NavigatorState>();
 
-class MesutApp extends StatelessWidget {
+class MesutApp extends StatefulWidget {
   final Widget start;
   const MesutApp({super.key, required this.start});
+
+  @override
+  State<MesutApp> createState() => _MesutAppState();
+}
+
+class _MesutAppState extends State<MesutApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh cloud data when the user returns to the app.
+      MesutCloudApi.scheduleSync();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +141,7 @@ class MesutApp extends StatelessWidget {
           ),
         ),
         navigatorKey: _appNavigatorKey,
-        home: start,
+        home: widget.start,
       ),
     );
   }

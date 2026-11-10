@@ -240,13 +240,25 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
           if (!_edit)
             FutureBuilder<bool>(
               future: Store.hasProfilePin(a.id),
-              builder: (_, snapshot) => TextButton.icon(
-                onPressed: () => _configurePin(a),
-                icon: Icon(
-                  snapshot.data == true ? Icons.lock_reset_rounded : Icons.lock_open_rounded,
-                  size: 17,
-                ),
-                label: Text(snapshot.data == true ? 'تغيير PIN' : 'تعيين PIN'),
+              builder: (_, snapshot) => Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 2,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _configurePin(a),
+                    icon: Icon(
+                      snapshot.data == true ? Icons.lock_reset_rounded : Icons.lock_open_rounded,
+                      size: 17,
+                    ),
+                    label: Text(snapshot.data == true ? 'تغيير PIN' : 'تعيين PIN'),
+                  ),
+                  if (snapshot.data == true)
+                    TextButton.icon(
+                      onPressed: () => _removePin(a),
+                      icon: const Icon(Icons.lock_open_rounded, size: 17),
+                      label: Text('إزالة PIN'),
+                    ),
+                ],
               ),
             ),
         ],

@@ -418,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _mobilePosterRow(String title, List<MediaItem> items, ValueChanged<MediaItem> onOpen,
-      {VoidCallback? onSeeAll}) {
+      {required String favoriteType, VoidCallback? onSeeAll}) {
     if (items.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
@@ -451,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: GestureDetector(
                 onTap: () => onOpen(item),
                 onLongPress: () async {
-                  await Store.toggleFav(item, item.type == 'series' ? 'series' : 'vod');
+                  await Store.toggleFav(favoriteType, item);
                   if (mounted) setState(() {});
                 },
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -491,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _featuredFuture,
       builder: (context, snapshot) => _mobilePosterRow(
         'أحدث الأفلام', _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18),
-        _openVod, onSeeAll: _openMovies,
+        _openVod, favoriteType: 'vod', onSeeAll: _openMovies,
       ),
     );
   }
@@ -501,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _seriesFuture,
       builder: (context, snapshot) {
         final items = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
-        return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, onSeeAll: _openSeries);
+        return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, favoriteType: 'series', onSeeAll: _openSeries);
       },
     );
   }

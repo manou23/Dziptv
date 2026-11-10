@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'store.dart';
+import 'app_config.dart';
 
 class MesutCloudApi {
   MesutCloudApi._();
@@ -151,8 +152,8 @@ class MesutCloudApi {
       headers: await _authHeaders(),
       body: jsonEncode({
         'deviceKey': await _getDeviceKey(),
-        'name': 'MESUT Android',
-        'platform': 'android',
+        'name': kIsTvBuild ? 'MESUT Android TV' : 'MESUT Android',
+        'platform': kIsTvBuild ? 'android_tv' : 'android',
       }),
     ).timeout(const Duration(seconds: 20));
     await _decode(response, authenticated: true);

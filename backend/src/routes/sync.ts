@@ -8,7 +8,7 @@ import type { AuthenticatedRequest } from "../types";
 const router = Router();
 router.use(requireAuth);
 
-const allowedKeys = ["favorites", "watch_history", "settings"] as const;
+const allowedKeys = ["favorites", "watch_history", "settings", "sync_meta"] as const;
 const syncSchema = z.object({
   value: z.union([z.record(z.unknown()), z.array(z.unknown())])
 });

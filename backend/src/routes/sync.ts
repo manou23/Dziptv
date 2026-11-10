@@ -37,7 +37,7 @@ router.put("/:key", async (req: AuthenticatedRequest, res, next) => {
     const record = await prisma.syncRecord.upsert({
       where: { userId_key: { userId: req.userId!, key: req.params.key } },
       create: { userId: req.userId!, key: req.params.key, value: parsed.data.value as Prisma.InputJsonValue },
-      update: { value: parsed.data.value as object, version: { increment: 1 } },
+      update: { value: parsed.data.value as Prisma.InputJsonValue, version: { increment: 1 } },
       select: { key: true, value: true, version: true, updatedAt: true }
     });
     res.json({ record });

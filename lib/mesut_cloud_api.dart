@@ -81,6 +81,30 @@ class MesutCloudApi {
     return {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'};
   }
 
+  static Future<String> get currentDeviceKey => _getDeviceKey();
+
+  static Future<List<Map<String, dynamic>>> listDevices() async {
+    final response = await http.get(
+      _uri('/api/v1/devices'),
+      headers: await _authHeaders(),
+    ).timeout(const Duration(seconds: 20));
+    final data = await _decode(response);
+    final list = data['devices'];
+    if (list is! List) return [];
+    return list.whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static Future<void> removeDevice(String id) async {
+    final response = await http.delete(
+      _uri('/api/v1/devices/${Uri.encodeComponent(id)}'),
+      headers: await _authHeaders(),
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode == 204) return;
+    await _decode(response);
+  }
+
   static Future<void> _registerDevice() async {
     final response = await http.post(
       _uri('/api/v1/devices/register'),

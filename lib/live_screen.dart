@@ -42,6 +42,7 @@ class _LiveScreenState extends State<LiveScreen> {
   final _sc = TextEditingController();
   Timer? _ovTimer;
   int _token = 0, _retries = 0;
+  bool _retryScheduled = false;
 
   List<MediaItem> get _shown {
     if (_q.isEmpty) return _channels;
@@ -202,7 +203,8 @@ class _LiveScreenState extends State<LiveScreen> {
   // Retry automatically when the stream or decoder reports an error.
   void _retryPlayback() {
     final ch = _current;
-    if (ch == null || !mounted || _retries >= 3) return;
+    if (ch == null || !mounted || _retries >= 3 || _retryScheduled) return;
+    _retryScheduled = true;
     _retries++;
     final token = _token;
     setState(() {
@@ -210,14 +212,15 @@ class _LiveScreenState extends State<LiveScreen> {
       _error = 'إعادة المحاولة...';
     });
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted && _current?.id == ch.id && token == _token) {
-        _play(ch, auto: true);
-      }
+      if (!mounted || _current?.id != ch.id || token != _token) return;
+      _retryScheduled = false;
+      _play(ch, auto: true);
     });
   }
 
   Future<void> _play(MediaItem ch, {bool auto = false}) async {
     if (!auto) _retries = 0;
+    _retryScheduled = false;
     final token = ++_token;
     final player = _ctrl;
     if (player == null) return;

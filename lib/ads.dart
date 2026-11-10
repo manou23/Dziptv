@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-/// false = تعطيل الإعلانات بالكامل (للتجربة وتحديد سبب المشاكل)
-const bool kAdsEnabled = true;
+/// Ads are temporarily disabled until a valid AdMob application ID is
+/// configured in AndroidManifest.xml. This keeps startup independent of the
+/// native Mobile Ads SDK and prevents an Android launch-time crash.
+const bool kAdsEnabled = false;
 
-/// true = إعلانات تجريبية من Google
+/// true = Google test ads
 const bool kTestAds = false;
 const String kBannerId = 'ca-app-pub-8292052707705243/3492950965';
-// ضع هنا معرّف وحدة إعلان بيني (Interstitial) عند إنشائها. فارغ = معطّل
 const String kInterstitialId = '';
 
 String get _bannerUnit =>
@@ -34,7 +35,6 @@ class Ads {
     } catch (_) {}
   }
 
-  /// نموذج موافقة المستخدمين (مطلوب في أوروبا). لا يظهر إلا عند الحاجة.
   static Future<void> _consent() {
     final done = Completer<void>();
     ConsentInformation.instance.requestConsentInfoUpdate(
@@ -67,13 +67,11 @@ class Ads {
     );
   }
 
-  /// إعلان بيني: كل 3 فتحات للمحتوى وبفاصل لا يقل عن 3 دقائق.
-  /// لا يُستدعى أبداً أثناء التشغيل.
   static Future<void> maybeInterstitial() async {
+    if (!kAdsEnabled) return;
     _opens++;
     final ad = _ad;
-    if (ad == null) return;
-    if (_opens % 3 != 0) return;
+    if (ad == null || _opens % 3 != 0) return;
     if (DateTime.now().difference(_last) < const Duration(minutes: 3)) return;
 
     _ad = null;
@@ -96,7 +94,6 @@ class Ads {
   }
 }
 
-/// بانر صغير: لا يظهر شيئاً إذا لم يتوفر إعلان (مثلاً على التلفزيون)
 class AdBanner extends StatefulWidget {
   const AdBanner({super.key});
   @override

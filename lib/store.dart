@@ -275,6 +275,9 @@ class Store {
   }
 
   // ---------------- الرياضة ----------------
+  static bool get kidsMode => _p.getBool('kids_mode') ?? false;
+  static Future<void> setKidsMode(bool value) async { await _p.setBool('kids_mode', value); await _markCloudSettingsChanged(); }
+
   static String get sportsKey => _p.getString('sports_key') ?? '3';
   static Future<void> setSportsKey(String value) async {
     await _p.setString('sports_key', value.trim().isEmpty ? '3' : value.trim());
@@ -375,6 +378,7 @@ class Store {
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
         'sports_key': sportsKey,
+        'kids_mode': kidsMode,
         '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
     };
@@ -446,6 +450,9 @@ class Store {
       }
       if (values['sports_key'] is String) {
         await _p.setString('sports_key', values['sports_key'] as String);
+      }
+      if (values['kids_mode'] is bool) {
+        await _p.setBool('kids_mode', values['kids_mode'] as bool);
       }
       if (values['_updatedAt'] is num) {
         await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());

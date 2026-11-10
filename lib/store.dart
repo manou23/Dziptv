@@ -11,6 +11,7 @@ class Store {
   static String? _pinCache;
   // Installed by main.dart so every relevant local change queues cloud sync.
   static Future<void> Function()? cloudSyncCallback;
+  static void Function()? cloudSettingsAppliedCallback;
 
   static Future<void> _notifyCloudChanged() async {
     final callback = cloudSyncCallback;
@@ -524,6 +525,7 @@ class Store {
       if (values['_updatedAt'] is num) {
         await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());
       }
+      cloudSettingsAppliedCallback?.call();
     }
   }
 

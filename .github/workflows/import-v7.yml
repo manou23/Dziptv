@@ -51,9 +51,10 @@ jobs:
 
       - name: Build Android APK with MESUT API
         run: >-
-          flutter build apk --debug
+          flutter build apk --debug --flavor phone
           --dart-define=MESUT_API_BASE_URL=https://mesut-iptv-api.onrender.com
           --dart-define=MESUT_BUILD_COMMIT=${GITHUB_SHA}
+          --dart-define=MESUT_TARGET=phone
 
       - name: Upload Flutter APK
         uses: actions/upload-artifact@v4

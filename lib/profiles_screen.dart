@@ -22,11 +22,11 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
 
   static const _palette = [
-    [Color(0xFFE50914), Color(0xFF7B0710)],
-    [Color(0xFF1687E8), Color(0xFF104A86)],
-    [Color(0xFF1DA66A), Color(0xFF0B5D3A)],
-    [Color(0xFFF0B323), Color(0xFF98620A)],
-    [Color(0xFF8C4AE8), Color(0xFF4A218C)],
+    [Color(0xFF8668FF), Color(0xFF35145F)],
+    [Color(0xFF35B8FF), Color(0xFF1A2760)],
+    [Color(0xFF28D59A), Color(0xFF145B62)],
+    [Color(0xFF7138E8), Color(0xFF25215F)],
+    [Color(0xFFC25BFF), Color(0xFF60244B)],
   ];
 
   Future<String?> _askPin(String title) async {

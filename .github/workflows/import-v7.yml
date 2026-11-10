@@ -118,11 +118,14 @@ jobs:
           test -f pubspec.yaml
           test -f lib/main.dart
           git add -A
-          git diff --cached --quiet && { echo "No import changes detected"; exit 1; } || true
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Import original MESUT IPTV V7 Flutter project"
-          git push origin HEAD:main
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Import original MESUT IPTV V7 Flutter project"
+            git push origin HEAD:main
+          else
+            echo "Flutter source is already current; continuing with Android generation."
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -136,8 +139,31 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Resolve Flutter dependencies
-        run: flutter pub get
+      - name: Generate Android host project and apply V7 Gradle fixes
+        run: |
+          set -euo pipefail
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.mesut --project-name mesut_iptv .
+          fi
+          APP_ID=com.mesut.iptv python3 tool/patch_gradle.py
+          sed -i 's/android:label="[^"]*"/android:label="MESUT IPTV"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Resolve Flutter dependencies and generate launcher icons
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      - name: Commit generated Android platform
+        run: |
+          git add android .metadata
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Add Android platform for MESUT IPTV Flutter V7"
+            git push origin HEAD:main
+          else
+            echo "Android platform already committed."
+          fi
 
       - name: Build Android debug APK
         run: flutter build apk --debug

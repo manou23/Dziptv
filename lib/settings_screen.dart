@@ -470,6 +470,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _removePin() async {
+    if (Store.kidsMode) {
+      _toast('أوقف وضع الأطفال أولاً');
+      return;
+    }
     if (!await askPin(context)) return;
     await Store.setPin(null);
     if (mounted) setState(() {});

@@ -103,6 +103,23 @@ class Store {
       _pinCache = legacyPin;
     }
     await _p.remove('pin');
+
+    // One-time migration: publish existing device-local PIN hashes into the
+    // authenticated encrypted profile vault so the website can manage them.
+    if (!(_p.getBool('cloud_profile_pin_hash_v1_migrated') ?? false)) {
+      var hasExistingProfilePin = false;
+      for (final account in accounts()) {
+        if (await ProfilePinService.hasPin(account.id)) {
+          hasExistingProfilePin = true;
+          break;
+        }
+      }
+      if (hasExistingProfilePin) {
+        await _p.setInt('cloud_profiles_updated_at',
+            DateTime.now().millisecondsSinceEpoch);
+      }
+      await _p.setBool('cloud_profile_pin_hash_v1_migrated', true);
+    }
   }
 
   // ---------------- اللغة ----------------

@@ -410,8 +410,14 @@ class MesutCloudApi {
     // The complete profile list and its Xtream credentials are encrypted
     // locally with AES-256-GCM before being sent to the server.
     final profilePayload = Store.cloudProfilesSnapshot();
+    final localProfileTime =
+        (profilePayload['updatedAt'] as num?)?.toInt() ?? 0;
+    final remoteProfileTime = DateTime.tryParse(
+              remote['profiles']?['updatedAt']?.toString() ?? '')
+          ?.millisecondsSinceEpoch ?? 0;
     if (await hasProfileEncryptionKey &&
-        (profilePayload['profiles'] as List).isNotEmpty) {
+        (profilePayload['profiles'] as List).isNotEmpty &&
+        (remote['profiles'] == null || localProfileTime > remoteProfileTime)) {
       batch['profiles'] = {
         'value': await _encryptProfiles(profilePayload),
         'expectedVersion':
@@ -443,5 +449,7 @@ class MesutCloudApi {
     _retryAttempt = 0;
     await _secure.delete(key: _tokenKey);
     await _secure.delete(key: _emailKey);
+    await _secure.delete(key: _profileKey);
+    await _secure.delete(key: _profileKeyEmail);
   }
 }

@@ -200,6 +200,8 @@ const Map<String, List<String>> _d = {
   'قنوات وأفلام ومسلسلات باشتراكك': ["Chaînes, films et séries avec votre abonnement", "Channels, movies and series with your subscription"],
   'الخدمات': ["Services", "Services"],
   'إزالة PIN': ["Supprimer le PIN", "Remove PIN"],
+  'إظهار PIN': ["Afficher le PIN", "Show PIN"],
+  'إخفاء PIN': ["Masquer le PIN", "Hide PIN"],
   'تم': ["Terminé", "Done"],
   'حذف الحساب': ["Supprimer le profil", "Delete profile"],
   'هل تريد حذف هذا الحساب؟': ["Voulez-vous supprimer ce profil ?", "Delete this profile?"],

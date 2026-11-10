@@ -15,8 +15,9 @@ class Category {
 
 class MediaItem {
   final String id, name, image, rating, extra, plot;
+  final int added;
   const MediaItem(this.id, this.name, this.image, this.rating,
-      {this.extra = '', this.plot = ''});
+      {this.extra = '', this.plot = '', this.added = 0});
   Map<String, String> toJson() => {
         'id': id,
         'name': name,
@@ -24,10 +25,12 @@ class MediaItem {
         'rating': rating,
         'extra': extra,
         'plot': plot,
+        'added': '$added',
       };
   factory MediaItem.fromJson(Map<String, dynamic> j) => MediaItem(
       '${j['id']}', '${j['name']}', '${j['image']}', '${j['rating']}',
-      extra: '${j['extra']}', plot: '${j['plot']}');
+      extra: '${j['extra']}', plot: '${j['plot']}',
+      added: int.tryParse('${j['added'] ?? ''}') ?? 0);
 }
 
 class Episode {

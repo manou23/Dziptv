@@ -7,6 +7,7 @@ import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'profile_pin_service.dart';
+import 'services_home_screen.dart';
 
 /// Netflix-style Xtream profiles with an independent optional PIN per profile.
 class ProfilesScreen extends StatefulWidget {
@@ -75,11 +76,11 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   }
 
   Future<void> _configurePin(Account account) async {
-    final hasPin = await Store.hasProfilePin(account.id);
+    final hasPin = await ProfilePinService.hasPin(account.id);
     if (hasPin) {
       final current = await _askPin('أدخل PIN الحالي');
       if (!mounted || current == null) return;
-      if (!await Store.verifyProfilePin(account.id, current)) {
+      if (!await ProfilePinService.verify(account.id, current)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('رمز PIN غير صحيح')),
@@ -117,7 +118,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   Future<void> _removePin(Account account) async {
     final current = await _askPin('أدخل PIN الحالي لإزالته');
     if (!mounted || current == null) return;
-    if (!await Store.verifyProfilePin(account.id, current)) {
+    if (!await ProfilePinService.verify(account.id, current)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('رمز PIN غير صحيح')),
@@ -169,12 +170,14 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       ),
     );
     if (ok != true) return;
-    await Store.removeProfilePin(accounts[i].id);
+    await ProfilePinService.remove(accounts[i].id);
     await Store.removeAccount(i);
     if (!mounted) return;
     if (Store.accounts().isEmpty) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const ServicesHomeScreen()),
+          (route) => false,
+        );
     } else {
       setState(() => _edit = Store.accounts().isEmpty ? false : _edit);
     }
@@ -219,7 +222,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     ),
                   if (!_edit)
                     FutureBuilder<bool>(
-                      future: Store.hasProfilePin(a.id),
+                      future: ProfilePinService.hasPin(a.id),
                       builder: (_, snapshot) => snapshot.data == true
                           ? const Positioned(
                               top: 8,
@@ -240,7 +243,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
               style: const TextStyle(fontSize: 14)),
           if (!_edit)
             FutureBuilder<bool>(
-              future: Store.hasProfilePin(a.id),
+              future: ProfilePinService.hasPin(a.id),
               builder: (_, snapshot) => Wrap(
                 alignment: WrapAlignment.center,
                 spacing: 2,
@@ -314,6 +317,12 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Row(
                   children: [
+                    if (Navigator.canPop(context))
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: Text('الخدمات'),
+                      ),
                     const Spacer(),
                     if (accs.isNotEmpty)
                       TextButton(

@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/ANDROID-MOBILE-111827?style=for-the-badge&logo=android&logoColor=3DDC84" alt="Android">
 </p>
 
-[**⬇ تحميل التطبيق**](https://github.com/manou23/Dziptv/releases/latest) ·
+[**⬇ تحميل APK مباشرة**](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk) ·
 [المصدر الرسمي](https://github.com/manou23/Dziptv) ·
 [الإبلاغ عن مشكلة](https://github.com/manou23/Dziptv/issues)
 
@@ -59,11 +59,21 @@
 
 <div align="center">
 
-### أحدث إصدار
+### أحدث إصدار — تحميل مباشر
 
-**[⬇ صفحة الإصدارات الرسمية](https://github.com/manou23/Dziptv/releases/latest)**  ·  **[⬇ صفحة بناء APK الرسمية](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
+<div align="center">
 
-إذا لم يظهر إصدار منشور بعد، افتح صفحة بناء APK الرسمية، واختر أحدث تشغيل ناجح باسم **MESUT IPTV Android APK**، ثم نزّل **mesut-iptv-android-release** من قسم Artifacts. ملف Artifact متاح لمدة 14 يوماً من تاريخ البناء. نشر إصدار دائم في صفحة Releases يتم بعد اعتماد النسخة ورقمها.
+[![تحميل MESUT IPTV APK](https://img.shields.io/badge/⬇_تحميل_MESUT_IPTV_APK-مباشر_ومجاني-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk)
+
+**[⬇ اضغط هنا لتنزيل ملف APK مباشرة](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk)**
+
+</div>
+
+- **رابط APK المباشر:** https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk
+- **[التحقق من SHA-256](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk.sha256)** للتأكد من سلامة الملف.
+- **[صفحة الإصدارات](https://github.com/manou23/Dziptv/releases/tag/android-latest)** · **[سجل بناء APK](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
+
+يتم تحديث رابط التحميل المباشر نفسه تلقائياً عند نجاح بناء APK جديد على الفرع الرئيسي. قد لا يتوفر الرابط لأول مرة إلا بعد اكتمال أول تشغيل ناجح لسير عمل النشر. كما يحتفظ GitHub بنسخة Artifact احتياطية باسم **mesut-iptv-android-release** لمدة 14 يوماً من تاريخ البناء.
 
 </div>
 

@@ -30,21 +30,6 @@ jobs:
             --retry 8 --retry-all-errors --retry-delay 10 \
             --max-time 35 "$API_BASE/health/ready"
 
-          echo "Waiting for the new atomic sync route to reach Render..."
-          route_status=""
-          for attempt in $(seq 1 12); do
-            route_status="$(curl --silent --show-error --output /tmp/batch-route.json \
-              --write-out '%{http_code}' --max-time 20 -X POST \
-              -H 'Content-Type: application/json' -d '{}' \
-              "$API_BASE/api/v1/sync/batch")"
-            if [ "$route_status" = "401" ]; then break; fi
-            if [ "$route_status" != "404" ]; then
-              cat /tmp/batch-route.json
-              exit 1
-            fi
-            sleep 10
-          done
-          test "$route_status" = "401"
 
 
       - name: Test disposable account, device registration, and cloud sync
@@ -68,6 +53,23 @@ jobs:
             "$API_BASE/api/v1/auth/login")"
           login_token="$(jq -r '.token // empty' <<<"$logged_in")"
           test -n "$login_token"
+
+          echo "Waiting for the authenticated atomic sync route to reach Render..."
+          route_status=""
+          for attempt in $(seq 1 12); do
+            route_status="$(curl --silent --show-error --output /tmp/batch-route.json \
+              --write-out '%{http_code}' --max-time 20 -X POST \
+              -H "Authorization: Bearer $login_token" \
+              -H 'Content-Type: application/json' -d '{}' \
+              "$API_BASE/api/v1/sync/batch")"
+            if [ "$route_status" = "400" ]; then break; fi
+            if [ "$route_status" != "404" ]; then
+              cat /tmp/batch-route.json
+              exit 1
+            fi
+            sleep 10
+          done
+          test "$route_status" = "400"
 
           device="$(curl --fail --silent --show-error --max-time 35 \
             -H "Authorization: Bearer $login_token" \

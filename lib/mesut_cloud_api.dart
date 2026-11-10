@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'store.dart';
@@ -22,6 +23,8 @@ class MesutCloudApi {
   static const _tokenKey = 'mesut_cloud_token';
   static const _emailKey = 'mesut_cloud_email';
   static const _deviceKey = 'mesut_cloud_device_key';
+  static const _profileKey = 'mesut_cloud_profile_key';
+  static const _profileKeyEmail = 'mesut_cloud_profile_key_email';
   static void Function()? onSessionExpired;
 
   // Automatic, debounced synchronization with bounded retry when offline.
@@ -81,6 +84,9 @@ class MesutCloudApi {
     if (token == null || token.isEmpty || accountEmail == null) {
       throw Exception('استجابة الخادم غير مكتملة');
     }
+    // Derive a cross-device encryption key from the MESUT account password.
+    // The password itself is never stored or sent to the sync endpoint.
+    await _deriveAndStoreProfileKey(accountEmail, password);
     await _secure.write(key: _tokenKey, value: token);
     await _secure.write(key: _emailKey, value: accountEmail);
     try {
@@ -89,6 +95,71 @@ class MesutCloudApi {
       // Keep the authenticated session; device registration can retry during sync.
     }
     await scheduleSync();
+  }
+
+  static Future<void> _deriveAndStoreProfileKey(
+      String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final derivation = Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations: 150000,
+      bits: 256,
+    );
+    final secret = await derivation.deriveKey(
+      secretKey: SecretKey(utf8.encode(password)),
+      nonce: utf8.encode('MESUT-IPTV-PROFILE-VAULT-V1:$normalizedEmail'),
+    );
+    await _secure.write(
+        key: _profileKey, value: base64Encode(await secret.extractBytes()));
+    await _secure.write(key: _profileKeyEmail, value: normalizedEmail);
+  }
+
+  static Future<bool> get hasProfileEncryptionKey async {
+    final email = (await _secure.read(key: _emailKey))?.toLowerCase();
+    final keyEmail = await _secure.read(key: _profileKeyEmail);
+    final key = await _secure.read(key: _profileKey);
+    return email != null && email == keyEmail && key != null && key.isNotEmpty;
+  }
+
+  static Future<Map<String, dynamic>> _encryptProfiles(
+      Map<String, dynamic> payload) async {
+    if (!await hasProfileEncryptionKey) {
+      throw Exception('أعد تسجيل الدخول إلى حساب MESUT لتفعيل تشفير نقل البروفايلات');
+    }
+    final rawKey = await _secure.read(key: _profileKey);
+    final cipher = AesGcm.with256bits();
+    final box = await cipher.encrypt(
+      utf8.encode(jsonEncode(payload)),
+      secretKey: SecretKey(base64Decode(rawKey!)),
+    );
+    return {
+      'format': 'MESUT_PROFILE_V1',
+      'nonce': base64Encode(box.nonce),
+      'cipherText': base64Encode(box.cipherText),
+      'mac': base64Encode(box.mac.bytes),
+    };
+  }
+
+  static Future<Map<String, dynamic>> _decryptProfiles(
+      dynamic encrypted) async {
+    if (encrypted is! Map ||
+        encrypted['format'] != 'MESUT_PROFILE_V1' ||
+        !await hasProfileEncryptionKey) {
+      throw Exception('لا يمكن فك تشفير البروفايلات على هذا الجهاز');
+    }
+    final rawKey = await _secure.read(key: _profileKey);
+    final cipher = AesGcm.with256bits();
+    final clear = await cipher.decrypt(
+      SecretBox(
+        base64Decode(encrypted['cipherText'].toString()),
+        nonce: base64Decode(encrypted['nonce'].toString()),
+        mac: Mac(base64Decode(encrypted['mac'].toString())),
+      ),
+      secretKey: SecretKey(base64Decode(rawKey!)),
+    );
+    final decoded = jsonDecode(utf8.decode(clear));
+    if (decoded is! Map) throw Exception('بيانات البروفايلات غير صالحة');
+    return Map<String, dynamic>.from(decoded);
   }
 
   static Future<String> _getDeviceKey() async {
@@ -213,9 +284,34 @@ class MesutCloudApi {
   static Future<void> syncNow() async {
     await _registerDevice();
     final headers = await _authHeaders();
+    final remote = await _fetchRecords(headers);
+
+    // Restore the complete profile vault before selecting the active profile
+    // and syncing per-profile favorites/history on a fresh device.
+    final localProfiles = Store.cloudProfilesSnapshot();
+    final localProfilesTime =
+        (localProfiles['updatedAt'] as num?)?.toInt() ?? 0;
+    final remoteProfilesEnvelope = remote['profiles']?['value'];
+    final remoteProfilesTime = DateTime.tryParse(
+              remote['profiles']?['updatedAt']?.toString() ?? '')
+          ?.millisecondsSinceEpoch ?? 0;
+    if (remoteProfilesEnvelope != null && await hasProfileEncryptionKey) {
+      try {
+        final remoteProfiles =
+            await _decryptProfiles(remoteProfilesEnvelope);
+        final payloadTime =
+            (remoteProfiles['updatedAt'] as num?)?.toInt() ?? remoteProfilesTime;
+        if (payloadTime > localProfilesTime) {
+          await Store.applyCloudProfiles(remoteProfiles);
+        }
+      } catch (_) {
+        // Keep local profiles intact if a cloud vault is damaged or encrypted
+        // with a different MESUT password.
+      }
+    }
+
     final snapshot = Store.cloudSnapshot();
     final profileId = snapshot['profile_id'] as String;
-    final remote = await _fetchRecords(headers);
 
     final localMeta = Map<String, dynamic>.from(snapshot['sync_meta'] as Map);
     final remoteMetaValue = remote['sync_meta']?['value'];
@@ -309,6 +405,17 @@ class MesutCloudApi {
       batch[key] = {
         'value': snapshot[key],
         'expectedVersion': (remote[key]?['version'] as num?)?.toInt() ?? 0,
+      };
+    }
+    // The complete profile list and its Xtream credentials are encrypted
+    // locally with AES-256-GCM before being sent to the server.
+    final profilePayload = Store.cloudProfilesSnapshot();
+    if (await hasProfileEncryptionKey &&
+        (profilePayload['profiles'] as List).isNotEmpty) {
+      batch['profiles'] = {
+        'value': await _encryptProfiles(profilePayload),
+        'expectedVersion':
+            (remote['profiles']?['version'] as num?)?.toInt() ?? 0,
       };
     }
     final response = await http.post(

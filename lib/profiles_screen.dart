@@ -348,6 +348,77 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     }
   }
 
+  Future<void> _manageProfile(Account account, int index) async {
+    final hasPin = await ProfilePinService.hasPin(account.id);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF17191F),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white30,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(account.name, style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w800,
+              )),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.face_retouching_natural_rounded),
+                title: Text('تغيير صورة البروفايل'),
+                subtitle: Text('اختر صورة من الصور المدمجة'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _editProfileImage(account);
+                },
+              ),
+              ListTile(
+                leading: Icon(hasPin ? Icons.lock_reset_rounded : Icons.lock_outline_rounded),
+                title: Text(hasPin ? 'تغيير رمز PIN' : 'إضافة رمز PIN'),
+                subtitle: Text(hasPin ? 'تحديث رمز الحماية الحالي' : 'حماية هذا البروفايل برمز'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _configurePin(account);
+                },
+              ),
+              if (hasPin)
+                ListTile(
+                  leading: const Icon(Icons.lock_open_rounded),
+                  title: Text('إزالة رمز PIN'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _removePin(account);
+                  },
+                ),
+              const Divider(color: Colors.white12),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                title: Text('حذف البروفايل', style: const TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _delete(index);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _tile(int i, Account a) {
     final c = _palette[i % _palette.length];
     final name = a.name.trim().isEmpty ? '?' : a.name.trim();
@@ -362,7 +433,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             child: TvFocus(
               radius: kIsTvBuild ? 20 : 11,
               autofocus: kIsTvBuild && i == 0,
-              onTap: () => _edit ? _delete(i) : _open(i),
+              onTap: () => _edit ? _manageProfile(a, i) : _open(i),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -378,9 +449,10 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                   ),
                   if (_edit)
                     Container(
-                      color: Colors.black54,
+                      color: Colors.black45,
                       child: const Center(
-                          child: Icon(Icons.delete_outline_rounded, size: 40)),
+                        child: Icon(Icons.edit_rounded, size: 34, color: Colors.white),
+                      ),
                     ),
                   if (!_edit)
                     FutureBuilder<bool>(
@@ -389,7 +461,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                           ? const Positioned(
                               top: 8,
                               right: 8,
-                              child: Icon(Icons.lock_rounded, size: 20),
+                              child: Icon(Icons.lock_rounded, size: 19),
                             )
                           : const SizedBox.shrink(),
                     ),
@@ -398,40 +470,16 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: kIsTvBuild ? 17 : 13, fontWeight: FontWeight.w600)),
-          if (!_edit)
-            FutureBuilder<bool>(
-              future: ProfilePinService.hasPin(a.id),
-              builder: (_, snapshot) => Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 2,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _editProfileImage(a),
-                    icon: const Icon(Icons.photo_camera_back_rounded, size: 17),
-                    label: Text('تغيير الصورة'),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _configurePin(a),
-                    icon: Icon(
-                      snapshot.data == true ? Icons.lock_reset_rounded : Icons.lock_open_rounded,
-                      size: 17,
-                    ),
-                    label: Text(snapshot.data == true ? 'تغيير PIN' : 'تعيين PIN'),
-                  ),
-                  if (snapshot.data == true)
-                    TextButton.icon(
-                      onPressed: () => _removePin(a),
-                      icon: const Icon(Icons.lock_open_rounded, size: 17),
-                      label: Text('إزالة PIN'),
-                    ),
-                ],
-              ),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: kIsTvBuild ? 17 : 13,
+              fontWeight: FontWeight.w600,
             ),
+          ),
         ],
       ),
     );
@@ -506,7 +554,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     if (accs.isNotEmpty)
                       TextButton(
                         onPressed: () => setState(() => _edit = !_edit),
-                        child: Text(_edit ? 'تم' : 'إدارة الحسابات'),
+                        child: Text(_edit ? 'تم' : 'إدارة البروفايلات'),
                       ),
                   ],
                 ),
@@ -518,7 +566,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('من يشاهد؟',
+                        Text(_edit ? 'إدارة البروفايلات' : 'من يشاهد؟',
                             style: const TextStyle(
                                 fontSize: kIsTvBuild ? 34 : 26, fontWeight: FontWeight.w800)),
                         SizedBox(height: kIsTvBuild ? 42 : 26),

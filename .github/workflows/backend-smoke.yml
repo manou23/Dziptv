@@ -114,7 +114,7 @@ jobs:
             -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
 
           # Exercise the atomic compare-and-swap endpoint used by current clients.
-          versions="$(jq -c '[.records[] | {key, version}] | from_entries | with_entries(.value = .value.version)' <<<"$records")"
+          versions="$(jq -c '[.records[] | {key, value: .version}] | from_entries' <<<"$records")"
           batch_body="$(jq -n --argjson versions "$versions" --arg run "$GITHUB_RUN_ID" \
             '{records:{
               settings:{expectedVersion:$versions.settings,value:{_batchSmoke:$run}},

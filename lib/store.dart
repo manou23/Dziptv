@@ -301,6 +301,79 @@ class Store {
     }
   }
 
+
+  // ---------------- مزامنة سحابية آمنة ----------------
+  // لا نرفع كلمات مرور IPTV أو روابط البث أو صوراً قد تحتوي على روابط موقعة.
+  static Map<String, dynamic> cloudSnapshot() {
+    final favorites = <String, dynamic>{};
+    for (final type in ['live', 'vod', 'series']) {
+      favorites[type] = favs(type).map((item) => {
+        'id': item.id,
+        'name': item.name,
+        'rating': item.rating,
+        'extra': item.extra,
+        'plot': item.plot,
+      }).toList();
+    }
+    final safeHistory = _histRaw().map((entry) => {
+      'key': entry['key'],
+      'title': entry['title'],
+      'pos': entry['pos'],
+      'dur': entry['dur'],
+      'ts': entry['ts'],
+    }).toList();
+    return {
+      'favorites': favorites,
+      'watch_history': safeHistory,
+      'settings': {
+        'lang': lang,
+        'fmt': liveFormat,
+        'home_order': homeOrder(),
+        'home_hidden': homeHidden().toList(),
+        'sports_key': sportsKey,
+      },
+    };
+  }
+
+  static Future<void> applyCloudRecords(Map<String, dynamic> records) async {
+    final favoriteRecord = records['favorites'];
+    if (favoriteRecord is Map) {
+      for (final type in ['live', 'vod', 'series']) {
+        final values = favoriteRecord[type];
+        if (values is List) {
+          final items = <String>[];
+          for (final value in values) {
+            if (value is Map) {
+              final map = Map<String, dynamic>.from(value);
+              map['image'] = '';
+              try { items.add(jsonEncode(MediaItem.fromJson(map).toJson())); } catch (_) {}
+            }
+          }
+          await _p.setStringList('${_pre}fav_$type', items);
+        }
+      }
+    }
+    final settings = records['settings'];
+    if (settings is Map) {
+      final values = Map<String, dynamic>.from(settings);
+      if (values['lang'] is String && ['ar', 'fr', 'en'].contains(values['lang'])) {
+        await _p.setString('lang', values['lang'] as String);
+      }
+      if (values['fmt'] is String && ['ts', 'm3u8'].contains(values['fmt'])) {
+        await _p.setString('fmt', values['fmt'] as String);
+      }
+      if (values['home_order'] is List && (values['home_order'] as List).every((e) => e is String)) {
+        await _p.setStringList('home_order', List<String>.from(values['home_order'] as List));
+      }
+      if (values['home_hidden'] is List && (values['home_hidden'] as List).every((e) => e is String)) {
+        await _p.setStringList('home_hidden', List<String>.from(values['home_hidden'] as List));
+      }
+      if (values['sports_key'] is String) {
+        await _p.setString('sports_key', values['sports_key'] as String);
+      }
+    }
+  }
+
   static Future<void> clearHistory() async { await _p.remove('${_pre}hist'); }
   static Future<void> clearRecent() async { await _p.remove('${_pre}recent'); }
   static Future<void> clearFavs() async {

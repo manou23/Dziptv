@@ -175,13 +175,28 @@ class _HomeScreenState extends State<HomeScreen> {
     icon: Icon(icon, size: 22, color: Colors.white.withOpacity(0.88)),
   );
 
+  List<MediaItem> _latestMovies(List<MediaItem> source, {int limit = 18}) {
+    final filtered = source
+        .where((item) => !Store.kidsMode || !isAdult(item.name))
+        .toList();
+    // Xtream's "added" field is a Unix timestamp. Keep provider order when
+    // the server does not supply timestamps instead of guessing recency.
+    if (filtered.any((item) => item.added > 0)) {
+      final indexed = filtered.asMap().entries.toList();
+      indexed.sort((a, b) {
+        final byDate = b.value.added.compareTo(a.value.added);
+        return byDate != 0 ? byDate : a.key.compareTo(b.key);
+      });
+      return indexed.take(limit).map((entry) => entry.value).toList();
+    }
+    return filtered.take(limit).toList();
+  }
+
   Widget _mobileHero() {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) {
-        final movies = (snapshot.data ?? const <MediaItem>[])
-            .where((item) => !Store.kidsMode || !isAdult(item.name))
-            .take(12).toList();
+        final movies = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 12);
         _featuredCount = movies.length;
         if (movies.isEmpty) {
           return Padding(
@@ -279,8 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) {
-        final movies = (snapshot.data ?? const <MediaItem>[])
-            .where((item) => !Store.kidsMode || !isAdult(item.name)).take(18).toList();
+        final movies = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
         if (movies.isEmpty) return const SizedBox.shrink();
         return _row('أحدث الأفلام', [for (final movie in movies)
           _MiniCard(image: movie.image, title: movie.name, onTap: () => _openVod(movie))]);
@@ -289,27 +303,64 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _mobileBottomBar() {
-    Widget item(IconData icon, String label, VoidCallback action) => Expanded(
-      child: InkWell(onTap: action, borderRadius: BorderRadius.circular(14),
-        child: Padding(padding: const EdgeInsets.symmetric(vertical: 9), child: Column(
-          mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 22, color: Colors.white.withOpacity(0.92)),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-          ],
-        )),
+    Widget item(IconData icon, String label, List<Color> colors, VoidCallback action) =>
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Material(
+              color: Colors.white.withOpacity(0.045),
+              borderRadius: BorderRadius.circular(15),
+              child: InkWell(
+                onTap: action,
+                borderRadius: BorderRadius.circular(15),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Container(
+                      width: 32,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          colors: colors,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [BoxShadow(
+                          color: colors.first.withOpacity(0.24),
+                          blurRadius: 9,
+                          offset: const Offset(0, 3),
+                        )],
+                      ),
+                      child: Icon(icon, size: 19, color: Colors.white),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        );
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xF20B1228),
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.10))),
+        ),
+        padding: const EdgeInsets.fromLTRB(8, 7, 8, 5),
+        child: Row(children: [
+          item(Icons.live_tv_rounded, 'بث مباشر',
+              const [Color(0xFF8264FF), Color(0xFF4932B5)], () => _openLive()),
+          item(Icons.movie_filter_rounded, 'أفلام',
+              const [Color(0xFF36B8FF), Color(0xFF1765B5)], _openMovies),
+          item(Icons.video_library_rounded, 'مسلسلات',
+              const [Color(0xFF26C6A6), Color(0xFF087D70)], _openSeries),
+        ]),
       ),
     );
-    return SafeArea(top: false, child: Container(
-      decoration: BoxDecoration(color: const Color(0xF20B1228),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.10)))),
-      padding: const EdgeInsets.fromLTRB(8, 5, 8, 3),
-      child: Row(children: [
-        item(Icons.live_tv_rounded, 'بث مباشر', () => _openLive()),
-        item(Icons.movie_filter_rounded, 'أفلام', _openMovies),
-        item(Icons.video_library_rounded, 'مسلسلات', _openSeries),
-      ]),
-    ));
   }
 
   void _openFavorites() {

@@ -13,7 +13,7 @@ Independent multi-tenant API service for MESUT IPTV. The Flutter app remains res
 ## Local setup
 
 1. Install Node.js 20+ and PostgreSQL.
-2. Copy `.env.example` to `.env`.
+2. Copy `.env.example` to `.env`. For Neon, set `DATABASE_URL` to the pooled connection string (hostname includes `-pooler`) and `DIRECT_URL` to the direct connection string (without `-pooler`); both must include `sslmode=require`.
 3. Set `DATABASE_URL` and a random `JWT_SECRET` of at least 32 characters.
 4. Install and generate the Prisma client:
 

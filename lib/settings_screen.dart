@@ -13,6 +13,7 @@ import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'profiles_screen.dart';
+import 'mesut_account_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final XtreamService service;
@@ -291,6 +292,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('إضافة حساب'),
               onTap: () => Navigator.of(context)
                   .push<void>(MaterialPageRoute<void>(builder: (_) => const LoginScreen())),
+            )),
+            _box(ListTile(
+              leading: const Icon(Icons.cloud_sync_rounded),
+              title: const Text('حساب MESUT السحابي'),
+              subtitle: const Text('تسجيل الدخول ومزامنة الأجهزة'),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => const MesutAccountScreen()),
+              ),
             )),
             _section('التشغيل'),
             _box(Padding(

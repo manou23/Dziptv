@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'theme.dart';
 import 'models.dart';
@@ -28,7 +29,12 @@ class _LiveScreenState extends State<LiveScreen> {
   List<Epg> _epg = [];
   Category? _cat;
   MediaItem? _current;
-  VideoPlayerController? _ctrl;
+  Player? _ctrl;
+  VideoController? _video;
+  StreamSubscription<bool>? _playingSub;
+  StreamSubscription<bool>? _bufferingSub;
+  StreamSubscription<String>? _errorSub;
+  bool _isPlaying = false;
   bool _loadingList = true, _loadingVideo = false, _full = false, _search = false;
   bool _ov = true;
   String? _error;
@@ -46,6 +52,25 @@ class _LiveScreenState extends State<LiveScreen> {
   @override
   void initState() {
     super.initState();
+    MediaKit.ensureInitialized();
+    _ctrl = Player();
+    _video = VideoController(_ctrl!);
+    _playingSub = _ctrl!.stream.playing.listen((playing) {
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = playing;
+        if (playing) _loadingVideo = false;
+      });
+      if (playing) _pokeOv();
+    });
+    _bufferingSub = _ctrl!.stream.buffering.listen((buffering) {
+      if (mounted && buffering != _loadingVideo) {
+        setState(() => _loadingVideo = buffering);
+      }
+    });
+    _errorSub = _ctrl!.stream.error.listen((message) {
+      if (message.isNotEmpty) _retryPlayback();
+    });
     _loadCats();
   }
 
@@ -55,7 +80,9 @@ class _LiveScreenState extends State<LiveScreen> {
     WakelockPlus.disable();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _ctrl?.removeListener(_onVideo);
+    _playingSub?.cancel();
+    _bufferingSub?.cancel();
+    _errorSub?.cancel();
     _ctrl?.dispose();
     _sc.dispose();
     super.dispose();
@@ -66,7 +93,7 @@ class _LiveScreenState extends State<LiveScreen> {
     _ovTimer?.cancel();
     if (!_ov && mounted) setState(() => _ov = true);
     _ovTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && (_ctrl?.value.isPlaying ?? false)) setState(() => _ov = false);
+      if (mounted && (_ctrl?.state.playing ?? false)) setState(() => _ov = false);
     });
   }
 
@@ -172,71 +199,62 @@ class _LiveScreenState extends State<LiveScreen> {
     }
   }
 
-  // إعادة اتصال تلقائية عند انقطاع البث
-  void _onVideo() {
-    final c = _ctrl;
-    if (c == null || !mounted) return;
-    if (c.value.hasError && _current != null && _retries < 3) {
-      c.removeListener(_onVideo);
-      _retries++;
-      final ch = _current!;
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _current?.id == ch.id) _play(ch, auto: true);
-      });
-    }
+  // Retry automatically when the stream or decoder reports an error.
+  void _retryPlayback() {
+    final ch = _current;
+    if (ch == null || !mounted || _retries >= 3) return;
+    _retries++;
+    final token = _token;
+    setState(() {
+      _loadingVideo = true;
+      _error = 'إعادة المحاولة...';
+    });
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && _current?.id == ch.id && token == _token) {
+        _play(ch, auto: true);
+      }
+    });
   }
 
   Future<void> _play(MediaItem ch, {bool auto = false}) async {
     if (!auto) _retries = 0;
     final token = ++_token;
-    final old = _ctrl;
-    old?.removeListener(_onVideo);
+    final player = _ctrl;
+    if (player == null) return;
     setState(() {
       _current = ch;
       _loadingVideo = true;
       _error = null;
-      _ctrl = null;
+      _isPlaying = false;
       _epg = [];
     });
-    await old?.dispose();
 
-    final c = VideoPlayerController.networkUrl(
-      Uri.parse(widget.service.liveUrl(ch.id)),
-      httpHeaders: const {'User-Agent': kUserAgent},
-    );
     try {
-      await c.initialize();
-      if (token != _token || !mounted) {
-        await c.dispose();
-        return;
-      }
-      c.addListener(_onVideo);
-      await c.play();
-      WakelockPlus.enable();
+      await player.stop();
+      await player.open(
+        Media(
+          widget.service.liveUrl(ch.id),
+          httpHeaders: const {'User-Agent': kUserAgent},
+        ),
+        play: true,
+      ).timeout(const Duration(seconds: 30));
+      if (token != _token || !mounted) return;
       Store.saveLast(ch);
       setState(() {
-        _ctrl = c;
         _loadingVideo = false;
+        _error = null;
       });
       _pokeOv();
       _loadEpg(ch);
     } catch (_) {
-      await c.dispose();
-      if (token == _token && mounted) {
-        if (_retries < 3) {
-          _retries++;
-          setState(() => _error = 'إعادة المحاولة...');
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted && _current?.id == ch.id && token == _token) {
-              _play(ch, auto: true);
-            }
-          });
-        } else {
-          setState(() {
-            _loadingVideo = false;
-            _error = 'تعذر تشغيل القناة';
-          });
-        }
+      if (token != _token || !mounted) return;
+      if (_retries < 3) {
+        _retryPlayback();
+      } else {
+        setState(() {
+          _loadingVideo = false;
+          _error = 'تعذر تشغيل القناة';
+        });
       }
     }
   }
@@ -262,10 +280,15 @@ class _LiveScreenState extends State<LiveScreen> {
         ],
       );
     }
-    if (_ctrl != null && _ctrl!.value.isInitialized) {
+    if (_ctrl != null && _video != null && _current != null) {
       return AspectRatio(
-        aspectRatio: _ctrl!.value.aspectRatio == 0 ? 16 / 9 : _ctrl!.value.aspectRatio,
-        child: VideoPlayer(_ctrl!),
+        aspectRatio: 16 / 9,
+        child: Video(
+          controller: _video!,
+          controls: NoVideoControls,
+          fit: BoxFit.contain,
+          fill: Colors.black,
+        ),
       );
     }
     return Column(

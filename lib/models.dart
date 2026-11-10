@@ -1,11 +1,13 @@
 class Account {
   final String name, url, user, pass;
-  const Account(this.name, this.url, this.user, this.pass);
+  final String avatar;
+  const Account(this.name, this.url, this.user, this.pass, {this.avatar = ''});
   String get id => '$user@$url';
   Map<String, String> toJson() =>
-      {'name': name, 'url': url, 'user': user, 'pass': pass};
+      {'name': name, 'url': url, 'user': user, 'pass': pass, 'avatar': avatar};
   factory Account.fromJson(Map<String, dynamic> j) =>
-      Account('${j['name']}', '${j['url']}', '${j['user']}', '${j['pass']}');
+      Account('${j['name']}', '${j['url']}', '${j['user']}', '${j['pass']}',
+          avatar: '${j['avatar'] ?? ''}');
 }
 
 class Category {

@@ -41,6 +41,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     {'id': 'preset:person', 'emoji': '🙂', 'label': 'بسيط'},
     {'id': 'preset:cool', 'emoji': '😎', 'label': 'مرح'},
     {'id': 'preset:family', 'emoji': '👨‍👩‍👧', 'label': 'العائلة'},
+    {'id': '', 'emoji': '✦', 'label': 'افتراضي'},
   ];
   static const _palette = <List<Color>>[
     [Color(0xFF8668FF), Color(0xFF35145F)],
@@ -228,7 +229,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
       ),
     );
     name.dispose(); url.dispose(); username.dispose(); password.dispose();
-    if (replacement == null) return;
+    if (!mounted || replacement == null) return;
     setState(() { _busy = true; _message = null; });
     try {
       final service = XtreamService(replacement.url, replacement.user, replacement.pass, replacement.name);
@@ -297,7 +298,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
         actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء'))],
       ),
     );
-    if (selected == null) return;
+    if (!mounted || selected == null) return;
     await Store.updateAccountAvatar(account.id, selected);
     if (mounted) setState(() => _message = 'تم حفظ صورة البروفايل');
   }
@@ -347,6 +348,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     final pin = await _askPin('PIN الجديد');
     if (pin == null) return;
     if (!ProfilePinService.isValidPin(pin)) {
+      if (!mounted) return;
       setState(() => _message = 'يجب أن يتكون PIN من 4 إلى 6 أرقام');
       return;
     }

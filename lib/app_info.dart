@@ -6,4 +6,5 @@ const String kVersion = '7.0.0';
 const String kContactEmail = 'YOUR_EMAIL';
 
 /// مستودع GitHub لفحص التحديثات، مثال: 'user/repo'. فارغ = معطّل
-const String kUpdateRepo = '';
+const String kUpdateRepo = 'manou23/Dziptv';
+const String kBuildCommit = String.fromEnvironment('MESUT_BUILD_COMMIT', defaultValue: 'unknown');

@@ -6,6 +6,7 @@ import 'app_config.dart';
 import 'store.dart';
 import 'i18n.dart';
 import 'services_home_screen.dart';
+import 'profiles_screen.dart';
 import 'mesut_account_screen.dart';
 import 'mesut_cloud_api.dart';
 
@@ -46,7 +47,7 @@ Future<void> main() async {
         onAuthenticated: _openAppAfterMesutLogin,
       );
     } else {
-      start = const ServicesHomeScreen();
+      start = kIsTvBuild ? const ServicesHomeScreen() : const ProfilesScreen();
     }
   } catch (e, s) {
     // بدل أن يغلق التطبيق: نعرض سبب الخطأ على الشاشة
@@ -82,7 +83,7 @@ class _StartupError extends StatelessWidget {
 void _openAppAfterMesutLogin() {
   _appNavigatorKey.currentState?.pushAndRemoveUntil(
     MaterialPageRoute<void>(
-      builder: (_) => const ServicesHomeScreen(),
+      builder: (_) => kIsTvBuild ? const ServicesHomeScreen() : const ProfilesScreen(),
     ),
     (route) => false,
   );

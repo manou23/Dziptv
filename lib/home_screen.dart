@@ -14,6 +14,7 @@ import 'settings_screen.dart';
 import 'profiles_screen.dart';
 import 'sports_screen.dart';
 import 'search_screen.dart';
+import 'utils.dart';
 
 class HomeScreen extends StatefulWidget {
   final XtreamService service;
@@ -107,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---------------- البطل (آخر ما شاهدته) ----------------
   Widget _hero() {
-    final hist = Store.history();
+    final hist = Store.history().where((entry) => !Store.kidsMode || !isAdult(entry.item.title)).toList();
     final h = hist.isNotEmpty ? hist.first : null;
     final p = (h != null && h.dur > 0) ? (h.pos / h.dur).clamp(0.0, 1.0) : 0.0;
     final bgFallback = Container(
@@ -246,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _section(String id) {
     if (id == 'continue') {
-      final l = Store.history();
+      final l = Store.history().where((entry) => !Store.kidsMode || !isAdult(entry.item.title)).toList();
       if (l.isEmpty) return const SizedBox.shrink();
       return _row('متابعة المشاهدة', [
         for (final h in l)
@@ -259,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
     }
     if (id == 'recent') {
-      final l = Store.recent();
+      final l = Store.recent().where((item) => !Store.kidsMode || !isAdult(item.title)).toList();
       if (l.isEmpty) return const SizedBox.shrink();
       return _row('شوهد مؤخراً', [
         for (final it in l)
@@ -271,9 +272,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
     }
     if (id == 'favorites') {
-      final live = Store.favs('live');
-      final vod = Store.favs('vod');
-      final series = Store.favs('series');
+      final live = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
+      final vod = Store.favs('vod').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
+      final series = Store.favs('series').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
       if (live.isEmpty && vod.isEmpty && series.isEmpty) return const SizedBox.shrink();
       return _row('المفضلة', [
         for (final it in live)

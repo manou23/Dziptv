@@ -186,6 +186,7 @@ class MesutCloudApi {
     if (remoteFavoriteTime > localFavoriteTime) {
       snapshot['favorites'] = remote['favorites']?['value'] ??
           {'live': [], 'vod': [], 'series': []};
+      localMeta['favorites'] = remoteFavoriteTime;
     } else {
       localMeta['favorites'] = localFavoriteTime > 0
           ? localFavoriteTime : DateTime.now().millisecondsSinceEpoch;
@@ -195,14 +196,13 @@ class MesutCloudApi {
     final remoteHistoryTime = (remoteMeta['watch_history'] as num?)?.toInt() ?? 0;
     if (remoteHistoryTime > localHistoryTime) {
       snapshot['watch_history'] = remote['watch_history']?['value'] ?? [];
+      localMeta['watch_history'] = remoteHistoryTime;
     } else {
       localMeta['watch_history'] = localHistoryTime > 0
           ? localHistoryTime : DateTime.now().millisecondsSinceEpoch;
     }
     snapshot['sync_meta'] = localMeta;
 
-    final localFavorites = snapshot['favorites'] as Map<String, dynamic>;
-    final remoteFavorites = null;
     // Keep bounded history after selecting the winning collection snapshot.
     snapshot['watch_history'] = (snapshot['watch_history'] as List).take(30).toList();
 

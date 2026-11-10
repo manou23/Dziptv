@@ -10,10 +10,17 @@ class MesutCloudApi {
   static const _secure = FlutterSecureStorage();
   static const _configuredUrl = String.fromEnvironment('MESUT_API_BASE_URL');
   // Keep the production API available even if a local/manual build omits the dart-define.
-  static String get baseUrl => (_configuredUrl.trim().isNotEmpty
-          ? _configuredUrl.trim()
-          : 'https://mesut-iptv-api.onrender.com')
-      .replaceFirst(RegExp(r'/+  static const _tokenKey = 'mesut_cloud_token';
+  static String get baseUrl {
+    var value = _configuredUrl.trim().isNotEmpty
+        ? _configuredUrl.trim()
+        : 'https://mesut-iptv-api.onrender.com';
+    while (value.endsWith('/')) {
+      value = value.substring(0, value.length - 1);
+    }
+    return value;
+  }
+
+  static const _tokenKey = 'mesut_cloud_token';
   static const _emailKey = 'mesut_cloud_email';
   static const _deviceKey = 'mesut_cloud_device_key';
   static void Function()? onSessionExpired;

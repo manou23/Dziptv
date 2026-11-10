@@ -1,0 +1,42 @@
+name: MESUT IPTV Backend Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesut-backend-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check live API and database readiness
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          echo "Checking API and PostgreSQL readiness..."
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 10 \
+            --max-time 35 "$API_BASE/health/ready"
+
+      - name: Verify protected sync endpoint rejects anonymous access
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /tmp/sync-response.json \
+            --write-out '%{http_code}' --max-time 35 "$API_BASE/api/v1/sync")"
+          cat /tmp/sync-response.json
+          test "$status" = "401"
+          grep -q '"error":"AUTH_REQUIRED"' /tmp/sync-response.json

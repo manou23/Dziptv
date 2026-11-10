@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
+import 'models.dart';
 import 'theme.dart';
 import 'store.dart';
 import 'xtream_service.dart';

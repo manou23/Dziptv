@@ -532,32 +532,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-).hasMatch(pin)) {
-          _toast('يجب أن يتكون الرمز من 4 أرقام');
-          return;
-        }
-        await Store.setPin(pin);
-      }
-      await Store.setKidsMode(true);
-    } else {
-      if (!await askPin(context)) return;
-      await Store.setKidsMode(false);
-    }
-    if (mounted) setState(() {});
-    _toast(enabled ? 'تم تفعيل وضع الأطفال' : 'تم إيقاف وضع الأطفال');
-  }
-
-  Future<void> _removePin() async {
-    if (Store.kidsMode) {
-      _toast('أوقف وضع الأطفال أولاً');
-      return;
-    }
-    if (!await askPin(context)) return;
-    await Store.setPin(null);
-    if (mounted) setState(() {});
-    _toast('تم حذف الرمز السري');
-  }
-
   void _legal(String kind) => Navigator.of(context)
       .push<void>(MaterialPageRoute<void>(builder: (_) => LegalScreen(kind: kind)));
 

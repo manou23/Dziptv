@@ -298,7 +298,7 @@ class Store {
   static Future<void> setKidsMode(bool value) async { await _p.setBool('kids_mode', value); }
 
   static Set<String> hiddenCategories(String type) =>
-      (_p.getStringList('hidden_categories_$type') ?? <String>[]).toSet();
+      (_p.getStringList('${_pre}hidden_categories_$type') ?? <String>[]).toSet();
 
   static Future<void> setCategoryHidden(String type, String id, bool hidden) async {
     if (!['live', 'vod', 'series'].contains(type)) return;
@@ -308,7 +308,7 @@ class Store {
     } else {
       values.remove(id);
     }
-    await _p.setStringList('hidden_categories_$type', values.toList());
+    await _p.setStringList('${_pre}hidden_categories_$type', values.toList());
   }
 
   static String get sportsKey => _p.getString('sports_key') ?? '3';

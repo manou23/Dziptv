@@ -58,9 +58,12 @@ class XtreamService {
   Future<dynamic> _get(Uri uri, {bool cache = true}) async {
     final key = uri.toString();
     if (cache) {
-      final c = _mem[key];
-      if (c != null && DateTime.now().difference(c.at) < const Duration(minutes: 5)) {
-        return c.data;
+      final cached = _mem.remove(key);
+      if (cached != null &&
+          DateTime.now().difference(cached.at) < const Duration(minutes: 5)) {
+        // Reinsert to mark this entry as most recently used.
+        _mem[key] = cached;
+        return cached.data;
       }
     }
     final r = await http
@@ -73,7 +76,10 @@ class XtreamService {
     // القوائم الكبيرة تُفكّ في خيط منفصل حتى لا تتجمد الواجهة
     final data = text.length > 200000 ? await compute(_decodeJson, text) : jsonDecode(text);
     if (cache) {
-      if (_mem.length > 30) _mem.clear();
+      // Bounded LRU: evict only the least recently used entry.
+      while (_mem.length >= 30) {
+        _mem.remove(_mem.keys.first);
+      }
       _mem[key] = _Cached(DateTime.now(), data);
     }
     return data;

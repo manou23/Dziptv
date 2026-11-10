@@ -94,6 +94,34 @@ jobs:
 
           records="$(curl --fail --silent --show-error --max-time 35 \
             -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+
+          # Exercise the atomic compare-and-swap endpoint used by current clients.
+          versions="$(jq -c '[.records[] | {key, version}] | from_entries | with_entries(.value = .value.version)' <<<"$records")"
+          batch_body="$(jq -n --argjson versions "$versions" --arg run "$GITHUB_RUN_ID" \
+            '{records:{
+              settings:{expectedVersion:$versions.settings,value:{_batchSmoke:$run}},
+              favorites:{expectedVersion:$versions.favorites,value:{profiles:{}}},
+              watch_history:{expectedVersion:$versions.watch_history,value:{profiles:{}}},
+              sync_meta:{expectedVersion:$versions.sync_meta,value:{favorites:{},watch_history:{}}}
+            }}')"
+          curl --fail --silent --show-error --max-time 35 \
+            -X POST -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$batch_body" \
+            "$API_BASE/api/v1/sync/batch"
+
+          # Replaying the old versions must return 409 and must not partially write.
+          conflict_status="$(curl --silent --show-error --output /tmp/batch-conflict.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$batch_body" \
+            "$API_BASE/api/v1/sync/batch")"
+          test "$conflict_status" = "409"
+          grep -q '"error":"SYNC_VERSION_CONFLICT"' /tmp/batch-conflict.json
+          after_conflict="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "settings") | .value._batchSmoke == $run' \
+            <<<"$after_conflict"
           jq -e --arg run "$GITHUB_RUN_ID" \
             '.records[] | select(.key == "settings") | .value._smokeTest == $run' \
             <<<"$records"

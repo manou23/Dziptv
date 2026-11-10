@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart' hide Text;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'app_config.dart';
 import 'i18n.dart';
@@ -22,6 +24,7 @@ class ProfilesScreen extends StatefulWidget {
 class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
   bool _syncingCloud = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   Future<void> _refreshCloudProfiles() async {
     if (_syncingCloud) return;
@@ -168,6 +171,45 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     }
   }
 
+  Future<void> _editProfileImage(Account account) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('صورة البروفايل'),
+        content: Text('اختر صورة من جهازك لتخصيص هذا البروفايل. ستتم مزامنتها مشفرة مع حساب MESUT.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: Text('إلغاء')),
+          if (account.avatar.isNotEmpty)
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'remove'), child: Text('إزالة الصورة')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, 'pick'),
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text('اختيار صورة'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || action == null || action == 'cancel') return;
+    if (action == 'remove') {
+      await Store.updateAccountAvatar(account.id, '');
+    } else if (action == 'pick') {
+      try {
+        final picked = await _imagePicker.pickImage(source: ImageSource.gallery, maxWidth: 256, maxHeight: 256, imageQuality: 72);
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        if (bytes.isEmpty) throw Exception('الصورة المختارة فارغة');
+        await Store.updateAccountAvatar(account.id, base64Encode(bytes));
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر اختيار الصورة: $error')));
+        return;
+      }
+    }
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(action == 'remove' ? 'تمت إزالة صورة البروفايل' : 'تم حفظ صورة البروفايل وستتم مزامنتها')));
+    }
+  }
+
   Future<void> _open(int i) async {
     final account = Store.accounts()[i];
     if (!await _unlock(account) || !mounted) return;
@@ -241,11 +283,14 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                         colors: c,
                       ),
                     ),
-                    child: Center(
-                      child: Text(initial,
-                          style: const TextStyle(
-                              fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold)),
-                    ),
+                    child: a.avatar.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),
+                            child: Image.memory(base64Decode(a.avatar), fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(child: Text(initial, style: const TextStyle(fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold))),
+                            ),
+                          )
+                        : Center(child: Text(initial, style: const TextStyle(fontSize: kIsTvBuild ? 54 : 40, fontWeight: FontWeight.bold))),
                   ),
                   if (_edit)
                     Container(
@@ -281,6 +326,11 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                 alignment: WrapAlignment.center,
                 spacing: 2,
                 children: [
+                  TextButton.icon(
+                    onPressed: () => _editProfileImage(a),
+                    icon: const Icon(Icons.photo_camera_back_rounded, size: 17),
+                    label: Text('تغيير الصورة'),
+                  ),
                   TextButton.icon(
                     onPressed: () => _configurePin(a),
                     icon: Icon(

@@ -77,19 +77,19 @@ jobs:
           curl --fail --silent --show-error --max-time 35 \
             -X PUT -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
-            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{favorites:($run|tonumber),watch_history:($run|tonumber)}}')" \
+            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{favorites:{"profile-a":($run|tonumber),"profile-b":(($run|tonumber)+1)},watch_history:{"profile-a":($run|tonumber),"profile-b":(($run|tonumber)+1)}}}')" \
             "$API_BASE/api/v1/sync/sync_meta"
 
-          # Empty collections are valid snapshots: clearing data must sync as deletion.
+          # Empty snapshots are valid deletions, and records remain isolated per profile.
           curl --fail --silent --show-error --max-time 35 \
             -X PUT -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
-            -d '{"value":{"live":[],"vod":[],"series":[]}}' \
+            -d '{"value":{"profiles":{"profile-a":{"live":[],"vod":[],"series":[]},"profile-b":{"live":[],"vod":[],"series":[]}}}}' \
             "$API_BASE/api/v1/sync/favorites"
           curl --fail --silent --show-error --max-time 35 \
             -X PUT -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
-            -d '{"value":[]}' \
+            -d '{"value":{"profiles":{"profile-a":[],"profile-b":[]}}}' \
             "$API_BASE/api/v1/sync/watch_history"
 
           records="$(curl --fail --silent --show-error --max-time 35 \
@@ -98,11 +98,11 @@ jobs:
             '.records[] | select(.key == "settings") | .value._smokeTest == $run' \
             <<<"$records"
           jq -e --arg run "$GITHUB_RUN_ID" \
-            '.records[] | select(.key == "sync_meta") | .value.favorites == ($run|tonumber) and .value.watch_history == ($run|tonumber)' \
+            '.records[] | select(.key == "sync_meta") | .value.favorites["profile-a"] == ($run|tonumber) and .value.favorites["profile-b"] == (($run|tonumber)+1)' \
             <<<"$records"
-          jq -e '.records[] | select(.key == "favorites") | .value.live == [] and .value.vod == [] and .value.series == []' \
+          jq -e '.records[] | select(.key == "favorites") | .value.profiles["profile-a"].live == [] and .value.profiles["profile-b"].series == []' \
             <<<"$records"
-          jq -e '.records[] | select(.key == "watch_history") | .value == []' \
+          jq -e '.records[] | select(.key == "watch_history") | .value.profiles["profile-a"] == [] and .value.profiles["profile-b"] == []' \
             <<<"$records"
 
       - name: Verify protected sync endpoint rejects anonymous access

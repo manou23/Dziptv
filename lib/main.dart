@@ -28,6 +28,7 @@ Future<void> main() async {
     // Every local favorite/history/settings change schedules automatic cloud sync.
     Store.cloudSyncCallback = MesutCloudApi.scheduleSync;
     I18n.init();
+    Store.cloudSettingsAppliedCallback = I18n.init;
     // حساب MESUT إلزامي قبل السماح بإضافة حساب Xtream أو دخول التطبيق.
     MesutCloudApi.onSessionExpired = _showMesutAccount;
     final mesutSignedIn = await MesutCloudApi.validateSession();

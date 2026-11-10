@@ -4,7 +4,9 @@ import 'store.dart';
 import 'i18n.dart';
 
 class MesutAccountScreen extends StatefulWidget {
-  const MesutAccountScreen({super.key});
+  final VoidCallback? onAuthenticated;
+  final VoidCallback? onSignedOut;
+  const MesutAccountScreen({super.key, this.onAuthenticated, this.onSignedOut});
   @override
   State<MesutAccountScreen> createState() => _MesutAccountScreenState();
 }
@@ -41,8 +43,9 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
         _signedIn = true;
         _accountEmail = _email.text.trim();
         _busy = false;
-        _message = 'تم تسجيل الدخول. يمكنك الآن مزامنة بياناتك الآمنة.';
+        _message = 'تم تسجيل الدخول بنجاح. جارٍ الانتقال لإضافة اشتراك IPTV...';
       });
+      widget.onAuthenticated?.call();
     } catch (e) {
       if (!mounted) return;
       setState(() { _busy = false; _message = e.toString().replaceFirst('Exception: ', ''); });
@@ -65,6 +68,10 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   Future<void> _signOut() async {
     await MesutCloudApi.signOut();
     if (!mounted) return;
+    if (widget.onSignedOut != null) {
+      widget.onSignedOut!.call();
+      return;
+    }
     setState(() { _signedIn = false; _accountEmail = null; _message = 'تم تسجيل الخروج من حساب MESUT'; });
   }
 

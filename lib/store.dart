@@ -71,6 +71,21 @@ class Store {
       );
     }
 
+    // Seed sync timestamps for legacy local data so first cloud sync won't
+    // accidentally replace existing favorites/history with an older snapshot.
+    final legacyNow = DateTime.now().millisecondsSinceEpoch;
+    for (final type in ['live', 'vod', 'series']) {
+      final key = '${_pre}fav_$type';
+      if ((_p.getStringList(key) ?? []).isNotEmpty &&
+          !_p.containsKey('cloud_favorites_updated_at')) {
+        await _p.setInt('cloud_favorites_updated_at', legacyNow);
+      }
+    }
+    if ((_p.getStringList('${_pre}hist') ?? []).isNotEmpty &&
+        !_p.containsKey('cloud_history_updated_at')) {
+      await _p.setInt('cloud_history_updated_at', legacyNow);
+    }
+
     _pinCache = await _secure.read(key: 'parental_pin');
     final legacyPin = _p.getString('pin');
     if (_pinCache == null && legacyPin != null && legacyPin.isNotEmpty) {
@@ -178,7 +193,7 @@ class Store {
     }
     await _p.setStringList('${_pre}fav_$type',
         list.map((e) => jsonEncode(e.toJson())).toList());
-    await _notifyCloudChanged();
+    await _markCloudCollectionChanged('favorites');
     return index < 0;
   }
 
@@ -221,7 +236,7 @@ class Store {
     }
     await _p.setStringList('${_pre}hist',
         list.take(30).map((e) => jsonEncode(e)).toList());
-    await _notifyCloudChanged();
+    await _markCloudCollectionChanged('history');
   }
 
   // ---------------- الصفحة الرئيسية ----------------
@@ -316,6 +331,14 @@ class Store {
 
   // ---------------- مزامنة سحابية آمنة ----------------
   // لا نرفع كلمات مرور IPTV أو روابط البث أو صوراً قد تحتوي على روابط موقعة.
+  static Future<void> _markCloudCollectionChanged(String collection) async {
+    final key = collection == 'favorites'
+        ? 'cloud_favorites_updated_at'
+        : 'cloud_history_updated_at';
+    await _p.setInt(key, DateTime.now().millisecondsSinceEpoch);
+    await _notifyCloudChanged();
+  }
+
   static Future<void> _markCloudSettingsChanged() async {
     await _p.setInt('cloud_settings_updated_at', DateTime.now().millisecondsSinceEpoch);
     await _notifyCloudChanged();
@@ -342,6 +365,10 @@ class Store {
     return {
       'favorites': favorites,
       'watch_history': safeHistory,
+      'sync_meta': {
+        'favorites': _p.getInt('cloud_favorites_updated_at') ?? 0,
+        'watch_history': _p.getInt('cloud_history_updated_at') ?? 0,
+      },
       'settings': {
         'lang': lang,
         'fmt': liveFormat,
@@ -428,13 +455,13 @@ class Store {
 
   static Future<void> clearHistory() async {
     await _p.remove('${_pre}hist');
-    await _notifyCloudChanged();
+    await _markCloudCollectionChanged('history');
   }
   static Future<void> clearRecent() async { await _p.remove('${_pre}recent'); }
   static Future<void> clearFavs() async {
     for (final type in ['live', 'vod', 'series']) {
       await _p.remove('${_pre}fav_$type');
     }
-    await _notifyCloudChanged();
+    await _markCloudCollectionChanged('favorites');
   }
 }

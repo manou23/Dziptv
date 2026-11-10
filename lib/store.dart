@@ -73,6 +73,11 @@ class Store {
       );
     }
 
+    if (!_p.containsKey('cloud_profiles_updated_at')) {
+      await _p.setInt('cloud_profiles_updated_at',
+          migrated.isNotEmpty ? DateTime.now().millisecondsSinceEpoch : 0);
+    }
+
     // Migrate legacy sync timestamps into the active Xtream profile namespace.
     final profileId = cloudProfileId;
     final legacyNow = DateTime.now().millisecondsSinceEpoch;
@@ -145,12 +150,12 @@ class Store {
     }
     await _saveAccounts(list);
     await _p.setInt('active', index >= 0 ? index : list.length - 1);
-    await _notifyCloudChanged();
+    await _markCloudProfilesChanged();
   }
 
   static Future<void> setActive(int index) async {
     await _p.setInt('active', index);
-    await _notifyCloudChanged();
+    await _markCloudProfilesChanged();
   }
 
   static Future<void> removeAccount(int index) async {
@@ -161,7 +166,7 @@ class Store {
     _passwords.remove(removed.id);
     await _saveAccounts(list);
     await _p.setInt('active', 0);
-    await _notifyCloudChanged();
+    await _markCloudProfilesChanged();
   }
 
   static String get _pre => '${active?.id ?? 'x'}|';
@@ -310,6 +315,7 @@ class Store {
       values.remove(id);
     }
     await _p.setStringList('${_pre}hidden_categories_$type', values.toList());
+    await _markCloudProfilesChanged();
   }
 
   static String get sportsKey => _p.getString('sports_key') ?? '3';
@@ -379,6 +385,104 @@ class Store {
   static Future<void> _markCloudSettingsChanged() async {
     await _p.setInt('cloud_settings_updated_at', DateTime.now().millisecondsSinceEpoch);
     await _notifyCloudChanged();
+  }
+
+  static Future<void> _markCloudProfilesChanged() async {
+    await _p.setInt('cloud_profiles_updated_at',
+        DateTime.now().millisecondsSinceEpoch);
+    await _notifyCloudChanged();
+  }
+
+  // Export every IPTV profile plus safe per-profile preferences. Credentials
+  // are returned only to the caller for client-side authenticated encryption.
+  static Map<String, dynamic> cloudProfilesSnapshot() {
+    final profileList = <Map<String, dynamic>>[];
+    for (final account in accounts()) {
+      final prefix = '${account.id}|';
+      final settings = <String, dynamic>{};
+      for (final suffix in [
+        'hidden_categories_live',
+        'hidden_categories_vod',
+        'hidden_categories_series',
+      ]) {
+        final value = _p.get('$prefix$suffix');
+        if (value is List) settings[suffix] = value.whereType<String>().toList();
+      }
+      profileList.add({
+        'id': sha256.convert(utf8.encode(account.id)).toString(),
+        'name': account.name,
+        'url': account.url,
+        'username': account.user,
+        'password': account.pass,
+        'settings': settings,
+      });
+    }
+    return {
+      'updatedAt': _p.getInt('cloud_profiles_updated_at') ?? 0,
+      'activeId': active == null
+          ? null
+          : sha256.convert(utf8.encode(active!.id)).toString(),
+      'profiles': profileList,
+    };
+  }
+
+  // Called only after the encrypted cloud payload has been authenticated and
+  // decrypted on this device.
+  static Future<void> applyCloudProfiles(Map<String, dynamic> payload) async {
+    final raw = payload['profiles'];
+    if (raw is! List) return;
+    final restored = <Account>[];
+    final settingsById = <String, Map<String, dynamic>>{};
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final value = Map<String, dynamic>.from(item);
+      final url = value['url']?.toString().trim() ?? '';
+      final username = value['username']?.toString() ?? '';
+      final password = value['password']?.toString() ?? '';
+      if (url.isEmpty || username.isEmpty || password.isEmpty) continue;
+      final account = Account(
+        value['name']?.toString().trim().isNotEmpty == true
+            ? value['name'].toString()
+            : username,
+        url,
+        username,
+        password,
+      );
+      if (value['id']?.toString() !=
+          sha256.convert(utf8.encode(account.id)).toString()) continue;
+      if (restored.any((existing) => existing.id == account.id)) continue;
+      await _secure.write(key: _passwordKey(account.id), value: password);
+      _passwords[account.id] = password;
+      restored.add(Account(account.name, account.url, account.user, password));
+      if (value['settings'] is Map) {
+        settingsById[account.id] =
+            Map<String, dynamic>.from(value['settings'] as Map);
+      }
+    }
+    if (restored.isEmpty && raw.isNotEmpty) return;
+    await _saveAccounts(restored);
+    for (final account in restored) {
+      final settings = settingsById[account.id] ?? {};
+      for (final suffix in [
+        'hidden_categories_live',
+        'hidden_categories_vod',
+        'hidden_categories_series',
+      ]) {
+        final values = settings[suffix];
+        if (values is List && values.every((entry) => entry is String)) {
+          await _p.setStringList(
+              '${account.id}|$suffix', List<String>.from(values));
+        }
+      }
+    }
+    final activeId = payload['activeId']?.toString();
+    final activeIndex = restored.indexWhere((account) =>
+        sha256.convert(utf8.encode(account.id)).toString() == activeId);
+    await _p.setInt('active', activeIndex >= 0 ? activeIndex : 0);
+    final updatedAt = payload['updatedAt'];
+    if (updatedAt is num) {
+      await _p.setInt('cloud_profiles_updated_at', updatedAt.toInt());
+    }
   }
 
   static Map<String, dynamic> cloudSnapshot() {

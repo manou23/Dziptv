@@ -116,6 +116,7 @@ class Store {
             a.url,
             a.user,
             _passwords[a.id] ?? '',
+            avatar: a.avatar,
           ))
       .toList();
 
@@ -132,7 +133,7 @@ class Store {
     await _p.setStringList(
       'accounts',
       list.map((a) => jsonEncode(
-          {'name': a.name, 'url': a.url, 'user': a.user, 'pass': ''})).toList(),
+          {'name': a.name, 'url': a.url, 'user': a.user, 'pass': '', 'avatar': a.avatar})).toList(),
     );
   }
 
@@ -144,12 +145,23 @@ class Store {
     final list = accounts();
     final index = list.indexWhere((a) => a.id == account.id);
     if (index >= 0) {
-      list[index] = Account(account.name, account.url, account.user, account.pass);
+      list[index] = Account(account.name, account.url, account.user, account.pass,
+          avatar: account.avatar.isNotEmpty ? account.avatar : list[index].avatar);
     } else {
       list.add(account);
     }
     await _saveAccounts(list);
     await _p.setInt('active', index >= 0 ? index : list.length - 1);
+    await _markCloudProfilesChanged();
+  }
+
+  static Future<void> updateAccountAvatar(String accountId, String avatar) async {
+    final list = accounts();
+    final index = list.indexWhere((account) => account.id == accountId);
+    if (index < 0) return;
+    final old = list[index];
+    list[index] = Account(old.name, old.url, old.user, old.pass, avatar: avatar);
+    await _saveAccounts(list);
     await _markCloudProfilesChanged();
   }
 
@@ -414,6 +426,7 @@ class Store {
       profileList.add({
         'id': sha256.convert(utf8.encode(account.id)).toString(),
         'name': account.name,
+        'avatar': account.avatar,
         'url': account.url,
         'username': account.user,
         'password': account.pass,
@@ -450,6 +463,7 @@ class Store {
         url,
         username,
         password,
+        avatar: value['avatar']?.toString() ?? '',
       );
       if (value['id']?.toString() !=
           sha256.convert(utf8.encode(account.id)).toString()) continue;

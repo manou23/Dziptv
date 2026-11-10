@@ -415,9 +415,12 @@ class MesutCloudApi {
     final remoteProfileTime = DateTime.tryParse(
               remote['profiles']?['updatedAt']?.toString() ?? '')
           ?.millisecondsSinceEpoch ?? 0;
-    if (await hasProfileEncryptionKey &&
-        (profilePayload['profiles'] as List).isNotEmpty &&
-        (remote['profiles'] == null || localProfileTime > remoteProfileTime)) {
+    final hasLocalProfiles =
+        (profilePayload['profiles'] as List).isNotEmpty;
+    final shouldPublishProfileVault = remote['profiles'] == null
+        ? hasLocalProfiles
+        : localProfileTime > remoteProfileTime;
+    if (await hasProfileEncryptionKey && shouldPublishProfileVault) {
       batch['profiles'] = {
         'value': await _encryptProfiles(profilePayload),
         'expectedVersion':

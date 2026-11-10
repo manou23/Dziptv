@@ -29,23 +29,15 @@ Future<void> main() async {
     Store.cloudSyncCallback = MesutCloudApi.scheduleSync;
     I18n.init();
     // حساب MESUT إلزامي قبل السماح بإضافة حساب Xtream أو دخول التطبيق.
-    final mesutSignedIn = await MesutCloudApi.isSignedIn;
+    MesutCloudApi.onSessionExpired = _showMesutAccount;
+    final mesutSignedIn = await MesutCloudApi.validateSession();
     if (mesutSignedIn) {
       // Sync on every app launch; failed attempts are retried by the cloud service.
       await MesutCloudApi.scheduleSync();
     }
     if (!mesutSignedIn) {
       start = MesutAccountScreen(
-        onAuthenticated: () {
-          _appNavigatorKey.currentState!.pushAndRemoveUntil(
-            MaterialPageRoute<void>(
-              builder: (_) => Store.accounts().isEmpty
-                  ? const LoginScreen()
-                  : const ProfilesScreen(),
-            ),
-            (route) => false,
-          );
-        },
+        onAuthenticated: _openAppAfterMesutLogin,
       );
     } else {
       start = Store.accounts().isEmpty ? const LoginScreen() : const ProfilesScreen();
@@ -79,6 +71,28 @@ class _StartupError extends StatelessWidget {
       ),
     );
   }
+}
+
+void _openAppAfterMesutLogin() {
+  _appNavigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute<void>(
+      builder: (_) => Store.accounts().isEmpty
+          ? const LoginScreen()
+          : const ProfilesScreen(),
+    ),
+    (route) => false,
+  );
+}
+
+void _showMesutAccount() {
+  _appNavigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute<void>(
+      builder: (_) => MesutAccountScreen(
+        onAuthenticated: _openAppAfterMesutLogin,
+      ),
+    ),
+    (route) => false,
+  );
 }
 
 final GlobalKey<NavigatorState> _appNavigatorKey = GlobalKey<NavigatorState>();

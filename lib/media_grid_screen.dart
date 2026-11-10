@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
-import 'ads.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
@@ -97,7 +96,6 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   }
 
   Future<void> _open(MediaItem it) async {
-    await Ads.maybeInterstitial();
     if (!mounted) return;
     await widget.onOpen(context, it);
     if (mounted && _cat?.id == _favCat.id) {

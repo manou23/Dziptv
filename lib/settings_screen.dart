@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'app_info.dart';
+import 'app_config.dart';
 import 'home_layout_screen.dart';
 import 'channel_manager_screen.dart';
 import 'legal_screen.dart';
@@ -123,30 +124,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _legal(String kind) => Navigator.of(context)
       .push<void>(MaterialPageRoute<void>(builder: (_) => LegalScreen(kind: kind)));
 
-  Future<void> _editSportsKey() async {
-    final ctrl = TextEditingController(text: Store.sportsKey == '3' ? '' : Store.sportsKey);
-    final v = await showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('مفتاح API للرياضة'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          textDirection: TextDirection.ltr,
-          decoration: InputDecoration(hintText: tr('الافتراضي (مجاني)')),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('إلغاء')),
-          FilledButton(
-              onPressed: () => Navigator.pop(c, ctrl.text), child: const Text('حفظ')),
-        ],
-      ),
-    );
-    if (v == null) return;
-    await Store.setSportsKey(v);
-    if (mounted) setState(() {});
-  }
-
   Future<void> _backup() async {
     await Clipboard.setData(ClipboardData(text: Store.exportAll()));
     _toast('تم نسخ النسخة الاحتياطية إلى الحافظة');
@@ -238,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final assets = release['assets'] is List ? release['assets'] as List : const [];
       String? apkUrl;
       for (final asset in assets) {
-        if (asset is Map && asset['name'] == 'app-release.apk') {
+        if (asset is Map && asset['name'] == (kIsTvBuild ? 'mesut-iptv-tv.apk' : 'mesut-iptv-phone.apk')) {
           apkUrl = asset['browser_download_url']?.toString();
           break;
         }
@@ -441,14 +418,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('أقسام الصفحة الرئيسية'),
               onTap: () => Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(builder: (_) => const HomeLayoutScreen())),
-            )),
-            _section('الرياضة'),
-            _box(ListTile(
-              leading: const Icon(Icons.sports_soccer_rounded),
-              title: const Text('مفتاح API للرياضة'),
-              subtitle: Text(Store.sportsKey == '3' ? 'الافتراضي (مجاني)' : '********',
-                  style: const TextStyle(fontSize: 12)),
-              onTap: _editSportsKey,
             )),
             _section('النسخ الاحتياطي'),
             _box(ListTile(

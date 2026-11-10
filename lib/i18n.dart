@@ -208,7 +208,6 @@ const Map<String, List<String>> _d = {
   'مباشر': ["Direct", "Live"],
   'اختيار MESUT': ["Sélection MESUT", "MESUT Pick"],
   'مميز لك': ["Sélection pour vous", "Featured for you"],
-  'تشغيل': ["Lire", "Play"],
   'التفاصيل': ["Détails", "Details"],
   'من مكتبتك': ["De votre bibliothèque", "From your library"],
   'عرض الكل': ["Tout voir", "See all"],

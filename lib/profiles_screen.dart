@@ -141,6 +141,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       return;
     }
     await ProfilePinService.setPin(account.id, pin);
+    await Store.notifyCloudProfilesChanged();
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
@@ -161,6 +162,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
       return;
     }
     await ProfilePinService.remove(account.id);
+    await Store.notifyCloudProfilesChanged();
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(

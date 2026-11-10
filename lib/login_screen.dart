@@ -4,7 +4,6 @@ import 'theme.dart';
 import 'store.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
-import 'profiles_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool returnToProfiles;

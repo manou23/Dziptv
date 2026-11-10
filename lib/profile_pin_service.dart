@@ -41,6 +41,35 @@ class ProfilePinService {
   static Future<bool> hasPin(String profileId) async =>
       (await _storage.read(key: _key(profileId))) != null;
 
+  /// Export only the salted PBKDF2 hash. It is included inside the already
+  /// AES-GCM encrypted MESUT profile vault, never sent as plaintext.
+  static Future<String?> exportHash(String profileId) =>
+      _storage.read(key: _key(profileId));
+
+  static bool isValidStoredHash(String value) {
+    final parts = value.split(':');
+    if (parts.length != 3 || parts[0] != 'v1') return false;
+    try {
+      return base64Url.decode(parts[1]).length == 16 &&
+          base64Url.decode(parts[2]).length == 32;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Restore a previously generated hash from the authenticated encrypted
+  /// cloud vault. Null explicitly removes the PIN.
+  static Future<void> importHash(String profileId, String? value) async {
+    if (value == null || value.isEmpty) {
+      await remove(profileId);
+      return;
+    }
+    if (!isValidStoredHash(value)) {
+      throw const FormatException('Invalid profile PIN hash');
+    }
+    await _storage.write(key: _key(profileId), value: value);
+  }
+
   static Future<void> setPin(String profileId, String pin) async {
     if (!isValidPin(pin)) {
       throw ArgumentError('PIN must contain 4 to 6 digits');

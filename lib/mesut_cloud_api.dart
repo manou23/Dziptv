@@ -111,7 +111,7 @@ class MesutCloudApi {
       _uri('/api/v1/devices'),
       headers: await _authHeaders(),
     ).timeout(const Duration(seconds: 20));
-    final data = await _decode(response);
+    final data = await _decode(response, authenticated: true);
     final list = data['devices'];
     if (list is! List) return [];
     return list.whereType<Map>()
@@ -141,7 +141,7 @@ class MesutCloudApi {
     await _decode(response, authenticated: true);
   }
 
-  static Future<Map<String, Map<String, dynamic>>> _fetchRecords()(
+  static Future<Map<String, Map<String, dynamic>>> _fetchRecords(
       Map<String, String> headers) async {
     final response = await http.get(_uri('/api/v1/sync'), headers: headers)
         .timeout(const Duration(seconds: 20));

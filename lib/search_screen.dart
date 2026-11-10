@@ -4,6 +4,8 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'xtream_service.dart';
+import 'store.dart';
+import 'utils.dart';
 import 'live_screen.dart';
 import 'movie_detail_screen.dart';
 import 'series_detail_screen.dart';
@@ -98,7 +100,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final q = _q.trim().toLowerCase();
     final results = q.length < 2
         ? const <MediaItem>[]
-        : _all.where((e) => e.name.toLowerCase().contains(q)).take(150).toList();
+        : _all.where((e) => e.name.toLowerCase().contains(q) && (!Store.kidsMode || !isAdult(e.name))).take(150).toList();
 
     return Scaffold(
       appBar: AppBar(

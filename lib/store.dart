@@ -8,6 +8,13 @@ class Store {
   static const FlutterSecureStorage _secure = FlutterSecureStorage();
   static final Map<String, String> _passwords = {};
   static String? _pinCache;
+  // Installed by main.dart so every relevant local change queues cloud sync.
+  static Future<void> Function()? cloudSyncCallback;
+
+  static Future<void> _notifyCloudChanged() async {
+    final callback = cloudSyncCallback;
+    if (callback != null) await callback();
+  }
 
   static String _passwordKey(String id) =>
       'account_password_${base64Url.encode(utf8.encode(id))}';
@@ -171,6 +178,7 @@ class Store {
     }
     await _p.setStringList('${_pre}fav_$type',
         list.map((e) => jsonEncode(e.toJson())).toList());
+    await _notifyCloudChanged();
     return index < 0;
   }
 
@@ -213,6 +221,7 @@ class Store {
     }
     await _p.setStringList('${_pre}hist',
         list.take(30).map((e) => jsonEncode(e)).toList());
+    await _notifyCloudChanged();
   }
 
   // ---------------- الصفحة الرئيسية ----------------
@@ -309,6 +318,7 @@ class Store {
   // لا نرفع كلمات مرور IPTV أو روابط البث أو صوراً قد تحتوي على روابط موقعة.
   static Future<void> _markCloudSettingsChanged() async {
     await _p.setInt('cloud_settings_updated_at', DateTime.now().millisecondsSinceEpoch);
+    await _notifyCloudChanged();
   }
 
   static Map<String, dynamic> cloudSnapshot() {
@@ -385,11 +395,15 @@ class Store {
     }
   }
 
-  static Future<void> clearHistory() async { await _p.remove('${_pre}hist'); }
+  static Future<void> clearHistory() async {
+    await _p.remove('${_pre}hist');
+    await _notifyCloudChanged();
+  }
   static Future<void> clearRecent() async { await _p.remove('${_pre}recent'); }
   static Future<void> clearFavs() async {
     for (final type in ['live', 'vod', 'series']) {
       await _p.remove('${_pre}fav_$type');
     }
+    await _notifyCloudChanged();
   }
 }

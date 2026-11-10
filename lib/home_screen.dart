@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart' hide Text;
-import 'ads.dart';
 import 'app_info.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -320,8 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               for (final id in order)
                 if (!hidden.contains(id)) _section(id),
-              const SizedBox(height: 14),
-              const AdBanner(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
                 child: GlassBox(

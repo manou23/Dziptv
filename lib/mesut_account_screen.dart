@@ -37,8 +37,12 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     try {
       await MesutCloudApi.authenticate(_email.text, _password.text, register: _register);
       if (!mounted) return;
-      setState(() { _signedIn = true; _accountEmail = _email.text.trim(); _busy = false; });
-      _message = 'تم تسجيل الدخول. يمكنك الآن مزامنة بياناتك الآمنة.';
+      setState(() {
+        _signedIn = true;
+        _accountEmail = _email.text.trim();
+        _busy = false;
+        _message = 'تم تسجيل الدخول. يمكنك الآن مزامنة بياناتك الآمنة.';
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() { _busy = false; _message = e.toString().replaceFirst('Exception: ', ''); });

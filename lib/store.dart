@@ -317,7 +317,7 @@ class Store {
   // ---------------- نسخ احتياطي آمن ----------------
   // Credentials, PIN and account records are intentionally excluded.
   static String exportAll() {
-    const sensitive = {'accounts', 'url', 'user', 'pass', 'pin'};
+    const sensitive = {'accounts', 'url', 'user', 'pass', 'pin', 'kids_mode'};
     final data = <String, dynamic>{};
     for (final key in _p.getKeys()) {
       // Playback history/recent entries contain stream URLs with Xtream credentials.
@@ -336,7 +336,7 @@ class Store {
       if (decoded is! Map || decoded['app'] != 'mesut_iptv' ||
           decoded['data'] is! Map) return false;
       final data = Map<String, dynamic>.from(decoded['data'] as Map);
-      const blocked = {'accounts', 'url', 'user', 'pass', 'pin', 'active'};
+      const blocked = {'accounts', 'url', 'user', 'pass', 'pin', 'active', 'kids_mode'};
       for (final entry in data.entries) {
         if (blocked.contains(entry.key) ||
             entry.key.startsWith('account_password_') ||

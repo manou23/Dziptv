@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart' hide Text;
 import 'app_info.dart';
 import 'app_config.dart';
@@ -13,6 +14,7 @@ import 'series_detail_screen.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'services_home_screen.dart';
+import 'profiles_screen.dart';
 import 'search_screen.dart';
 import 'utils.dart';
 
@@ -26,6 +28,30 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final Future<Map<String, String>> _acc = widget.service.account();
+  late final Future<List<MediaItem>> _featuredFuture;
+  final PageController _featuredController = PageController();
+  Timer? _featuredTimer;
+  int _featuredIndex = 0;
+  int _featuredCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _featuredFuture = widget.service.allVod();
+    _featuredTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+      if (!mounted || _featuredCount < 2) return;
+      final next = (_featuredIndex + 1) % _featuredCount;
+      _featuredController.animateToPage(next,
+          duration: const Duration(milliseconds: 650), curve: Curves.easeInOutCubic);
+    });
+  }
+
+  @override
+  void dispose() {
+    _featuredTimer?.cancel();
+    _featuredController.dispose();
+    super.dispose();
+  }
 
   XtreamService get s => widget.service;
 
@@ -117,6 +143,195 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Mobile-first Netflix-inspired discovery header.
+  Widget _mobileHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+      child: Row(children: [
+        Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(colors: [kViolet, kAccent]),
+          ),
+          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 27),
+        ),
+        const SizedBox(width: 10),
+        const Expanded(child: Text('MESUT', style: TextStyle(
+          fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: 1.4))),
+        _topAction(Icons.people_alt_rounded, 'البروفايلات', () => _push(const ProfilesScreen())),
+        _topAction(Icons.search_rounded, 'البحث', () => _push(SearchScreen(service: s))),
+        _topAction(Icons.favorite_rounded, 'المفضلة', _openFavorites),
+        _topAction(Icons.settings_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
+      ]),
+    );
+  }
+
+  Widget _topAction(IconData icon, String label, VoidCallback action) => IconButton(
+    tooltip: label, onPressed: action, visualDensity: VisualDensity.compact,
+    icon: Icon(icon, size: 22, color: Colors.white.withOpacity(0.88)),
+  );
+
+  Widget _mobileHero() {
+    return FutureBuilder<List<MediaItem>>(
+      future: _featuredFuture,
+      builder: (context, snapshot) {
+        final movies = (snapshot.data ?? const <MediaItem>[])
+            .where((item) => !Store.kidsMode || !isAdult(item.name))
+            .take(12).toList();
+        _featuredCount = movies.length;
+        if (movies.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            child: Container(
+              height: 270, decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(colors: [Color(0xFF30245F), Color(0xFF101C38)],
+                    begin: Alignment.topRight, end: Alignment.bottomLeft),
+              ),
+              child: Center(child: snapshot.connectionState == ConnectionState.waiting
+                  ? const CircularProgressIndicator(color: kAccent)
+                  : const Text('أضف اشتراكك لعرض مكتبة الأفلام', style: TextStyle(color: Colors.white70))),
+            ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          child: SizedBox(
+            height: 310,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(children: [
+                PageView.builder(
+                  controller: _featuredController,
+                  itemCount: movies.length,
+                  onPageChanged: (index) => setState(() => _featuredIndex = index),
+                  itemBuilder: (context, index) {
+                    final movie = movies[index];
+                    return GestureDetector(
+                      onTap: () => _openVod(movie),
+                      child: Stack(fit: StackFit.expand, children: [
+                        if (movie.image.isNotEmpty)
+                          Image.network(movie.image, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(color: const Color(0xFF202A4B))),
+                        if (movie.image.isEmpty) Container(color: const Color(0xFF202A4B)),
+                        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                          colors: [Color(0x16000000), Color(0xEE080D1B)],
+                          stops: [0.12, 1.0],
+                        ))),
+                        Positioned(left: 18, right: 18, bottom: 22, child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(7)),
+                              child: const Text('اكتشف الآن', style: TextStyle(
+                                color: Colors.black, fontSize: 11, fontWeight: FontWeight.w900)),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.12)),
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              FilledButton.icon(
+                                onPressed: () => _openVod(movie),
+                                icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                                label: const Text('شاهد الآن'),
+                                style: FilledButton.styleFrom(backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 17)),
+                              ),
+                              const SizedBox(width: 10),
+                              if (movie.rating.isNotEmpty) Text('★ ${movie.rating}',
+                                style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                            ]),
+                          ],
+                        )),
+                      ]),
+                    );
+                  },
+                ),
+                Positioned(top: 14, right: 16, child: Row(children: [
+                  const Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 15),
+                  const SizedBox(width: 5),
+                  Text('مختارات من مكتبتك', style: TextStyle(
+                    color: Colors.white.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w700)),
+                ])),
+                Positioned(bottom: 8, right: 18, child: Row(children: [
+                  for (var i = 0; i < movies.length; i++)
+                    AnimatedContainer(duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.only(left: 4), width: i == _featuredIndex ? 18 : 5,
+                      height: 5, decoration: BoxDecoration(
+                        color: i == _featuredIndex ? kAccent : Colors.white54,
+                        borderRadius: BorderRadius.circular(8))),
+                ])),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _mobileMoviesRow() {
+    return FutureBuilder<List<MediaItem>>(
+      future: _featuredFuture,
+      builder: (context, snapshot) {
+        final movies = (snapshot.data ?? const <MediaItem>[])
+            .where((item) => !Store.kidsMode || !isAdult(item.name)).take(18).toList();
+        if (movies.isEmpty) return const SizedBox.shrink();
+        return _row('أحدث الأفلام', [for (final movie in movies)
+          _MiniCard(image: movie.image, title: movie.name, onTap: () => _openVod(movie))]);
+      },
+    );
+  }
+
+  Widget _mobileBottomBar() {
+    Widget item(IconData icon, String label, VoidCallback action) => Expanded(
+      child: InkWell(onTap: action, borderRadius: BorderRadius.circular(14),
+        child: Padding(padding: const EdgeInsets.symmetric(vertical: 9), child: Column(
+          mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 22, color: Colors.white.withOpacity(0.92)),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          ],
+        )),
+      ),
+    );
+    return SafeArea(top: false, child: Container(
+      decoration: BoxDecoration(color: const Color(0xF20B1228),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.10)))),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 3),
+      child: Row(children: [
+        item(Icons.live_tv_rounded, 'بث مباشر', () => _openLive()),
+        item(Icons.movie_filter_rounded, 'أفلام', _openMovies),
+        item(Icons.video_library_rounded, 'مسلسلات', _openSeries),
+      ]),
+    ));
+  }
+
+  void _openFavorites() {
+    final live = Store.favs('live');
+    final vod = Store.favs('vod');
+    final series = Store.favs('series');
+    showModalBottomSheet<void>(
+      context: context, isScrollControlled: true, backgroundColor: const Color(0xFF101A32),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetContext) => SafeArea(child: SizedBox(height: MediaQuery.of(sheetContext).size.height * 0.72,
+        child: ListView(padding: const EdgeInsets.all(18), children: [
+          const Text('المفضلة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          if (live.isEmpty && vod.isEmpty && series.isEmpty)
+            const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('لم تضف أي عنصر إلى المفضلة بعد'))),
+          for (final item in live) ListTile(leading: const Icon(Icons.live_tv_rounded), title: Text(item.name),
+            onTap: () { Navigator.pop(sheetContext); _openLive(item); }),
+          for (final item in vod) ListTile(leading: const Icon(Icons.movie_rounded), title: Text(item.name),
+            onTap: () { Navigator.pop(sheetContext); _openVod(item); }),
+          for (final item in series) ListTile(leading: const Icon(Icons.video_library_rounded), title: Text(item.name),
+            onTap: () { Navigator.pop(sheetContext); _openSeriesItem(item); }),
+        ]))),
     );
   }
 
@@ -311,6 +526,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kIsTvBuild) {
+      final order = Store.homeOrder();
+      final hidden = Store.homeHidden();
+      return Scaffold(
+        body: Container(decoration: kBgGradient, child: SafeArea(child: ListView(
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            _mobileHeader(),
+            _mobileHero(),
+            _mobileMoviesRow(),
+            for (final id in order)
+              if (!hidden.contains(id) && id != 'favorites') _section(id),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: GlassBox(
+              radius: 15, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              child: FutureBuilder<Map<String, String>>(future: _acc, builder: (_, snap) {
+                final account = snap.data;
+                return Row(children: [
+                  const Icon(Icons.person_rounded, size: 18, color: kAccent),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(s.name, overflow: TextOverflow.ellipsis,
+                    textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 12))),
+                  Text(account == null ? '...' : '${tr('ينتهي')}: ${account['exp']}',
+                    style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                ]);
+              }),
+            )),
+          ],
+        ))),
+        bottomNavigationBar: _mobileBottomBar(),
+      );
+    }
     final order = Store.homeOrder();
     final hidden = Store.homeHidden();
     return Scaffold(
@@ -341,11 +587,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           const Icon(Icons.person_rounded, size: 20, color: kAccent),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(s.name,
-                                overflow: TextOverflow.ellipsis,
-                                textDirection: TextDirection.ltr),
-                          ),
+                          Expanded(child: Text(s.name, overflow: TextOverflow.ellipsis,
+                              textDirection: TextDirection.ltr)),
                           const Icon(Icons.event_rounded, size: 18, color: Colors.white60),
                           const SizedBox(width: 4),
                           Text(a == null ? '...' : '${tr('ينتهي')}: ${a['exp']}',

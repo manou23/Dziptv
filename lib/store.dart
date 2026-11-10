@@ -371,6 +371,37 @@ class Store {
         }
       }
     }
+    // Restore cloud watch history while preserving local playback URLs/images.
+    // Stream URLs are deliberately never uploaded to the MESUT cloud.
+    final historyRecord = records['watch_history'];
+    if (historyRecord is List) {
+      final merged = <String, Map<String, dynamic>>{};
+      for (final entry in _histRaw()) {
+        final key = entry['key']?.toString();
+        if (key != null && key.isNotEmpty) merged[key] = Map<String, dynamic>.from(entry);
+      }
+      for (final value in historyRecord) {
+        if (value is! Map) continue;
+        final remote = Map<String, dynamic>.from(value);
+        final key = remote['key']?.toString();
+        if (key == null || key.isEmpty) continue;
+        final local = merged[key] ?? <String, dynamic>{};
+        merged[key] = {
+          ...local,
+          ...remote,
+          'url': local['url'] ?? '',
+          'image': local['image'] ?? '',
+        };
+      }
+      final entries = merged.values.toList()
+        ..sort((a, b) => ((b['ts'] as num?)?.toInt() ?? 0)
+            .compareTo((a['ts'] as num?)?.toInt() ?? 0));
+      await _p.setStringList(
+        '${_pre}hist',
+        entries.take(30).map((entry) => jsonEncode(entry)).toList(),
+      );
+    }
+
     final settings = records['settings'];
     if (settings is Map) {
       final values = Map<String, dynamic>.from(settings);

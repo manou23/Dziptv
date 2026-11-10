@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
@@ -71,19 +72,21 @@ class Store {
       );
     }
 
-    // Seed sync timestamps for legacy local data so first cloud sync won't
-    // accidentally replace existing favorites/history with an older snapshot.
+    // Migrate legacy sync timestamps into the active Xtream profile namespace.
+    final profileId = cloudProfileId;
     final legacyNow = DateTime.now().millisecondsSinceEpoch;
-    for (final type in ['live', 'vod', 'series']) {
-      final key = '${_pre}fav_$type';
-      if ((_p.getStringList(key) ?? []).isNotEmpty &&
-          !_p.containsKey('cloud_favorites_updated_at')) {
-        await _p.setInt('cloud_favorites_updated_at', legacyNow);
-      }
+    final favoriteTimeKey = 'cloud_favorites_updated_at_$profileId';
+    final historyTimeKey = 'cloud_history_updated_at_$profileId';
+    if (!_p.containsKey(favoriteTimeKey)) {
+      final legacyTime = _p.getInt('cloud_favorites_updated_at');
+      final hasLocalFavorites = ['live', 'vod', 'series']
+          .any((type) => (_p.getStringList('${_pre}fav_$type') ?? []).isNotEmpty);
+      await _p.setInt(favoriteTimeKey, legacyTime ?? (hasLocalFavorites ? legacyNow : 0));
     }
-    if ((_p.getStringList('${_pre}hist') ?? []).isNotEmpty &&
-        !_p.containsKey('cloud_history_updated_at')) {
-      await _p.setInt('cloud_history_updated_at', legacyNow);
+    if (!_p.containsKey(historyTimeKey)) {
+      final legacyTime = _p.getInt('cloud_history_updated_at');
+      final hasLocalHistory = (_p.getStringList('${_pre}hist') ?? []).isNotEmpty;
+      await _p.setInt(historyTimeKey, legacyTime ?? (hasLocalHistory ? legacyNow : 0));
     }
 
     _pinCache = await _secure.read(key: 'parental_pin');
@@ -158,6 +161,10 @@ class Store {
   }
 
   static String get _pre => '${active?.id ?? 'x'}|';
+  // Hash the Xtream profile identity; never upload its URL or username.
+  static String get cloudProfileId => sha256
+      .convert(utf8.encode(active?.id ?? 'no-active-account'))
+      .toString();
 
   // ---------------- الإعدادات ----------------
   static String get liveFormat => _p.getString('fmt') ?? 'ts';
@@ -358,7 +365,7 @@ class Store {
     final key = collection == 'favorites'
         ? 'cloud_favorites_updated_at'
         : 'cloud_history_updated_at';
-    await _p.setInt(key, DateTime.now().millisecondsSinceEpoch);
+    await _p.setInt('${key}_${cloudProfileId}', DateTime.now().millisecondsSinceEpoch);
     await _notifyCloudChanged();
   }
 
@@ -368,6 +375,7 @@ class Store {
   }
 
   static Map<String, dynamic> cloudSnapshot() {
+    final profileId = cloudProfileId;
     final favorites = <String, dynamic>{};
     for (final type in ['live', 'vod', 'series']) {
       favorites[type] = favs(type).map((item) => {
@@ -387,11 +395,16 @@ class Store {
       'ts': entry['ts'],
     }).toList();
     return {
-      'favorites': favorites,
-      'watch_history': safeHistory,
+      'profile_id': profileId,
+      'favorites': {'profiles': {profileId: favorites}},
+      'watch_history': {'profiles': {profileId: safeHistory}},
       'sync_meta': {
-        'favorites': _p.getInt('cloud_favorites_updated_at') ?? 0,
-        'watch_history': _p.getInt('cloud_history_updated_at') ?? 0,
+        'favorites': {
+          profileId: _p.getInt('cloud_favorites_updated_at_$profileId') ?? 0,
+        },
+        'watch_history': {
+          profileId: _p.getInt('cloud_history_updated_at_$profileId') ?? 0,
+        },
       },
       'settings': {
         'lang': lang,
@@ -405,20 +418,34 @@ class Store {
   }
 
   static Future<void> applyCloudRecords(
-      Map<String, dynamic> records) async {
+      Map<String, dynamic> records, {String? profileId}) async {
+    final selectedProfile = profileId ?? cloudProfileId;
     final meta = records['sync_meta'];
     if (meta is Map) {
       final values = Map<String, dynamic>.from(meta);
-      final favoriteTime = values['favorites'];
-      final historyTime = values['watch_history'];
+      final favoriteMeta = values['favorites'];
+      final historyMeta = values['watch_history'];
+      final favoriteTime = favoriteMeta is Map
+          ? favoriteMeta[selectedProfile]
+          : favoriteMeta;
+      final historyTime = historyMeta is Map
+          ? historyMeta[selectedProfile]
+          : historyMeta;
       if (favoriteTime is num) {
-        await _p.setInt('cloud_favorites_updated_at', favoriteTime.toInt());
+        await _p.setInt(
+            'cloud_favorites_updated_at_$selectedProfile', favoriteTime.toInt());
       }
       if (historyTime is num) {
-        await _p.setInt('cloud_history_updated_at', historyTime.toInt());
+        await _p.setInt(
+            'cloud_history_updated_at_$selectedProfile', historyTime.toInt());
       }
     }
-    final favoriteRecord = records['favorites'];
+
+    final rawFavorites = records['favorites'];
+    dynamic favoriteRecord = rawFavorites;
+    if (rawFavorites is Map && rawFavorites['profiles'] is Map) {
+      favoriteRecord = (rawFavorites['profiles'] as Map)[selectedProfile];
+    }
     if (favoriteRecord is Map) {
       for (final type in ['live', 'vod', 'series']) {
         final values = favoriteRecord[type];
@@ -428,16 +455,23 @@ class Store {
             if (value is Map) {
               final map = Map<String, dynamic>.from(value);
               map['image'] = '';
-              try { items.add(jsonEncode(MediaItem.fromJson(map).toJson())); } catch (_) {}
+              try {
+                items.add(jsonEncode(MediaItem.fromJson(map).toJson()));
+              } catch (_) {}
             }
           }
           await _p.setStringList('${_pre}fav_$type', items);
         }
       }
     }
-    // Restore cloud watch history while preserving local playback URLs/images.
-    // Stream URLs are deliberately never uploaded to the MESUT cloud.
-    final historyRecord = records['watch_history'];
+
+    // Restore only the selected Xtream profile's watch history. Stream URLs
+    // and image URLs stay local; the app rebuilds playback URLs from Xtream IDs.
+    final rawHistory = records['watch_history'];
+    dynamic historyRecord = rawHistory;
+    if (rawHistory is Map && rawHistory['profiles'] is Map) {
+      historyRecord = (rawHistory['profiles'] as Map)[selectedProfile];
+    }
     if (historyRecord is List) {
       final localByKey = <String, Map<String, dynamic>>{
         for (final entry in _histRaw())

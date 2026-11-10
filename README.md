@@ -61,9 +61,9 @@
 
 ### أحدث إصدار
 
-**[⬇ صفحة الإصدارات الرسمية](https://github.com/manou23/Dziptv/releases/latest)**  ·  **[⬇ تنزيل APK من أحدث عملية بناء](https://github.com/manou23/Dziptv/actions/workflows/android.yml)**
+**[⬇ صفحة الإصدارات الرسمية](https://github.com/manou23/Dziptv/releases/latest)**  ·  **[⬇ صفحة بناء APK الرسمية](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
 
-إذا لم يظهر إصدار منشور بعد، افتح صفحة البناء، واختر أحدث تشغيل ناجح، ثم نزّل ملف **MESUT-IPTV-Android-APK** من قسم Artifacts. تُنشر الإصدارات الرسمية في صفحة Releases عند اعتماد رقم إصدار.
+إذا لم يظهر إصدار منشور بعد، افتح صفحة بناء APK الرسمية، واختر أحدث تشغيل ناجح باسم **MESUT IPTV Android APK**، ثم نزّل **mesut-iptv-android-release** من قسم Artifacts. ملف Artifact متاح لمدة 14 يوماً من تاريخ البناء. نشر إصدار دائم في صفحة Releases يتم بعد اعتماد النسخة ورقمها.
 
 </div>
 
@@ -87,7 +87,7 @@
 
 واجهت مشكلة أو لديك اقتراح؟ افتح [بلاغاً جديداً](https://github.com/manou23/Dziptv/issues) مع وصف واضح للمشكلة ونوع جهازك وإصدار التطبيق.
 
-تابع المستودع لمعرفة الإصدارات والتحسينات الجديدة:
+تابع المستودع لمعرفة الإصدارات والتحسينات الجديدة. يمكن التحقق من جاهزية الخادم وقاعدة البيانات عبر [فحص الخدمة](https://mesut-iptv-api.onrender.com/health/ready):
 [github.com/manou23/Dziptv](https://github.com/manou23/Dziptv)
 
 ---

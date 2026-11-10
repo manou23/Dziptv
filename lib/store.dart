@@ -501,6 +501,14 @@ class Store {
       }
     }
     if (restored.isEmpty && raw.isNotEmpty) return;
+    final restoredIds = restored.map((account) => account.id).toSet();
+    for (final previous in accounts()) {
+      if (!restoredIds.contains(previous.id)) {
+        await _secure.delete(key: _passwordKey(previous.id));
+        _passwords.remove(previous.id);
+        await ProfilePinService.remove(previous.id);
+      }
+    }
     await _saveAccounts(restored);
     for (final account in restored) {
       final settings = settingsById[account.id] ?? {};

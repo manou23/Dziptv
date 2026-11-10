@@ -43,7 +43,9 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   Future<void> _init() async {
     try {
       final loaded = await widget.loadCats();
-      final c = Store.kidsMode ? loaded.where((cat) => !isAdult(cat.name)).toList() : loaded;
+      final c = loaded.where((cat) =>
+          (!Store.kidsMode || !isAdult(cat.name)) &&
+          !Store.hiddenCategories(widget.type).contains(cat.id)).toList();
       if (!mounted) return;
       setState(() => _cats = [_favCat, ...c]);
       if (c.isNotEmpty) {

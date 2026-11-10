@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/ANDROID-MOBILE-111827?style=for-the-badge&logo=android&logoColor=3DDC84" alt="Android">
 </p>
 
-[**⬇ تحميل APK مباشرة**](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk) ·
+[**⬇ نسخة الهاتف**](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk) · [نسخة Android TV](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk) ·
 [المصدر الرسمي](https://github.com/manou23/Dziptv) ·
 [الإبلاغ عن مشكلة](https://github.com/manou23/Dziptv/issues)
 
@@ -110,25 +110,20 @@
 
 <div align="center">
 
-### أحدث إصدار — تحميل مباشر
+### اختر النسخة المناسبة لجهازك
 
-<div align="center">
+[![MESUT IPTV Mobile](https://img.shields.io/badge/تحميل_نسخة_الهاتف-APK-16A34A?style=for-the-badge&logo=android)](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk)
 
-[![تحميل MESUT IPTV APK](https://img.shields.io/badge/⬇_تحميل_MESUT_IPTV_APK-مباشر_ومجاني-16A34A?style=for-the-badge&logo=android&logoColor=white)](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk)
-
-**[⬇ اضغط هنا لتنزيل ملف APK مباشرة](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk)**
+[![MESUT IPTV TV](https://img.shields.io/badge/تحميل_نسخة_التلفاز-Android_TV-2563EB?style=for-the-badge&logo=androidtv)](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk)
 
 </div>
 
-- **ملف الهاتف الحديث (ARM64):** [تحميل APK](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk) — وهو الخيار الافتراضي لمعظم الهواتف الحديثة.
-- **أجهزة Android ‏32-bit:** [app-armeabi-v7a-release.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/app-armeabi-v7a-release.apk).
-- **أجهزة x86_64:** [app-x86_64-release.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/app-x86_64-release.apk).
-- **[التحقق من SHA-256](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk.sha256)** للتأكد من سلامة ملف ARM64.
+- **نسخة الهاتف:** [mesut-iptv-phone.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk) — مخصصة للهواتف ذات الشاشة اللمسية.
+- **نسخة التلفاز:** [mesut-iptv-tv.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk) — مخصصة لأجهزة Android TV وواجهة التحكم بالريموت.
+- **بصمات SHA-256:** [الهاتف](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk.sha256) · [التلفاز](https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk.sha256).
 - **[صفحة الإصدارات](https://github.com/manou23/Dziptv/releases/tag/android-latest)** · **[سجل بناء APK](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
 
-يتم بناء ملفات منفصلة حسب معمارية المعالج لتقليل حجم التنزيل. رابط **app-release.apk** هو نسخة ARM64 المخصصة لمعظم الهواتف الحديثة، بينما تتوفر نسخ 32-bit وx86_64 في الروابط أعلاه. يتم تحديث روابط التحميل تلقائياً عند نجاح بناء APK جديد على الفرع الرئيسي. قد لا يتوفر الرابط لأول مرة إلا بعد اكتمال أول تشغيل ناجح لسير عمل النشر. كما يحتفظ GitHub بنسخة Artifact احتياطية باسم **mesut-iptv-android-release** لمدة 14 يوماً من تاريخ البناء.
-
-</div>
+النسختان لهما معرفا تطبيق مستقلان، ويمكن تثبيتهما معاً على الجهاز نفسه. كلاهما يستخدم حساب MESUT الإلزامي والمزامنة التلقائية وحسابات Xtream المحفوظة. يتم بناء كل نسخة لمعمارية ARM64 لتقليل حجم التنزيل؛ وسيتم نشر روابطها وأحجامها الفعلية بعد نجاح البناء.
 
 ### التثبيت على Android
 

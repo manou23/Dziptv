@@ -13,6 +13,7 @@ class MesutCloudApi {
   static const _tokenKey = 'mesut_cloud_token';
   static const _emailKey = 'mesut_cloud_email';
   static const _deviceKey = 'mesut_cloud_device_key';
+  static void Function()? onSessionExpired;
 
   // Automatic, debounced synchronization with bounded retry when offline.
   static Timer? _syncTimer;
@@ -29,7 +30,7 @@ class MesutCloudApi {
     return Uri.parse('$baseUrl$path');
   }
 
-  static Future<Map<String, dynamic>> _decode(http.Response response) async {
+  static Future<Map<String, dynamic>> _decode(http.Response response, {bool authenticated = false}) async {
     Map<String, dynamic> body = {};
     try {
       final decoded = jsonDecode(response.body);
@@ -38,7 +39,14 @@ class MesutCloudApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = body['error']?.toString() ?? 'REQUEST_FAILED';
       if (response.statusCode == 409) throw Exception('هذا البريد مسجل مسبقاً');
-      if (response.statusCode == 401) throw Exception('البريد أو كلمة المرور غير صحيحة');
+      if (response.statusCode == 401) {
+        if (authenticated) {
+          await signOut();
+          onSessionExpired?.call();
+          throw Exception('انتهت جلسة حساب MESUT. سجّل الدخول مجدداً.');
+        }
+        throw Exception('البريد أو كلمة المرور غير صحيحة');
+      }
       throw Exception('تعذر إكمال العملية ($code)');
     }
     return body;
@@ -83,6 +91,21 @@ class MesutCloudApi {
 
   static Future<String> get currentDeviceKey => _getDeviceKey();
 
+  // Validate an existing token without blocking startup when offline.
+  static Future<bool> validateSession() async {
+    if (!await isSignedIn) return false;
+    try {
+      final response = await http.get(
+        _uri('/api/v1/devices'),
+        headers: await _authHeaders(),
+      ).timeout(const Duration(seconds: 8));
+      await _decode(response, authenticated: true);
+      return true;
+    } catch (_) {
+      return await isSignedIn;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> listDevices() async {
     final response = await http.get(
       _uri('/api/v1/devices'),
@@ -102,7 +125,7 @@ class MesutCloudApi {
       headers: await _authHeaders(),
     ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 204) return;
-    await _decode(response);
+    await _decode(response, authenticated: true);
   }
 
   static Future<void> _registerDevice() async {
@@ -115,14 +138,14 @@ class MesutCloudApi {
         'platform': 'android',
       }),
     ).timeout(const Duration(seconds: 20));
-    await _decode(response);
+    await _decode(response, authenticated: true);
   }
 
-  static Future<Map<String, Map<String, dynamic>>> _fetchRecords(
+  static Future<Map<String, Map<String, dynamic>>> _fetchRecords()(
       Map<String, String> headers) async {
     final response = await http.get(_uri('/api/v1/sync'), headers: headers)
         .timeout(const Duration(seconds: 20));
-    final data = await _decode(response);
+    final data = await _decode(response, authenticated: true);
     final output = <String, Map<String, dynamic>>{};
     final list = data['records'];
     if (list is List) {
@@ -233,7 +256,7 @@ class MesutCloudApi {
         headers: headers,
         body: jsonEncode({'value': snapshot[key]}),
       ).timeout(const Duration(seconds: 20));
-      await _decode(response);
+      await _decode(response, authenticated: true);
     }
 
     final updated = await _fetchRecords(headers);

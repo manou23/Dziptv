@@ -402,7 +402,20 @@ class Store {
     };
   }
 
-  static Future<void> applyCloudRecords(Map<String, dynamic> records) async {
+  static Future<void> applyCloudRecords(
+      Map<String, dynamic> records) async {
+    final meta = records['sync_meta'];
+    if (meta is Map) {
+      final values = Map<String, dynamic>.from(meta);
+      final favoriteTime = values['favorites'];
+      final historyTime = values['watch_history'];
+      if (favoriteTime is num) {
+        await _p.setInt('cloud_favorites_updated_at', favoriteTime.toInt());
+      }
+      if (historyTime is num) {
+        await _p.setInt('cloud_history_updated_at', historyTime.toInt());
+      }
+    }
     final favoriteRecord = records['favorites'];
     if (favoriteRecord is Map) {
       for (final type in ['live', 'vod', 'series']) {

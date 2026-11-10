@@ -296,6 +296,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _tracksSheet() {
     final tracks = _p.state.tracks;
     final cur = _p.state.track;
+    final videos = tracks.video.where((v) => v.id != 'auto' && v.id != 'no').toList();
     final audios = tracks.audio.where((a) => a.id != 'auto' && a.id != 'no').toList();
     final subs = tracks.subtitle.where((a) => a.id != 'auto' && a.id != 'no').toList();
     showModalBottomSheet<void>(
@@ -305,6 +306,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: ListView(
           shrinkWrap: true,
           children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
+              child: Text('جودة الفيديو',
+                  style: TextStyle(color: kAccent, fontWeight: FontWeight.bold)),
+            ),
+            if (videos.isEmpty)
+              const ListTile(dense: true, title: Text('الجودة الافتراضية')),
+            for (final v in videos)
+              ListTile(
+                dense: true,
+                title: Text(_trackName(v.title, v.language, v.id)),
+                trailing: cur.video.id == v.id
+                    ? const Icon(Icons.check_rounded, color: kAccent)
+                    : null,
+                onTap: () {
+                  _p.setVideoTrack(v);
+                  Navigator.pop(c);
+                },
+              ),
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
               child: Text('المسار الصوتي',

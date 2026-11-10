@@ -7,7 +7,6 @@ import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'profile_pin_service.dart';
-import 'services_home_screen.dart';
 
 /// Netflix-style Xtream profiles with an independent optional PIN per profile.
 class ProfilesScreen extends StatefulWidget {
@@ -174,10 +173,9 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     await Store.removeAccount(i);
     if (!mounted) return;
     if (Store.accounts().isEmpty) {
-      Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const ServicesHomeScreen()),
-          (route) => false,
-        );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     } else {
       setState(() => _edit = Store.accounts().isEmpty ? false : _edit);
     }

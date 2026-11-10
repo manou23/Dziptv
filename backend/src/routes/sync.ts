@@ -12,10 +12,10 @@ const allowedKeys = ["favorites", "watch_history", "settings", "sync_meta"] as c
 const valueSchema = z.union([z.record(z.unknown()), z.array(z.unknown())]);
 const syncSchema = z.object({ value: valueSchema });
 const batchSchema = z.object({
-  records: z.record(z.string(), z.object({
+  records: z.record(z.object({
     value: valueSchema,
     expectedVersion: z.number().int().min(0)
-  })).min(1).max(allowedKeys.length)
+  }))
 });
 
 class SyncConflictError extends Error {}
@@ -39,6 +39,10 @@ router.post("/batch", async (req: AuthenticatedRequest, res, next) => {
       return;
     }
     const entries = Object.entries(parsed.data.records);
+    if (entries.length === 0 || entries.length > allowedKeys.length) {
+      res.status(400).json({ error: "INVALID_INPUT" });
+      return;
+    }
     if (entries.some(([key]) => !allowedKeys.includes(key as typeof allowedKeys[number]))) {
       res.status(400).json({ error: "SYNC_KEY_NOT_ALLOWED" });
       return;

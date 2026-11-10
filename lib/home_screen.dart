@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: SizedBox(
-        height: kIsTvBuild ? 270 : 180,
+        height: kIsTvBuild ? 300 : 196,
         child: TvFocus(
           radius: 22,
           autofocus: kIsTvBuild,
@@ -223,8 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return Column(
       children: [
-        SizedBox(height: 96, child: Row(children: [tiles[0], tiles[1]])),
-        SizedBox(height: 96, child: Row(children: [tiles[2], const Expanded(child: SizedBox())])),
+        SizedBox(height: 104, child: Row(children: [tiles[0], tiles[1]])),
+        SizedBox(height: 104, child: Row(children: [tiles[2], const Expanded(child: SizedBox())])),
       ],
     );
   }
@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
         SizedBox(
-          height: kIsTvBuild ? 146 : 100,
+          height: kIsTvBuild ? 164 : 116,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -456,7 +456,7 @@ class _MiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: kIsTvBuild ? 220 : 150,
+      width: kIsTvBuild ? 240 : 164,
       child: TvFocus(
         radius: 14,
         onTap: onTap,
@@ -496,7 +496,7 @@ class _MiniCard extends StatelessWidget {
               child: Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: kIsTvBuild ? 16 : 12, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: kIsTvBuild ? 17 : 13, fontWeight: FontWeight.bold)),
             ),
             if (progress != null)
               Positioned(

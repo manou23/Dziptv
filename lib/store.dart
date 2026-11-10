@@ -282,7 +282,7 @@ class Store {
 
   // ---------------- الرياضة ----------------
   static bool get kidsMode => _p.getBool('kids_mode') ?? false;
-  static Future<void> setKidsMode(bool value) async { await _p.setBool('kids_mode', value); await _markCloudSettingsChanged(); }
+  static Future<void> setKidsMode(bool value) async { await _p.setBool('kids_mode', value); }
 
   static Set<String> hiddenCategories(String type) =>
       (_p.getStringList('hidden_categories_$type') ?? <String>[]).toSet();
@@ -400,7 +400,6 @@ class Store {
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
         'sports_key': sportsKey,
-        'kids_mode': kidsMode,
         'hidden_categories': {
           for (final type in ['live', 'vod', 'series']) type: hiddenCategories(type).toList(),
         },
@@ -489,9 +488,6 @@ class Store {
       }
       if (values['sports_key'] is String) {
         await _p.setString('sports_key', values['sports_key'] as String);
-      }
-      if (values['kids_mode'] is bool) {
-        await _p.setBool('kids_mode', values['kids_mode'] as bool);
       }
       if (values['hidden_categories'] is Map) {
         final hidden = Map<String, dynamic>.from(values['hidden_categories'] as Map);

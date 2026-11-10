@@ -42,7 +42,8 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
 
   Future<void> _init() async {
     try {
-      final c = await widget.loadCats();
+      final loaded = await widget.loadCats();
+      final c = Store.kidsMode ? loaded.where((cat) => !isAdult(cat.name)).toList() : loaded;
       if (!mounted) return;
       setState(() => _cats = [_favCat, ...c]);
       if (c.isNotEmpty) {
@@ -61,13 +62,14 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   }
 
   Future<void> _select(Category c, {bool check = true}) async {
+    if (Store.kidsMode && isAdult(c.name)) return;
     if (check && isAdult(c.name) && Store.pin != null) {
       if (!await askPin(context)) return;
     }
     if (c.id == _favCat.id) {
       setState(() {
         _cat = c;
-        _items = Store.favs(widget.type);
+        _items = Store.favs(widget.type).where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
         _loading = false;
         _error = null;
       });
@@ -99,7 +101,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (!mounted) return;
     await widget.onOpen(context, it);
     if (mounted && _cat?.id == _favCat.id) {
-      setState(() => _items = Store.favs(widget.type));
+      setState(() => _items = Store.favs(widget.type).where((item) => !Store.kidsMode || !isAdult(item.name)).toList());
     }
   }
 

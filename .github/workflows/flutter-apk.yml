@@ -43,27 +43,37 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build split APKs for each Android ABI
+      - name: Build phone APK (ARM64)
         run: >-
-          flutter build apk --release --split-per-abi
+          flutter build apk --flavor phone --release --target-platform android-arm64
           --dart-define=MESUT_API_BASE_URL=https://mesut-iptv-api.onrender.com
           --dart-define=MESUT_BUILD_COMMIT=${GITHUB_SHA}
+          --dart-define=MESUT_TARGET=phone
 
-      - name: Prepare ARM64 default download and checksums
+      - name: Build Android TV APK (ARM64)
+        run: >-
+          flutter build apk --flavor tv --release --target-platform android-arm64
+          --dart-define=MESUT_API_BASE_URL=https://mesut-iptv-api.onrender.com
+          --dart-define=MESUT_BUILD_COMMIT=${GITHUB_SHA}
+          --dart-define=MESUT_TARGET=tv
+
+      - name: Prepare separate downloads and checksums
         run: |
           cd build/app/outputs/flutter-apk
-          cp app-arm64-v8a-release.apk app-release.apk
-          for apk in app-*-release.apk app-release.apk; do
-            sha256sum "$apk" > "$apk.sha256"
-          done
+          cp app-phone-release.apk mesut-iptv-phone.apk
+          cp app-tv-release.apk mesut-iptv-tv.apk
+          sha256sum mesut-iptv-phone.apk > mesut-iptv-phone.apk.sha256
+          sha256sum mesut-iptv-tv.apk > mesut-iptv-tv.apk.sha256
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: mesut-iptv-android-release
           path: |
-            build/app/outputs/flutter-apk/app*.apk
-            build/app/outputs/flutter-apk/app*.apk.sha256
+            build/app/outputs/flutter-apk/mesut-iptv-phone.apk
+            build/app/outputs/flutter-apk/mesut-iptv-phone.apk.sha256
+            build/app/outputs/flutter-apk/mesut-iptv-tv.apk
+            build/app/outputs/flutter-apk/mesut-iptv-tv.apk.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -82,16 +92,15 @@ jobs:
 
             Build commit: ${{ github.sha }}
 
-            Direct APK download:
-            https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk
+            Phone APK:
+            https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-phone.apk
+
+            Android TV APK:
+            https://github.com/manou23/Dziptv/releases/download/android-latest/mesut-iptv-tv.apk
 
             This rolling prerelease is updated after each successful APK build.
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/flutter-apk/app-release.apk.sha256
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk.sha256
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk.sha256
-            build/app/outputs/flutter-apk/app-x86_64-release.apk
-            build/app/outputs/flutter-apk/app-x86_64-release.apk.sha256
+            build/app/outputs/flutter-apk/mesut-iptv-phone.apk
+            build/app/outputs/flutter-apk/mesut-iptv-phone.apk.sha256
+            build/app/outputs/flutter-apk/mesut-iptv-tv.apk
+            build/app/outputs/flutter-apk/mesut-iptv-tv.apk.sha256

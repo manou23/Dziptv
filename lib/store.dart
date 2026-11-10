@@ -279,7 +279,9 @@ class Store {
       const blocked = {'accounts', 'url', 'user', 'pass', 'pin', 'active'};
       for (final entry in data.entries) {
         if (blocked.contains(entry.key) ||
-            entry.key.startsWith('account_password_')) continue;
+            entry.key.startsWith('account_password_') ||
+            entry.key.endsWith('|hist') ||
+            entry.key.endsWith('|recent')) continue;
         final value = entry.value;
         if (value is String) {
           await _p.setString(entry.key, value);

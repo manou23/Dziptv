@@ -129,7 +129,8 @@ class XtreamService {
 
   MediaItem _vod(dynamic e) => MediaItem('${e['stream_id']}', '${e['name']}',
       '${e['stream_icon'] ?? ''}', '${e['rating'] ?? ''}',
-      extra: '${e['container_extension'] ?? 'mp4'}');
+      extra: '${e['container_extension'] ?? 'mp4'}',
+      added: int.tryParse('${e['added'] ?? ''}') ?? 0);
 
   MediaItem _series(dynamic e) => MediaItem('${e['series_id']}', '${e['name']}',
       '${e['cover'] ?? ''}', '${e['rating'] ?? ''}',

@@ -40,7 +40,7 @@ class Store {
           _passwords[account.id] =
               await _secure.read(key: _passwordKey(account.id)) ?? '';
         }
-        migrated.add(Account(account.name, account.url, account.user, ''));
+        migrated.add(Account(account.name, account.url, account.user, '', avatar: account.avatar));
       } catch (_) {
         // Ignore malformed legacy entries without preventing app startup.
       }

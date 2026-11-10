@@ -3,8 +3,9 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Device-local PIN storage for each Xtream profile.
-/// Only a salted PBKDF2-HMAC-SHA256 hash is stored; the PIN is never synced.
+/// PIN hashing for each Xtream profile.
+/// Only a salted PBKDF2-HMAC-SHA256 hash is stored. The hash may be carried
+/// inside the AES-GCM encrypted profile vault; the PIN itself is never synced.
 class ProfilePinService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const int _iterations = 100000;

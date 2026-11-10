@@ -173,21 +173,38 @@ class MesutCloudApi {
 
     // Merge favorites and watch-history metadata so a newly added device
     // cannot erase data already stored by another device.
-    final localFavorites = snapshot['favorites'] as Map<String, dynamic>;
-    final remoteFavorites = remote['favorites']?['value'];
-    final mergedFavorites = <String, dynamic>{};
-    for (final type in ['live', 'vod', 'series']) {
-      final localList = localFavorites[type];
-      final remoteList = remoteFavorites is Map ? remoteFavorites[type] : null;
-      mergedFavorites[type] = _mergeById(localList, remoteList, 'id')['items'];
+    final localMeta = Map<String, dynamic>.from(snapshot['sync_meta'] as Map);
+    final remoteMetaValue = remote['sync_meta']?['value'];
+    final remoteMeta = remoteMetaValue is Map
+        ? Map<String, dynamic>.from(remoteMetaValue)
+        : <String, dynamic>{};
+
+    // Resolve collection conflicts by last-change time. This also propagates
+    // intentional empty lists (deletions) instead of resurrecting removed items.
+    final localFavoriteTime = (localMeta['favorites'] as num?)?.toInt() ?? 0;
+    final remoteFavoriteTime = (remoteMeta['favorites'] as num?)?.toInt() ?? 0;
+    if (remoteFavoriteTime > localFavoriteTime) {
+      snapshot['favorites'] = remote['favorites']?['value'] ??
+          {'live': [], 'vod': [], 'series': []};
+    } else {
+      localMeta['favorites'] = localFavoriteTime > 0
+          ? localFavoriteTime : DateTime.now().millisecondsSinceEpoch;
     }
-    snapshot['favorites'] = mergedFavorites;
-    snapshot['watch_history'] = _mergeById(
-      snapshot['watch_history'],
-      remote['watch_history']?['value'],
-      'key',
-      limit: 30,
-    )['items'];
+
+    final localHistoryTime = (localMeta['watch_history'] as num?)?.toInt() ?? 0;
+    final remoteHistoryTime = (remoteMeta['watch_history'] as num?)?.toInt() ?? 0;
+    if (remoteHistoryTime > localHistoryTime) {
+      snapshot['watch_history'] = remote['watch_history']?['value'] ?? [];
+    } else {
+      localMeta['watch_history'] = localHistoryTime > 0
+          ? localHistoryTime : DateTime.now().millisecondsSinceEpoch;
+    }
+    snapshot['sync_meta'] = localMeta;
+
+    final localFavorites = snapshot['favorites'] as Map<String, dynamic>;
+    final remoteFavorites = null;
+    // Keep bounded history after selecting the winning collection snapshot.
+    snapshot['watch_history'] = (snapshot['watch_history'] as List).take(30).toList();
 
     // Settings use last-change timestamps: a fresh device inherits remote
     // settings, while a newer local edit is uploaded to the account.
@@ -206,7 +223,7 @@ class MesutCloudApi {
       }
     }
 
-    for (final key in ['favorites', 'watch_history', 'settings']) {
+    for (final key in ['favorites', 'watch_history', 'settings', 'sync_meta']) {
       final response = await http.put(
         _uri('/api/v1/sync/$key'),
         headers: headers,

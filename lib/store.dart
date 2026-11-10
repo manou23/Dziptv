@@ -417,7 +417,6 @@ class Store {
         'fmt': liveFormat,
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
-        'sports_key': sportsKey,
         '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
     };
@@ -521,9 +520,6 @@ class Store {
       }
       if (values['home_hidden'] is List && (values['home_hidden'] as List).every((e) => e is String)) {
         await _p.setStringList('home_hidden', List<String>.from(values['home_hidden'] as List));
-      }
-      if (values['sports_key'] is String) {
-        await _p.setString('sports_key', values['sports_key'] as String);
       }
       if (values['_updatedAt'] is num) {
         await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());

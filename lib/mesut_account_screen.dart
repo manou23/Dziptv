@@ -389,7 +389,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   }
 
   Widget _avatar(Account account, int index) {
-    final avatar = _avatars.where((item) => item['id'] == account.avatar);
+    final avatar = _avatars.where((item) => item['id'] == account.avatar && item['id']!.isNotEmpty);
     final profileName = account.name.trim();
     final emoji = avatar.isNotEmpty ? avatar.first['emoji']! : (profileName.isEmpty ? '?' : String.fromCharCode(profileName.runes.first).toUpperCase());
     final colors = _palette[index % _palette.length];

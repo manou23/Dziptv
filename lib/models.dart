@@ -50,5 +50,6 @@ class PlayItem {
 class HistoryEntry {
   final PlayItem item;
   final int pos, dur, ts;
-  const HistoryEntry(this.item, this.pos, this.dur, this.ts);
+  final String ext;
+  const HistoryEntry(this.item, this.pos, this.dur, this.ts, {this.ext = 'mp4'});
 }

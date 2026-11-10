@@ -113,7 +113,9 @@ class _LiveScreenState extends State<LiveScreen> {
     try {
       _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
       final loadedCats = await widget.service.liveCategories();
-      final c = Store.kidsMode ? loadedCats.where((cat) => !isAdult(cat.name)).toList() : loadedCats;
+      final c = loadedCats.where((cat) =>
+          (!Store.kidsMode || !isAdult(cat.name)) &&
+          !Store.hiddenCategories('live').contains(cat.id)).toList();
       if (!mounted) return;
       setState(() => _cats = c);
       if (c.isNotEmpty) {

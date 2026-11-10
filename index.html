@@ -202,6 +202,7 @@
   let initial = "ar";
   try{ const saved=localStorage.getItem("mesut-site-language"); if(["ar","fr","en"].includes(saved)) initial=saved; }catch(e){}
   applyLanguage(initial);
+  window.addEventListener("storage",function(event){if(event.key==="mesut-site-language" && ["ar","fr","en"].includes(event.newValue)) applyLanguage(event.newValue);});
 
 
 

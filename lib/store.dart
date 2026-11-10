@@ -239,7 +239,10 @@ class Store {
     final list = _histRaw().where((e) => e['key'] != item.key).toList();
     final finished = dur > 0 && pos > dur * 0.95;
     if (!finished && pos > 3000) {
-      final path = Uri.tryParse(item.url)?.pathSegments.last ?? '';
+      final uri = Uri.tryParse(item.url);
+      final path = uri != null && uri.pathSegments.isNotEmpty
+          ? uri.pathSegments.last
+          : '';
       final dot = path.lastIndexOf('.');
       final extension = dot >= 0 && dot < path.length - 1
           ? path.substring(dot + 1)

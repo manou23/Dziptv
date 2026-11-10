@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       archive_url:
-        description: "Direct public GitHub Release asset URL for mesut_iptv_v7_stage1.zip"
+        description: "Direct GitHub Release asset URL for the V7 ZIP"
         required: true
         type: string
 
@@ -18,14 +18,24 @@ concurrency:
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Checkout current repository
+      - name: Validate repository token
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GH_TOKEN secret is missing."
+            exit 1
+          fi
+
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
           token: ${{ secrets.GH_TOKEN }}
           persist-credentials: true
+          fetch-depth: 0
 
       - name: Download and validate V7 archive
         env:
@@ -33,57 +43,59 @@ jobs:
         run: |
           case "$ARCHIVE_URL" in
             https://github.com/*/releases/download/*) ;;
-            *) echo "::error::Use a direct HTTPS GitHub Release asset URL."; exit 1 ;;
+            *) echo "::error::Provide a direct HTTPS GitHub Release asset URL."; exit 1 ;;
           esac
           curl --fail --location --retry 3 "$ARCHIVE_URL" --output "$RUNNER_TEMP/mesut_v7.zip"
           python3 - <<'PY'
-          import zipfile, os
+          import os, zipfile
           p = os.path.join(os.environ["RUNNER_TEMP"], "mesut_v7.zip")
           with zipfile.ZipFile(p) as z:
               names = z.namelist()
-              if not any(n.rstrip("/") == "pubspec.yaml" for n in names):
-                  raise SystemExit("Archive does not contain root pubspec.yaml")
-              if not any(n.rstrip("/") == "lib/main.dart" for n in names):
-                  raise SystemExit("Archive does not contain lib/main.dart")
+              normalized = {n.rstrip("/") for n in names}
+              if "pubspec.yaml" not in normalized or "lib/main.dart" not in normalized:
+                  raise SystemExit("ZIP must contain pubspec.yaml and lib/main.dart at its root")
               for n in names:
-                  parts = n.replace("\\", "/").split("/")
+                  parts = n.replace("\\\\", "/").split("/")
                   if n.startswith("/") or ".." in parts:
-                      raise SystemExit("Unsafe archive path: " + n)
-              z.testzip() and (_ for _ in ()).throw(SystemExit("ZIP integrity check failed"))
-          print("V7 archive validated.")
+                      raise SystemExit("Unsafe ZIP path: " + n)
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit("Corrupt ZIP member: " + bad)
+          print("Archive integrity and Flutter entry points verified.")
           PY
           mkdir "$RUNNER_TEMP/mesut_v7"
           unzip -q "$RUNNER_TEMP/mesut_v7.zip" -d "$RUNNER_TEMP/mesut_v7"
 
-      - name: Prepare project settings
+      - name: Prepare project configuration
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import os
           root = Path(os.environ["RUNNER_TEMP"]) / "mesut_v7"
           p = root / "lib" / "app_info.dart"
-          s = p.read_text(encoding="utf-8")
-          s = s.replace("const String kUpdateRepo = '';",
-                        "const String kUpdateRepo = 'manou23/Dziptv';")
-          p.write_text(s, encoding="utf-8")
-          # Do not allow the signing-key workflow to publish a keystore artifact
-          # while this repository is public.
+          if p.exists():
+              s = p.read_text(encoding="utf-8")
+              s = s.replace("const String kUpdateRepo = '';",
+                            "const String kUpdateRepo = 'manou23/Dziptv';")
+              p.write_text(s, encoding="utf-8")
           k = root / ".github" / "workflows" / "keystore.yml"
           if k.exists():
               t = k.read_text(encoding="utf-8")
-              t = t.replace("  keystore:\n", "  keystore:\n    if: ${{ github.event.repository.private == true }}\n", 1)
+              t = t.replace("  keystore:\\n",
+                            "  keystore:\\n    if: ${{ github.event.repository.private == true }}\\n", 1)
               k.write_text(t, encoding="utf-8")
           PY
 
-      - name: Replace old project while preserving README.md
+      - name: Replace project and preserve README
         run: |
+          test -f README.md
           before="$(sha256sum README.md | cut -d' ' -f1)"
           cp README.md "$RUNNER_TEMP/README.md"
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a "$RUNNER_TEMP/mesut_v7/." .
           cp "$RUNNER_TEMP/README.md" README.md
           after="$(sha256sum README.md | cut -d' ' -f1)"
-          test "$before" = "$after"
+          test "$before" = "$after" || { echo "::error::README changed unexpectedly"; exit 1; }
           cat > .gitignore <<'EOF'
           .dart_tool/
           .flutter-plugins
@@ -100,14 +112,20 @@ jobs:
           test -f pubspec.yaml
           test -f lib/main.dart
           test -f .github/workflows/build.yml
-          echo "README.md SHA256 preserved: $after"
-          echo "New Flutter project files:"
-          find lib -maxdepth 1 -type f | sort
+          echo "README.md preserved (SHA256: $after)."
 
-      - name: Commit complete V7 replacement
+      - name: Commit and push using GH_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then
+            echo "No project changes detected."
+            exit 1
+          fi
           git commit -m "Replace legacy app with MESUT IPTV V7 Flutter project"
-          git push origin HEAD:main
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:main
+          echo "V7 project pushed successfully."

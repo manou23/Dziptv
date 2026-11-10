@@ -144,10 +144,12 @@ class Store {
     }
     await _saveAccounts(list);
     await _p.setInt('active', index >= 0 ? index : list.length - 1);
+    await _notifyCloudChanged();
   }
 
   static Future<void> setActive(int index) async {
     await _p.setInt('active', index);
+    await _notifyCloudChanged();
   }
 
   static Future<void> removeAccount(int index) async {
@@ -158,6 +160,7 @@ class Store {
     _passwords.remove(removed.id);
     await _saveAccounts(list);
     await _p.setInt('active', 0);
+    await _notifyCloudChanged();
   }
 
   static String get _pre => '${active?.id ?? 'x'}|';

@@ -301,7 +301,7 @@ class MesutCloudApi {
 
     // Restore the complete profile vault before selecting the active profile
     // and syncing per-profile favorites/history on a fresh device.
-    final localProfiles = Store.cloudProfilesSnapshot();
+    final localProfiles = await Store.cloudProfilesSnapshot();
     final localProfilesTime =
         (localProfiles['updatedAt'] as num?)?.toInt() ?? 0;
     final remoteProfilesEnvelope = remote['profiles']?['value'];
@@ -437,7 +437,7 @@ class MesutCloudApi {
     }
     // The complete profile list and its Xtream credentials are encrypted
     // locally with AES-256-GCM before being sent to the server.
-    final profilePayload = Store.cloudProfilesSnapshot();
+    final profilePayload = await Store.cloudProfilesSnapshot();
     final localProfileTime =
         (profilePayload['updatedAt'] as num?)?.toInt() ?? 0;
     final remoteProfileTime = DateTime.tryParse(

@@ -15,7 +15,9 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _register = true, _busy = false, _signedIn = false, _hidePassword = true;
-  String? _accountEmail, _message;
+  String? _accountEmail, _message, _currentDeviceKey;
+  List<Map<String, dynamic>> _devices = [];
+  bool _loadingDevices = false;
 
   @override
   void initState() {
@@ -28,6 +30,48 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     final email = await MesutCloudApi.email;
     if (!mounted) return;
     setState(() { _signedIn = signed; _accountEmail = email; });
+    if (signed) await _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    if (!await MesutCloudApi.isSignedIn) return;
+    if (mounted) setState(() => _loadingDevices = true);
+    try {
+      final values = await MesutCloudApi.listDevices();
+      final currentKey = await MesutCloudApi.currentDeviceKey;
+      if (!mounted) return;
+      setState(() {
+        _devices = values;
+        _currentDeviceKey = currentKey;
+        _loadingDevices = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingDevices = false);
+    }
+  }
+
+  Future<void> _removeDevice(Map<String, dynamic> device) async {
+    final id = device['id']?.toString() ?? '';
+    final key = device['deviceKey']?.toString() ?? '';
+    if (id.isEmpty || key == _currentDeviceKey) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إزالة الجهاز'),
+        content: Text('هل تريد إزالة ${device['name'] ?? 'هذا الجهاز'} من حسابك؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('إزالة')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await MesutCloudApi.removeDevice(id);
+      await _loadDevices();
+    } catch (e) {
+      if (mounted) setState(() => _message = e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   Future<void> _authenticate() async {
@@ -45,6 +89,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
         _busy = false;
         _message = 'تم تسجيل الدخول بنجاح. جارٍ الانتقال لإضافة اشتراك IPTV...';
       });
+      await _loadDevices();
       widget.onAuthenticated?.call();
     } catch (e) {
       if (!mounted) return;
@@ -105,6 +150,49 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
                 leading: Icon(Icons.sync_rounded),
                 title: Text('المزامنة التلقائية مفعّلة'),
                 subtitle: Text('تتم مزامنة المفضلة وسجل المشاهدة والإعدادات مع حسابك تلقائياً، مع إعادة المحاولة عند انقطاع الإنترنت.'),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 16, bottom: 8),
+              child: Text('الأجهزة المرتبطة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ),
+            if (_loadingDevices)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(),
+              ))
+            else if (_devices.isEmpty)
+              const Card(child: ListTile(
+                leading: Icon(Icons.devices_other_rounded),
+                title: Text('لا توجد أجهزة مسجلة بعد'),
+              ))
+            else
+              for (final device in _devices)
+                Card(
+                  child: ListTile(
+                    leading: Icon(device['deviceKey'] == _currentDeviceKey
+                        ? Icons.phone_android_rounded
+                        : Icons.devices_rounded),
+                    title: Text('${device['name'] ?? 'MESUT Device'}'),
+                    subtitle: Text(
+                      '${device['platform'] ?? 'other'} · ${device['lastSeenAt'] ?? ''}',
+                      maxLines: 2,
+                    ),
+                    trailing: device['deviceKey'] == _currentDeviceKey
+                        ? const Text('هذا الجهاز', style: TextStyle(fontSize: 11))
+                        : IconButton(
+                            tooltip: 'إزالة الجهاز',
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            onPressed: () => _removeDevice(device),
+                          ),
+                  ),
+                ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _loadingDevices ? null : _loadDevices,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('تحديث قائمة الأجهزة'),
               ),
             ),
             OutlinedButton.icon(

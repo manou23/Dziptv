@@ -296,7 +296,6 @@ class Store {
       values.remove(id);
     }
     await _p.setStringList('hidden_categories_$type', values.toList());
-    await _markCloudSettingsChanged();
   }
 
   static String get sportsKey => _p.getString('sports_key') ?? '3';
@@ -400,9 +399,6 @@ class Store {
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
         'sports_key': sportsKey,
-        'hidden_categories': {
-          for (final type in ['live', 'vod', 'series']) type: hiddenCategories(type).toList(),
-        },
         '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
     };
@@ -488,15 +484,6 @@ class Store {
       }
       if (values['sports_key'] is String) {
         await _p.setString('sports_key', values['sports_key'] as String);
-      }
-      if (values['hidden_categories'] is Map) {
-        final hidden = Map<String, dynamic>.from(values['hidden_categories'] as Map);
-        for (final type in ['live', 'vod', 'series']) {
-          final ids = hidden[type];
-          if (ids is List && ids.every((id) => id is String)) {
-            await _p.setStringList('hidden_categories_$type', List<String>.from(ids));
-          }
-        }
       }
       if (values['_updatedAt'] is num) {
         await _p.setInt('cloud_settings_updated_at', (values['_updatedAt'] as num).toInt());

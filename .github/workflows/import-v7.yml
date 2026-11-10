@@ -1,131 +1,152 @@
-name: Import MESUT IPTV V7 project
+name: Import and build MESUT IPTV Flutter V7
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      archive_url:
-        description: "Direct GitHub Release asset URL for the V7 ZIP"
-        required: true
-        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: mesut-v7-import
+  group: mesut-flutter-v7-import
   cancel-in-progress: false
 
 jobs:
-  import:
+  import-and-build:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[start-flutter-v7]')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
-      - name: Validate repository token
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::GH_TOKEN secret is missing."
-            exit 1
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Download and validate V7 archive
+      - name: Download and validate Flutter V7 archive
         env:
-          ARCHIVE_URL: ${{ inputs.archive_url }}
+          ARCHIVE_URL: https://github.com/manou23/Dziptv/releases/download/v7.0.0/mesut_iptv_v7_stage1.zip
         run: |
-          case "$ARCHIVE_URL" in
-            https://github.com/*/releases/download/*) ;;
-            *) echo "::error::Provide a direct HTTPS GitHub Release asset URL."; exit 1 ;;
-          esac
-          curl --fail --location --retry 3 "$ARCHIVE_URL" --output "$RUNNER_TEMP/mesut_v7.zip"
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-all-errors "$ARCHIVE_URL" --output "$RUNNER_TEMP/mesut_v7.zip"
           python3 - <<'PY'
           import os, zipfile
-          p = os.path.join(os.environ["RUNNER_TEMP"], "mesut_v7.zip")
-          with zipfile.ZipFile(p) as z:
+          from pathlib import PurePosixPath
+          archive = os.path.join(os.environ["RUNNER_TEMP"], "mesut_v7.zip")
+          with zipfile.ZipFile(archive) as z:
               names = z.namelist()
-              normalized = {n.rstrip("/") for n in names}
-              if "pubspec.yaml" not in normalized or "lib/main.dart" not in normalized:
-                  raise SystemExit("ZIP must contain pubspec.yaml and lib/main.dart at its root")
-              for n in names:
-                  parts = n.replace("\\\\", "/").split("/")
-                  if n.startswith("/") or ".." in parts:
-                      raise SystemExit("Unsafe ZIP path: " + n)
+              for name in names:
+                  path = PurePosixPath(name)
+                  if path.is_absolute() or ".." in path.parts:
+                      raise SystemExit("Unsafe ZIP entry: " + name)
+              candidates = []
+              for name in names:
+                  p = PurePosixPath(name)
+                  if p.name == "pubspec.yaml":
+                      root = str(p.parent)
+                      main = str(PurePosixPath(root) / "lib" / "main.dart") if root != "." else "lib/main.dart"
+                      if main in names:
+                          candidates.append(root)
+              if not candidates:
+                  raise SystemExit("The release archive does not contain a Flutter project (pubspec.yaml + lib/main.dart).")
+              if len(candidates) > 1:
+                  raise SystemExit("Archive contains multiple Flutter project roots: " + repr(candidates))
               bad = z.testzip()
               if bad:
                   raise SystemExit("Corrupt ZIP member: " + bad)
-          print("Archive integrity and Flutter entry points verified.")
+              print("Flutter project root:", candidates[0])
+              print("Archive entries:", len(names))
+              print("Archive bytes:", os.path.getsize(archive))
           PY
-          mkdir "$RUNNER_TEMP/mesut_v7"
+          mkdir -p "$RUNNER_TEMP/mesut_v7"
           unzip -q "$RUNNER_TEMP/mesut_v7.zip" -d "$RUNNER_TEMP/mesut_v7"
 
-      - name: Prepare project configuration
+      - name: Import Flutter project and preserve repository README
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import os
-          root = Path(os.environ["RUNNER_TEMP"]) / "mesut_v7"
-          p = root / "lib" / "app_info.dart"
-          if p.exists():
-              s = p.read_text(encoding="utf-8")
-              s = s.replace("const String kUpdateRepo = '';",
-                            "const String kUpdateRepo = 'manou23/Dziptv';")
-              p.write_text(s, encoding="utf-8")
-          k = root / ".github" / "workflows" / "keystore.yml"
-          if k.exists():
-              t = k.read_text(encoding="utf-8")
-              t = t.replace("  keystore:\\n",
-                            "  keystore:\\n    if: ${{ github.event.repository.private == true }}\\n", 1)
-              k.write_text(t, encoding="utf-8")
+          import hashlib, shutil, os
+          repo = Path.cwd()
+          stage = Path(os.environ["RUNNER_TEMP"]) / "mesut_v7"
+          pubspecs = list(stage.rglob("pubspec.yaml"))
+          if len(pubspecs) != 1:
+              raise SystemExit(f"Expected exactly one pubspec.yaml, found {len(pubspecs)}")
+          project = pubspecs[0].parent
+          if not (project / "lib" / "main.dart").is_file():
+              raise SystemExit("Flutter lib/main.dart is missing")
+          readme = repo / "README.md"
+          if not readme.is_file():
+              raise SystemExit("Existing README.md is missing; refusing to continue")
+          readme_bytes = readme.read_bytes()
+          workflow = repo / ".github" / "workflows" / "import-v7.yml"
+          workflow_bytes = workflow.read_bytes() if workflow.exists() else None
+          for item in list(repo.iterdir()):
+              if item.name == ".git":
+                  continue
+              if item.is_dir():
+                  shutil.rmtree(item)
+              else:
+                  item.unlink()
+          for item in project.iterdir():
+              target = repo / item.name
+              if item.is_dir():
+                  shutil.copytree(item, target)
+              else:
+                  shutil.copy2(item, target)
+          (repo / "README.md").write_bytes(readme_bytes)
+          if workflow_bytes is not None:
+              wf = repo / ".github" / "workflows" / "import-v7.yml"
+              wf.parent.mkdir(parents=True, exist_ok=True)
+              wf.write_bytes(workflow_bytes)
+          (repo / ".gitignore").write_text(
+              ".dart_tool/\n.flutter-plugins\n.flutter-plugins-dependencies\n"
+              ".packages\nbuild/\n.DS_Store\n*.jks\n*.keystore\n"
+              "android/.gradle/\nandroid/local.properties\n",
+              encoding="utf-8"
+          )
+          digest = hashlib.sha256(readme_bytes).hexdigest()
+          print("Imported Flutter project:", project)
+          print("README.md preserved; SHA256:", digest)
           PY
-
-      - name: Replace project and preserve README
-        run: |
-          test -f README.md
-          before="$(sha256sum README.md | cut -d' ' -f1)"
-          cp README.md "$RUNNER_TEMP/README.md"
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a "$RUNNER_TEMP/mesut_v7/." .
-          cp "$RUNNER_TEMP/README.md" README.md
-          after="$(sha256sum README.md | cut -d' ' -f1)"
-          test "$before" = "$after" || { echo "::error::README changed unexpectedly"; exit 1; }
-          cat > .gitignore <<'EOF'
-          .dart_tool/
-          .flutter-plugins
-          .flutter-plugins-dependencies
-          .packages
-          build/
-          .DS_Store
-          *.jks
-          *.keystore
-          keystore.base64.txt
-          android/.gradle/
-          android/local.properties
-          EOF
           test -f pubspec.yaml
           test -f lib/main.dart
-          test -f .github/workflows/build.yml
-          echo "README.md preserved (SHA256: $after)."
-
-      - name: Commit and push using GH_TOKEN
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
+          git add -A
+          git diff --cached --quiet && { echo "No import changes detected"; exit 1; } || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No project changes detected."
-            exit 1
-          fi
-          git commit -m "Replace legacy app with MESUT IPTV V7 Flutter project"
-          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:main
-          echo "V7 project pushed successfully."
+          git commit -m "Import original MESUT IPTV V7 Flutter project"
+          git push origin HEAD:main
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+
+      - name: Run Flutter tests when present
+        if: ${{ hashFiles('test/**') != '' }}
+        run: flutter test --no-pub
+
+      - name: Upload verified Flutter APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MESUT-IPTV-FLUTTER-V7-APK
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

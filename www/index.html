@@ -77,7 +77,7 @@ button:focus-visible,input:focus-visible,.tile:focus-visible{outline:3px solid v
 .player-bar{position:absolute;top:0;inset-inline:0;z-index:2;display:flex;align-items:center;gap:15px;padding:15px 20px;background:linear-gradient(#000c,transparent)}
 .player-bar strong{flex:1}
 #video{width:100%;height:100%;object-fit:contain;background:#000}
-#playerMessage{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#ffb4c0;padding:25px;pointer-events:none}
+#playerMessage{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;color:#ffb4c0;padding:25px;pointer-events:auto}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;background:#1d2a3e;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;box-shadow:0 10px 30px #0008;font-size:13px}
 @media(max-width:760px){.topbar{gap:10px;flex-wrap:wrap}.topbrand{flex:1}.nav{order:3;flex-basis:100%}.search{width:120px}.hero{min-height:250px;margin-top:14px}.tile{flex-basis:125px;min-height:190px}.tile img,.tile .poster-fallback{height:190px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
@@ -262,15 +262,36 @@ function stopPlayback(){
 }
 function play(item){
  stopPlayback();state.current=item;$("playingTitle").textContent=item.name;$("player").classList.remove("hidden");
- const video=$("video"),url=item.url;$("playerMessage").textContent="";
+ const video=$("video"),url=item.url,message=$("playerMessage");
+ let networkRecoveries=0,mediaRecovered=false;
+ message.replaceChildren();
+ const showRetry=text=>{
+  message.replaceChildren();
+  const note=document.createElement("div");note.textContent=text;
+  const retry=document.createElement("button");retry.type="button";retry.textContent="إعادة المحاولة";
+  retry.style.cssText="pointer-events:auto;margin-top:14px;padding:11px 20px;border:1px solid #ffffff55;border-radius:12px;background:#ed3155;color:white;font-weight:700;cursor:pointer";
+  retry.addEventListener("click",()=>play(item));
+  message.append(note,retry);
+ };
  if(/\.m3u8(?:\?|$)/i.test(url)&&window.Hls&&Hls.isSupported()){
-  state.hls=new Hls({enableWorker:true,capLevelToPlayerSize:true});
+  state.hls=new Hls({enableWorker:true,capLevelToPlayerSize:true,maxBufferLength:30});
+  state.hls.on(Hls.Events.ERROR,(event,data)=>{
+   if(!data.fatal)return;
+   if(data.type===Hls.ErrorTypes.NETWORK_ERROR&&networkRecoveries<2){
+    networkRecoveries++;state.hls.startLoad();return;
+   }
+   if(data.type===Hls.ErrorTypes.MEDIA_ERROR&&!mediaRecovered){
+    mediaRecovered=true;state.hls.recoverMediaError();return;
+   }
+   showRetry("تعذّر استرداد البث تلقائياً. تحقق من السيرفر أو أعد المحاولة.");
+  });
   state.hls.loadSource(url);state.hls.attachMedia(video);
-  state.hls.on(Hls.Events.ERROR,(event,data)=>{if(data.fatal)$("playerMessage").textContent="تعذّر تشغيل البث. قد لا يدعم المزوّد هذا المشغّل."});
  }else if(video.canPlayType("application/vnd.apple.mpegurl")||!(/\.m3u8(?:\?|$)/i.test(url))){
   video.src=url;
- }else{$("playerMessage").textContent="هذا الجهاز لا يدعم صيغة البث الحالية."}
- video.play().catch(()=>{});
+ }else{showRetry("هذا الجهاز لا يدعم صيغة البث الحالية.");return}
+ video.play().catch(error=>{
+  if(error&&error.name==="NotAllowedError")message.textContent="اضغط زر التشغيل في المشغّل لبدء الفيديو.";
+ });
 }
 $("video").addEventListener("error",()=>{$("playerMessage").textContent="تعذّر تشغيل المحتوى. تحقق من توفر البث أو توافق الصيغة."});
 $("closePlayer").addEventListener("click",stopPlayback);

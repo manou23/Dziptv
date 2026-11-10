@@ -75,6 +75,10 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
   }
 
   Future<void> _authenticate() async {
+    if (!MesutCloudApi.isConfigured) {
+      setState(() => _message = 'تعذر الاتصال: عنوان خادم MESUT غير مضبوط في هذه النسخة. حدّث التطبيق إلى أحدث إصدار.');
+      return;
+    }
     if (_email.text.trim().isEmpty || _password.text.length < 10) {
       setState(() => _message = 'أدخل بريداً صحيحاً وكلمة مرور من 10 أحرف على الأقل');
       return;
@@ -231,7 +235,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _busy || !configured ? null : _authenticate,
+              onPressed: _busy ? null : _authenticate,
               child: _busy ? const CircularProgressIndicator() : Text(_register ? 'إنشاء حساب MESUT' : 'تسجيل الدخول'),
             ),
           ],

@@ -13,7 +13,6 @@ import 'series_detail_screen.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'services_home_screen.dart';
-import 'sports_screen.dart';
 import 'search_screen.dart';
 import 'utils.dart';
 
@@ -218,13 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
         colors: const [Color(0xFF1FB5A0), Color(0xFF0B5C52)],
         onTap: _openSeries,
       ),
-      _Tile(
-        title: 'Sports',
-        subtitle: 'الرياضة',
-        icon: Icons.sports_soccer_rounded,
-        colors: const [Color(0xFFE5486D), Color(0xFF7A1F3A)],
-        onTap: () => _push(const SportsScreen()),
-      ),
     ];
     if (wide) {
       return SizedBox(height: kIsTvBuild ? 138 : 100, child: Row(children: tiles));
@@ -232,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         SizedBox(height: 96, child: Row(children: [tiles[0], tiles[1]])),
-        SizedBox(height: 96, child: Row(children: [tiles[2], tiles[3]])),
+        SizedBox(height: 96, child: Row(children: [tiles[2], const Expanded(child: SizedBox())])),
       ],
     );
   }

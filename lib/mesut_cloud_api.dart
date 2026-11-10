@@ -89,12 +89,13 @@ class MesutCloudApi {
     await _deriveAndStoreProfileKey(accountEmail, password);
     await _secure.write(key: _tokenKey, value: token);
     await _secure.write(key: _emailKey, value: accountEmail);
+    // Restore cloud profiles before the app navigates to the profile picker.
+    // If the network is temporarily unavailable, keep the session and retry.
     try {
-      await _registerDevice();
+      await syncNow();
     } catch (_) {
-      // Keep the authenticated session; device registration can retry during sync.
+      await scheduleSync();
     }
-    await scheduleSync();
   }
 
   static Future<void> _deriveAndStoreProfileKey(

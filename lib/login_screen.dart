@@ -4,9 +4,11 @@ import 'theme.dart';
 import 'store.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
+import 'profiles_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool returnToProfiles;
+  const LoginScreen({super.key, this.returnToProfiles = false});
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -47,10 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
       await s.login();
       await Store.addAccount(s.toAccount());
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => HomeScreen(service: s)),
-        (r) => false,
-      );
+      if (widget.returnToProfiles) {
+        Navigator.of(context).pop();
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => HomeScreen(service: s)),
+          (r) => false,
+        );
+      }
     } catch (e) {
       setState(() {
         _busy = false;

@@ -46,7 +46,15 @@ class MesutCloudApi {
     } catch (_) {}
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = body['error']?.toString() ?? 'REQUEST_FAILED';
-      if (response.statusCode == 409) throw Exception('هذا البريد مسجل مسبقاً');
+      if (response.statusCode == 409) {
+        if (code == 'EMAIL_ALREADY_REGISTERED') {
+          throw Exception('هذا البريد مسجل مسبقاً');
+        }
+        if (code == 'SYNC_VERSION_CONFLICT') {
+          throw Exception('تغيّرت بيانات المزامنة على جهاز آخر؛ ستتم إعادة المحاولة بأحدث نسخة.');
+        }
+        throw Exception('حدث تعارض أثناء تنفيذ الطلب ($code)');
+      }
       if (response.statusCode == 401) {
         if (authenticated) {
           await signOut();
@@ -293,14 +301,21 @@ class MesutCloudApi {
       }
     }
 
+    // Send all collections as one version-checked transaction. A stale
+    // device cannot partially overwrite newer data from another device.
+    final batch = <String, dynamic>{};
     for (final key in ['favorites', 'watch_history', 'settings', 'sync_meta']) {
-      final response = await http.put(
-        _uri('/api/v1/sync/$key'),
-        headers: headers,
-        body: jsonEncode({'value': snapshot[key]}),
-      ).timeout(const Duration(seconds: 20));
-      await _decode(response, authenticated: true);
+      batch[key] = {
+        'value': snapshot[key],
+        'expectedVersion': (remote[key]?['version'] as num?)?.toInt() ?? 0,
+      };
     }
+    final response = await http.post(
+      _uri('/api/v1/sync/batch'),
+      headers: headers,
+      body: jsonEncode({'records': batch}),
+    ).timeout(const Duration(seconds: 30));
+    await _decode(response, authenticated: true);
 
     final updated = await _fetchRecords(headers);
     final records = <String, dynamic>{

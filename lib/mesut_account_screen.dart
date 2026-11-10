@@ -146,10 +146,11 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     setState(() { _busy = true; _message = null; });
     try {
       await MesutCloudApi.syncNow();
+      final vaultReady = await MesutCloudApi.hasProfileEncryptionKey;
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _profileVaultReady = true;
+        _profileVaultReady = vaultReady;
         _message = 'اكتملت المزامنة بنجاح';
       });
       await _loadDevices();
@@ -232,7 +233,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     try {
       final service = XtreamService(replacement.url, replacement.user, replacement.pass, replacement.name);
       await service.login();
-      await Store.updateAccount(account.id, service.toAccountWithAvatar(replacement.avatar));
+      await Store.updateAccount(account.id, Account(service.name, service.baseUrl, service.username, service.password, avatar: replacement.avatar));
       if (!mounted) return;
       setState(() { _busy = false; _message = 'تم تحديث الاشتراك ومزامنته'; });
     } catch (e) {
@@ -387,7 +388,8 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
 
   Widget _avatar(Account account, int index) {
     final avatar = _avatars.where((item) => item['id'] == account.avatar);
-    final emoji = avatar.isNotEmpty ? avatar.first['emoji']! : account.name.characters.first.toUpperCase();
+    final profileName = account.name.trim();
+    final emoji = avatar.isNotEmpty ? avatar.first['emoji']! : (profileName.isEmpty ? '?' : String.fromCharCode(profileName.runes.first).toUpperCase());
     final colors = _palette[index % _palette.length];
     return Container(
       width: 54, height: 54,

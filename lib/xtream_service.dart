@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:http/http.dart' as http;
 import 'i18n.dart';
 import 'models.dart';

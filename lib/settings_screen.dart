@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'app_info.dart';
 import 'home_layout_screen.dart';
 import 'legal_screen.dart';
@@ -222,24 +223,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _checkUpdate() async {
-    if (kUpdateRepo.isEmpty) {
-      _toast('لم يتم ضبط مصدر التحديثات');
-      return;
-    }
     try {
-      final r = await http
-          .get(Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases/latest'))
-          .timeout(const Duration(seconds: 15));
-      final tag = ((jsonDecode(r.body) as Map)['tag_name'] ?? '')
-          .toString()
-          .replaceFirst('v', '');
-      if (tag.isNotEmpty && tag != kVersion) {
-        _toast('${tr('يتوفر إصدار جديد')}: $tag');
-      } else {
-        _toast('أنت تستخدم أحدث إصدار');
+      final uri = Uri.parse(
+          'https://api.github.com/repos/$kUpdateRepo/releases/tags/android-latest');
+      final response = await http.get(uri, headers: const {
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      }).timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) {
+        throw Exception('تعذر الوصول إلى معلومات الإصدار');
       }
+      final release = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+      final assets = release['assets'] is List ? release['assets'] as List : const [];
+      String? apkUrl;
+      for (final asset in assets) {
+        if (asset is Map && asset['name'] == 'app-release.apk') {
+          apkUrl = asset['browser_download_url']?.toString();
+          break;
+        }
+      }
+      final body = release['body']?.toString() ?? '';
+      final match = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
+      final remoteCommit = match?.group(1) ?? '';
+      final isCurrent = remoteCommit.isNotEmpty &&
+          kBuildCommit != 'unknown' &&
+          remoteCommit == kBuildCommit;
+      if (!mounted) return;
+      if (isCurrent) {
+        _toast('أنت تستخدم أحدث إصدار');
+        return;
+      }
+      if (apkUrl == null || apkUrl.isEmpty) {
+        _toast('وُجد إصدار جديد لكن ملف APK غير متاح حالياً');
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('يتوفر تحديث جديد'),
+          content: const Text(
+              'توجد نسخة أحدث من MESUT IPTV. نزّل ملف APK وثبّته فوق النسخة الحالية للاحتفاظ ببياناتك.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('لاحقاً'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                final opened = await launchUrl(
+                  Uri.parse(apkUrl!),
+                  mode: LaunchMode.externalApplication,
+                );
+                if (!opened && mounted) {
+                  _toast('تعذر فتح رابط التحميل');
+                }
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('تنزيل التحديث'),
+            ),
+          ],
+        ),
+      );
     } catch (_) {
-      _toast('تعذر تحميل البيانات');
+      if (mounted) _toast('تعذر التحقق من التحديثات حالياً');
     }
   }
 

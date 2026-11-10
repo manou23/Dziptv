@@ -53,6 +53,7 @@ jobs:
         run: >-
           flutter build apk --debug
           --dart-define=MESUT_API_BASE_URL=https://mesut-iptv-api.onrender.com
+          --dart-define=MESUT_BUILD_COMMIT=${GITHUB_SHA}
 
       - name: Upload Flutter APK
         uses: actions/upload-artifact@v4

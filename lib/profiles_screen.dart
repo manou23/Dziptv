@@ -146,7 +146,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
 
   Future<void> _add() async {
     await Navigator.of(context)
-        .push<void>(MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+        .push<void>(MaterialPageRoute<void>(builder: (_) => const LoginScreen(returnToProfiles: true)));
     if (mounted) setState(() {});
   }
 

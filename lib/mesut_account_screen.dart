@@ -92,10 +92,11 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     setState(() { _busy = true; _message = null; });
     try {
       await MesutCloudApi.authenticate(_email.text, _password.text, register: _register);
+      final vaultReady = await MesutCloudApi.hasProfileEncryptionKey;
       if (!mounted) return;
       setState(() {
         _signedIn = true;
-        _profileVaultReady = await MesutCloudApi.hasProfileEncryptionKey;
+        _profileVaultReady = vaultReady;
         _accountEmail = _email.text.trim();
         _busy = false;
         _message = 'تم تسجيل الدخول بنجاح. جارٍ الانتقال لإضافة اشتراك IPTV...';

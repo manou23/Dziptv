@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,6 +13,12 @@ class MesutCloudApi {
   static const _tokenKey = 'mesut_cloud_token';
   static const _emailKey = 'mesut_cloud_email';
   static const _deviceKey = 'mesut_cloud_device_key';
+
+  // Automatic, debounced synchronization with bounded retry when offline.
+  static Timer? _syncTimer;
+  static bool _syncing = false;
+  static bool _syncRequested = false;
+  static int _retryAttempt = 0;
 
   static bool get isConfigured => baseUrl.startsWith('https://') || baseUrl.startsWith('http://');
   static Future<String?> get email => _secure.read(key: _emailKey);
@@ -56,6 +63,7 @@ class MesutCloudApi {
     } catch (_) {
       // Keep the authenticated session; device registration can retry during sync.
     }
+    await scheduleSync();
   }
 
   static Future<String> _getDeviceKey() async {
@@ -123,6 +131,39 @@ class MesutCloudApi {
     return {'items': values.take(limit).toList()};
   }
 
+  static Future<void> scheduleSync() async {
+    if (!await isSignedIn) return;
+    _syncRequested = true;
+    if (_syncing || _syncTimer != null) return;
+
+    final delaySeconds = _retryAttempt == 0
+        ? 2
+        : min(300, 15 * (1 << min(_retryAttempt - 1, 4)));
+    _syncTimer = Timer(Duration(seconds: delaySeconds), () async {
+      _syncTimer = null;
+      await _runScheduledSync();
+    });
+  }
+
+  static Future<void> _runScheduledSync() async {
+    if (_syncing || !await isSignedIn) return;
+    _syncing = true;
+    _syncRequested = false;
+    try {
+      await syncNow();
+      _retryAttempt = 0;
+    } catch (_) {
+      // Keep local data and retry automatically (15s, 30s, 60s... up to 5m).
+      _retryAttempt++;
+      _syncRequested = true;
+    } finally {
+      _syncing = false;
+      if (_syncRequested && await isSignedIn) {
+        await scheduleSync();
+      }
+    }
+  }
+
   static Future<void> syncNow() async {
     await _registerDevice();
     final headers = await _authHeaders();
@@ -181,6 +222,10 @@ class MesutCloudApi {
   }
 
   static Future<void> signOut() async {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _syncRequested = false;
+    _retryAttempt = 0;
     await _secure.delete(key: _tokenKey);
     await _secure.delete(key: _emailKey);
   }

@@ -60,6 +60,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MESUT-IPTV-FLUTTER-V7-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30

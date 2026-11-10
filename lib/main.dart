@@ -202,12 +202,6 @@ class _MesutAppState extends State<MesutApp> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(14),
             ),
           ),
-          dialogTheme: DialogTheme(
-            backgroundColor: const Color(0xFF111A30),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-            ),
-          ),
         ),
         navigatorKey: _appNavigatorKey,
         home: widget.start,

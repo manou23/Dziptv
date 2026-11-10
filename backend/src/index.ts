@@ -18,8 +18,20 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 app.disable("x-powered-by");
 app.use(helmet());
+const allowedOrigins = new Set([
+  "https://manou23.github.io",
+  ...(process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()).filter(Boolean) ?? [])
+]);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()) ?? false,
+  origin: (origin, callback) => {
+    // Native app requests may not include Origin. Browser access is limited
+    // to the configured origins and the official MESUT GitHub Pages site.
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("CORS origin not allowed"));
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));

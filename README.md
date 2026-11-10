@@ -4,7 +4,7 @@
 -->
 <div align="center">
 
-<img src="www/icon.svg" width="112" height="112" alt="MESUT IPTV logo">
+<img src="assets/tv/banner.png" width="112" height="112" alt="MESUT IPTV logo">
 
 # MESUT IPTV
 

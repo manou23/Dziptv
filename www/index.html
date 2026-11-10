@@ -7,6 +7,9 @@
 <meta name="description" content="MESUT IPTV — مشغّل IPTV للبث المباشر والأفلام والمسلسلات على Android والهاتف والتلفاز.">
 <title>MESUT IPTV</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
 <style>
@@ -294,5 +297,10 @@ document.addEventListener("keydown",e=>{
 });
 </script>
   <script src="feature-pack.js"></script>
+<script>
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js", {scope:"./"}).catch(() => {}));
+}
+</script>
 </body>
 </html>

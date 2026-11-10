@@ -196,45 +196,79 @@ class MesutCloudApi {
     await _registerDevice();
     final headers = await _authHeaders();
     final snapshot = Store.cloudSnapshot();
+    final profileId = snapshot['profile_id'] as String;
     final remote = await _fetchRecords(headers);
 
-    // Compare local and remote collection timestamps so additions and deletions
-    // propagate safely between devices.
     final localMeta = Map<String, dynamic>.from(snapshot['sync_meta'] as Map);
     final remoteMetaValue = remote['sync_meta']?['value'];
     final remoteMeta = remoteMetaValue is Map
         ? Map<String, dynamic>.from(remoteMetaValue)
         : <String, dynamic>{};
 
-    // Resolve collection conflicts by last-change time. This also propagates
-    // intentional empty lists (deletions) instead of resurrecting removed items.
-    final localFavoriteTime = (localMeta['favorites'] as num?)?.toInt() ?? 0;
-    final remoteFavoriteTime = (remoteMeta['favorites'] as num?)?.toInt() ?? 0;
-    if (remoteFavoriteTime > localFavoriteTime) {
-      snapshot['favorites'] = remote['favorites']?['value'] ??
-          {'live': [], 'vod': [], 'series': []};
-      localMeta['favorites'] = remoteFavoriteTime;
-    } else {
-      localMeta['favorites'] = localFavoriteTime > 0
-          ? localFavoriteTime : DateTime.now().millisecondsSinceEpoch;
+    Map<String, dynamic> profileValues(dynamic value) {
+      if (value is Map && value['profiles'] is Map) {
+        return Map<String, dynamic>.from(value['profiles'] as Map);
+      }
+      // Migrate records written by earlier app versions into the active profile.
+      if (value is Map) return {profileId: value};
+      return {};
     }
 
-    final localHistoryTime = (localMeta['watch_history'] as num?)?.toInt() ?? 0;
-    final remoteHistoryTime = (remoteMeta['watch_history'] as num?)?.toInt() ?? 0;
-    if (remoteHistoryTime > localHistoryTime) {
-      snapshot['watch_history'] = remote['watch_history']?['value'] ?? [];
-      localMeta['watch_history'] = remoteHistoryTime;
-    } else {
-      localMeta['watch_history'] = localHistoryTime > 0
-          ? localHistoryTime : DateTime.now().millisecondsSinceEpoch;
+    Map<String, dynamic> profileTimes(dynamic value) {
+      if (value is Map) return Map<String, dynamic>.from(value);
+      if (value is num) return {profileId: value};
+      return {};
     }
-    snapshot['sync_meta'] = localMeta;
 
-    // Keep bounded history after selecting the winning collection snapshot.
-    snapshot['watch_history'] = (snapshot['watch_history'] as List).take(30).toList();
+    final remoteFavoriteProfiles =
+        profileValues(remote['favorites']?['value']);
+    final localFavoriteProfiles =
+        profileValues(snapshot['favorites']);
+    final remoteFavoriteTimes = profileTimes(remoteMeta['favorites']);
+    final localFavoriteTimes = profileTimes(localMeta['favorites']);
+    final localFavoriteTime =
+        (localFavoriteTimes[profileId] as num?)?.toInt() ?? 0;
+    final remoteFavoriteTime =
+        (remoteFavoriteTimes[profileId] as num?)?.toInt() ?? 0;
+    final chosenFavorites = remoteFavoriteTime > localFavoriteTime
+        ? (remoteFavoriteProfiles[profileId] ??
+            {'live': [], 'vod': [], 'series': []})
+        : (localFavoriteProfiles[profileId] ??
+            {'live': [], 'vod': [], 'series': []});
+    remoteFavoriteProfiles[profileId] = chosenFavorites;
+    remoteFavoriteTimes[profileId] = remoteFavoriteTime > localFavoriteTime
+        ? remoteFavoriteTime
+        : localFavoriteTime > 0
+            ? localFavoriteTime
+            : DateTime.now().millisecondsSinceEpoch;
+    snapshot['favorites'] = {'profiles': remoteFavoriteProfiles};
 
-    // Settings use last-change timestamps: a fresh device inherits remote
-    // settings, while a newer local edit is uploaded to the account.
+    final remoteHistoryProfiles =
+        profileValues(remote['watch_history']?['value']);
+    final localHistoryProfiles = profileValues(snapshot['watch_history']);
+    final remoteHistoryTimes = profileTimes(remoteMeta['watch_history']);
+    final localHistoryTimes = profileTimes(localMeta['watch_history']);
+    final localHistoryTime =
+        (localHistoryTimes[profileId] as num?)?.toInt() ?? 0;
+    final remoteHistoryTime =
+        (remoteHistoryTimes[profileId] as num?)?.toInt() ?? 0;
+    final chosenHistory = remoteHistoryTime > localHistoryTime
+        ? (remoteHistoryProfiles[profileId] ?? <dynamic>[])
+        : (localHistoryProfiles[profileId] ?? <dynamic>[]);
+    remoteHistoryProfiles[profileId] =
+        (chosenHistory as List).take(30).toList();
+    remoteHistoryTimes[profileId] = remoteHistoryTime > localHistoryTime
+        ? remoteHistoryTime
+        : localHistoryTime > 0
+            ? localHistoryTime
+            : DateTime.now().millisecondsSinceEpoch;
+    snapshot['watch_history'] = {'profiles': remoteHistoryProfiles};
+    snapshot['sync_meta'] = {
+      'favorites': remoteFavoriteTimes,
+      'watch_history': remoteHistoryTimes,
+    };
+
+    // Global app settings use last-change timestamps.
     final localSettings = Map<String, dynamic>.from(snapshot['settings'] as Map);
     final remoteSettingsValue = remote['settings']?['value'];
     if (remoteSettingsValue is Map) {
@@ -263,7 +297,7 @@ class MesutCloudApi {
     final records = <String, dynamic>{
       for (final entry in updated.entries) entry.key: entry.value['value'],
     };
-    await Store.applyCloudRecords(records);
+    await Store.applyCloudRecords(records, profileId: profileId);
   }
 
   static Future<void> signOut() async {

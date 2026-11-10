@@ -86,10 +86,84 @@ class MesutCloudApi {
     await _decode(response);
   }
 
+  static Future<Map<String, Map<String, dynamic>>> _fetchRecords(
+      Map<String, String> headers) async {
+    final response = await http.get(_uri('/api/v1/sync'), headers: headers)
+        .timeout(const Duration(seconds: 20));
+    final data = await _decode(response);
+    final output = <String, Map<String, dynamic>>{};
+    final list = data['records'];
+    if (list is List) {
+      for (final item in list) {
+        if (item is Map && item['key'] is String) {
+          output[item['key'] as String] = Map<String, dynamic>.from(item);
+        }
+      }
+    }
+    return output;
+  }
+
+  static Map<String, dynamic> _mergeById(dynamic local, dynamic remote,
+      String idField, {int limit = 100}) {
+    final merged = <String, Map<String, dynamic>>{};
+    for (final source in [local, remote]) {
+      if (source is List) {
+        for (final item in source) {
+          if (item is Map && item[idField] != null) {
+            merged[item[idField].toString()] = Map<String, dynamic>.from(item);
+          }
+        }
+      }
+    }
+    final values = merged.values.toList();
+    if (idField == 'key') {
+      values.sort((a, b) => ((b['ts'] as num?)?.toInt() ?? 0)
+          .compareTo((a['ts'] as num?)?.toInt() ?? 0));
+    }
+    return {'items': values.take(limit).toList()};
+  }
+
   static Future<void> syncNow() async {
     await _registerDevice();
-    final snapshot = Store.cloudSnapshot();
     final headers = await _authHeaders();
+    final snapshot = Store.cloudSnapshot();
+    final remote = await _fetchRecords(headers);
+
+    // Merge favorites and watch-history metadata so a newly added device
+    // cannot erase data already stored by another device.
+    final localFavorites = snapshot['favorites'] as Map<String, dynamic>;
+    final remoteFavorites = remote['favorites']?['value'];
+    final mergedFavorites = <String, dynamic>{};
+    for (final type in ['live', 'vod', 'series']) {
+      final localList = localFavorites[type];
+      final remoteList = remoteFavorites is Map ? remoteFavorites[type] : null;
+      mergedFavorites[type] = _mergeById(localList, remoteList, 'id')['items'];
+    }
+    snapshot['favorites'] = mergedFavorites;
+    snapshot['watch_history'] = _mergeById(
+      snapshot['watch_history'],
+      remote['watch_history']?['value'],
+      'key',
+      limit: 30,
+    )['items'];
+
+    // Settings use last-change timestamps: a fresh device inherits remote
+    // settings, while a newer local edit is uploaded to the account.
+    final localSettings = Map<String, dynamic>.from(snapshot['settings'] as Map);
+    final remoteSettingsValue = remote['settings']?['value'];
+    if (remoteSettingsValue is Map) {
+      final remoteSettings = Map<String, dynamic>.from(remoteSettingsValue);
+      final remoteTime = remoteSettings['_updatedAt'] is num
+          ? (remoteSettings['_updatedAt'] as num).toInt()
+          : DateTime.tryParse(remote['settings']?['updatedAt']?.toString() ?? '')
+                  ?.millisecondsSinceEpoch ?? 0;
+      final localTime = (localSettings['_updatedAt'] as num?)?.toInt() ?? 0;
+      if (remoteTime >= localTime) {
+        remoteSettings['_updatedAt'] = remoteTime;
+        snapshot['settings'] = remoteSettings;
+      }
+    }
+
     for (final key in ['favorites', 'watch_history', 'settings']) {
       final response = await http.put(
         _uri('/api/v1/sync/$key'),
@@ -98,20 +172,11 @@ class MesutCloudApi {
       ).timeout(const Duration(seconds: 20));
       await _decode(response);
     }
-    final response = await http.get(
-      _uri('/api/v1/sync'),
-      headers: headers,
-    ).timeout(const Duration(seconds: 20));
-    final data = await _decode(response);
-    final records = <String, dynamic>{};
-    final list = data['records'];
-    if (list is List) {
-      for (final item in list) {
-        if (item is Map && item['key'] is String) {
-          records[item['key'] as String] = item['value'];
-        }
-      }
-    }
+
+    final updated = await _fetchRecords(headers);
+    final records = <String, dynamic>{
+      for (final entry in updated.entries) entry.key: entry.value['value'],
+    };
     await Store.applyCloudRecords(records);
   }
 

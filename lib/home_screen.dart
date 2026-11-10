@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide Text;
 import 'app_info.dart';
+import 'app_config.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
@@ -91,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(kAppName,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: kIsTvBuild ? 28 : 20, fontWeight: FontWeight.bold)),
               Text('by $kBrand',
                   style: const TextStyle(fontSize: 11, color: Colors.white54)),
             ],
@@ -137,9 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: SizedBox(
-        height: 180,
+        height: kIsTvBuild ? 270 : 180,
         child: TvFocus(
           radius: 22,
+          autofocus: kIsTvBuild,
           onTap: h == null ? _openLive : () => _push(PlayerScreen(items: [_resolveHistoryItem(h)])),
           child: Stack(
             fit: StackFit.expand,
@@ -169,10 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(h == null ? kAppName : h.item.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontSize: kIsTvBuild ? 30 : 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(h == null ? 'ابدأ المشاهدة' : 'متابعة المشاهدة',
-                        style: const TextStyle(fontSize: 13, color: kAccent)),
+                        style: TextStyle(fontSize: kIsTvBuild ? 18 : 13, color: kAccent)),
                     if (h != null) ...[
                       const SizedBox(height: 8),
                       LinearProgressIndicator(value: p, minHeight: 3, color: kAccent),
@@ -225,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
     if (wide) {
-      return SizedBox(height: 100, child: Row(children: tiles));
+      return SizedBox(height: kIsTvBuild ? 138 : 100, child: Row(children: tiles));
     }
     return Column(
       children: [
@@ -246,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
         SizedBox(
-          height: 100,
+          height: kIsTvBuild ? 146 : 100,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -462,7 +464,7 @@ class _MiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 150,
+      width: kIsTvBuild ? 220 : 150,
       child: TvFocus(
         radius: 14,
         onTap: onTap,
@@ -502,7 +504,7 @@ class _MiniCard extends StatelessWidget {
               child: Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: kIsTvBuild ? 16 : 12, fontWeight: FontWeight.bold)),
             ),
             if (progress != null)
               Positioned(

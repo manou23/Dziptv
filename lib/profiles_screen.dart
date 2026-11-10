@@ -22,11 +22,11 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
 
   static const _palette = [
-    [Color(0xFF7C5CFF), Color(0xFF3B2A99)],
-    [Color(0xFF2D9CFF), Color(0xFF123F7A)],
-    [Color(0xFF1FB5A0), Color(0xFF0B5C52)],
-    [Color(0xFFE5484D), Color(0xFF8A1F24)],
-    [Color(0xFF3B82F6), Color(0xFF1E3A8A)],
+    [Color(0xFFE50914), Color(0xFF7B0710)],
+    [Color(0xFF1687E8), Color(0xFF104A86)],
+    [Color(0xFF1DA66A), Color(0xFF0B5D3A)],
+    [Color(0xFFF0B323), Color(0xFF98620A)],
+    [Color(0xFF8C4AE8), Color(0xFF4A218C)],
   ];
 
   Future<String?> _askPin(String title) async {
@@ -206,7 +206,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             width: kIsTvBuild ? 136 : 96,
             height: kIsTvBuild ? 136 : 96,
             child: TvFocus(
-              radius: 20,
+              radius: kIsTvBuild ? 20 : 11,
               autofocus: kIsTvBuild && i == 0,
               onTap: () => _edit ? _delete(i) : _open(i),
               child: Stack(
@@ -298,7 +298,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white10,
                   border: Border.all(color: Colors.white24, width: 1.5),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),
                 ),
                 child: const Center(
                   child: Icon(Icons.add_rounded, size: kIsTvBuild ? 60 : 44, color: Colors.white70),
@@ -321,8 +321,9 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   Widget build(BuildContext context) {
     final accs = Store.accounts();
     return Scaffold(
+      backgroundColor: const Color(0xFF090A0D),
       body: Container(
-        decoration: kBgGradient,
+        decoration: kIsTvBuild ? kBgGradient : const BoxDecoration(color: Color(0xFF090A0D)),
         child: SafeArea(
           child: Column(
             children: [

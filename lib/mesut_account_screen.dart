@@ -89,7 +89,6 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
         _busy = false;
         _message = 'تم تسجيل الدخول بنجاح. جارٍ الانتقال لإضافة اشتراك IPTV...';
       });
-      await _loadDevices();
       widget.onAuthenticated?.call();
     } catch (e) {
       if (!mounted) return;

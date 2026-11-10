@@ -120,11 +120,13 @@
 
 </div>
 
-- **رابط APK المباشر:** https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk
-- **[التحقق من SHA-256](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk.sha256)** للتأكد من سلامة الملف.
+- **ملف الهاتف الحديث (ARM64):** [تحميل APK](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk) — وهو الخيار الافتراضي لمعظم الهواتف الحديثة.
+- **أجهزة Android ‏32-bit:** [app-armeabi-v7a-release.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/app-armeabi-v7a-release.apk).
+- **أجهزة x86_64:** [app-x86_64-release.apk](https://github.com/manou23/Dziptv/releases/download/android-latest/app-x86_64-release.apk).
+- **[التحقق من SHA-256](https://github.com/manou23/Dziptv/releases/download/android-latest/app-release.apk.sha256)** للتأكد من سلامة ملف ARM64.
 - **[صفحة الإصدارات](https://github.com/manou23/Dziptv/releases/tag/android-latest)** · **[سجل بناء APK](https://github.com/manou23/Dziptv/actions/workflows/flutter-apk.yml)**
 
-يتم تحديث رابط التحميل المباشر نفسه تلقائياً عند نجاح بناء APK جديد على الفرع الرئيسي. قد لا يتوفر الرابط لأول مرة إلا بعد اكتمال أول تشغيل ناجح لسير عمل النشر. كما يحتفظ GitHub بنسخة Artifact احتياطية باسم **mesut-iptv-android-release** لمدة 14 يوماً من تاريخ البناء.
+يتم بناء ملفات منفصلة حسب معمارية المعالج لتقليل حجم التنزيل. رابط **app-release.apk** هو نسخة ARM64 المخصصة لمعظم الهواتف الحديثة، بينما تتوفر نسخ 32-bit وx86_64 في الروابط أعلاه. يتم تحديث روابط التحميل تلقائياً عند نجاح بناء APK جديد على الفرع الرئيسي. قد لا يتوفر الرابط لأول مرة إلا بعد اكتمال أول تشغيل ناجح لسير عمل النشر. كما يحتفظ GitHub بنسخة Artifact احتياطية باسم **mesut-iptv-android-release** لمدة 14 يوماً من تاريخ البناء.
 
 </div>
 

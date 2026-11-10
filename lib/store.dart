@@ -75,7 +75,7 @@ class Store {
 
   // ---------------- اللغة ----------------
   static String get lang => _p.getString('lang') ?? 'ar';
-  static Future<void> setLang(String v) async => _p.setString('lang', v);
+  static Future<void> setLang(String v) async { await _p.setString('lang', v); }
 
   // ---------------- الحسابات ----------------
   static List<Account> accounts() => (_p.getStringList('accounts') ?? [])
@@ -139,7 +139,7 @@ class Store {
 
   // ---------------- الإعدادات ----------------
   static String get liveFormat => _p.getString('fmt') ?? 'ts';
-  static Future<void> setLiveFormat(String v) async => _p.setString('fmt', v);
+  static Future<void> setLiveFormat(String v) async { await _p.setString('fmt', v); }
 
   static String? get pin => _pinCache;
   static Future<void> setPin(String? value) async {
@@ -225,12 +225,14 @@ class Store {
     }
     return output;
   }
-  static Future<void> setHomeOrder(List<String> list) =>
-      _p.setStringList('home_order', list);
+  static Future<void> setHomeOrder(List<String> list) async {
+    await _p.setStringList('home_order', list);
+  }
   static Set<String> homeHidden() =>
       (_p.getStringList('home_hidden') ?? []).toSet();
-  static Future<void> setHomeHidden(Set<String> values) =>
-      _p.setStringList('home_hidden', values.toList());
+  static Future<void> setHomeHidden(Set<String> values) async {
+    await _p.setStringList('home_hidden', values.toList());
+  }
 
   // ---------------- شوهد مؤخراً ----------------
   static List<PlayItem> recent() =>
@@ -248,8 +250,9 @@ class Store {
 
   // ---------------- الرياضة ----------------
   static String get sportsKey => _p.getString('sports_key') ?? '3';
-  static Future<void> setSportsKey(String value) =>
-      _p.setString('sports_key', value.trim().isEmpty ? '3' : value.trim());
+  static Future<void> setSportsKey(String value) async {
+    await _p.setString('sports_key', value.trim().isEmpty ? '3' : value.trim());
+  }
 
   // ---------------- نسخ احتياطي آمن ----------------
   // Credentials, PIN and account records are intentionally excluded.
@@ -293,8 +296,8 @@ class Store {
     }
   }
 
-  static Future<void> clearHistory() async => _p.remove('${_pre}hist');
-  static Future<void> clearRecent() async => _p.remove('${_pre}recent');
+  static Future<void> clearHistory() async { await _p.remove('${_pre}hist'); }
+  static Future<void> clearRecent() async { await _p.remove('${_pre}recent'); }
   static Future<void> clearFavs() async {
     for (final type in ['live', 'vod', 'series']) {
       await _p.remove('${_pre}fav_$type');

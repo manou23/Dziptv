@@ -111,26 +111,6 @@ class MesutCloudApi {
     return output;
   }
 
-  static Map<String, dynamic> _mergeById(dynamic local, dynamic remote,
-      String idField, {int limit = 100}) {
-    final merged = <String, Map<String, dynamic>>{};
-    for (final source in [local, remote]) {
-      if (source is List) {
-        for (final item in source) {
-          if (item is Map && item[idField] != null) {
-            merged[item[idField].toString()] = Map<String, dynamic>.from(item);
-          }
-        }
-      }
-    }
-    final values = merged.values.toList();
-    if (idField == 'key') {
-      values.sort((a, b) => ((b['ts'] as num?)?.toInt() ?? 0)
-          .compareTo((a['ts'] as num?)?.toInt() ?? 0));
-    }
-    return {'items': values.take(limit).toList()};
-  }
-
   static Future<void> scheduleSync() async {
     if (!await isSignedIn) return;
     _syncRequested = true;
@@ -171,8 +151,8 @@ class MesutCloudApi {
     final snapshot = Store.cloudSnapshot();
     final remote = await _fetchRecords(headers);
 
-    // Merge favorites and watch-history metadata so a newly added device
-    // cannot erase data already stored by another device.
+    // Compare local and remote collection timestamps so additions and deletions
+    // propagate safely between devices.
     final localMeta = Map<String, dynamic>.from(snapshot['sync_meta'] as Map);
     final remoteMetaValue = remote['sync_meta']?['value'];
     final remoteMeta = remoteMetaValue is Map

@@ -140,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 180,
         child: TvFocus(
           radius: 22,
-          onTap: h == null ? _openLive : () => _push(PlayerScreen(items: [h.item])),
+          onTap: h == null ? _openLive : () => _push(PlayerScreen(items: [_resolveHistoryItem(h)])),
           child: Stack(
             fit: StackFit.expand,
             children: [

@@ -10,8 +10,9 @@ import 'profiles_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 120 << 20;
-  PaintingBinding.instance.imageCache.maximumSize = 400;
+  // Keep the decoded image cache bounded for phones and Android TV devices.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 64 << 20;
+  PaintingBinding.instance.imageCache.maximumSize = 250;
 
   Widget start;
   try {

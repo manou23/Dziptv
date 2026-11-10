@@ -148,14 +148,65 @@ class _MesutAppState extends State<MesutApp> with WidgetsBindingObserver {
           useMaterial3: true,
           brightness: Brightness.dark,
           scaffoldBackgroundColor: kBg,
-          colorScheme: const ColorScheme.dark(primary: kViolet, secondary: kAccent),
+          colorScheme: const ColorScheme.dark(
+            primary: kViolet,
+            secondary: kAccent,
+            surface: Color(0xFF111A30),
+          ),
           appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.transparent, elevation: 0, centerTitle: true),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            scrolledUnderElevation: 0,
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.06),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 15,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Colors.white24),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Colors.white12),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: kAccent, width: 1.7),
+            ),
+          ),
           chipTheme: ChipThemeData(
             selectedColor: kViolet,
             backgroundColor: Colors.white10,
             side: BorderSide.none,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          dialogTheme: DialogTheme(
+            backgroundColor: const Color(0xFF111A30),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
           ),
         ),
         navigatorKey: _appNavigatorKey,

@@ -20,6 +20,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - name: Verify official website browser CORS
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          headers="$(curl --fail --silent --show-error --dump-header - --output /dev/null \
+            -X OPTIONS "$API_BASE/api/v1/auth/login" \
+            -H 'Origin: https://manou23.github.io' \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type')"
+          printf '%s\n' "$headers"
+          grep -qi '^access-control-allow-origin: https://manou23.github.io' <<<"$headers"
       - name: Check live API and database readiness
         env:
           API_BASE: https://mesut-iptv-api.onrender.com

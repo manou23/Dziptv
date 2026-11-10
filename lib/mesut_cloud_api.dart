@@ -136,9 +136,10 @@ class MesutCloudApi {
     _syncRequested = true;
     if (_syncing || _syncTimer != null) return;
 
+    final exponent = (_retryAttempt - 1).clamp(0, 4).toInt();
     final delaySeconds = _retryAttempt == 0
         ? 2
-        : min(300, 15 * (1 << min(_retryAttempt - 1, 4)));
+        : (15 * (1 << exponent)).clamp(15, 300).toInt();
     _syncTimer = Timer(Duration(seconds: delaySeconds), () async {
       _syncTimer = null;
       await _runScheduledSync();

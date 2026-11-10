@@ -26,7 +26,7 @@ android {
     productFlavors {
         create("phone") {
             dimension = "device"
-            applicationIdSuffix = ".mobile"
+            // Keep the original package ID so existing phone installs can update in place.
             versionNameSuffix = "-mobile"
         }
         create("tv") {

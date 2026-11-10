@@ -24,7 +24,7 @@ Independent multi-tenant API service for MESUT IPTV. The Flutter app remains res
    npm run dev
    ```
 
-The API listens on port 3000 by default. Health check: `GET /health`.
+The API listens on port 3000 by default. `GET /health` checks that the process is responding; `GET /health/ready` also verifies the PostgreSQL connection.
 
 ## API v1
 
@@ -40,7 +40,7 @@ The API listens on port 3000 by default. Health check: `GET /health`.
 
 Protected endpoints require `Authorization: Bearer <token>`.
 
-Sync keys are allow-listed: `favorites`, `watch_history`, and `settings`. Every device and sync query is scoped to the authenticated user ID. IPTV provider credentials and stream URLs are deliberately not part of this API contract.
+Sync keys are allow-listed: `favorites`, `watch_history`, `settings`, `sync_meta`, and the encrypted `profiles` vault. The batch endpoint uses per-record `expectedVersion` values to prevent one device from silently overwriting newer changes from another. Every device and sync query is scoped to the authenticated user ID. IPTV provider credentials and stream URLs are deliberately not part of this API contract.
 
 ## Deployment notes
 

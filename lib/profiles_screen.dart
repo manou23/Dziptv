@@ -207,6 +207,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             height: kIsTvBuild ? 136 : 96,
             child: TvFocus(
               radius: 20,
+              autofocus: kIsTvBuild && i == 0,
               onTap: () => _edit ? _delete(i) : _open(i),
               child: Stack(
                 fit: StackFit.expand,
@@ -281,7 +282,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     );
   }
 
-  Widget _addTile() {
+  Widget _addTile({bool autofocus = false}) {
     return SizedBox(
       width: kIsTvBuild ? 136 : 96,
       child: Column(
@@ -291,6 +292,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             height: kIsTvBuild ? 136 : 96,
             child: TvFocus(
               radius: 20,
+              autofocus: autofocus,
               onTap: _add,
               child: Container(
                 decoration: BoxDecoration(
@@ -360,7 +362,7 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                           runSpacing: kIsTvBuild ? 34 : 22,
                           children: [
                             for (var i = 0; i < accs.length; i++) _tile(i, accs[i]),
-                            if (!_edit) _addTile(),
+                            if (!_edit) _addTile(autofocus: kIsTvBuild && accs.isEmpty),
                           ],
                         ),
                       ],

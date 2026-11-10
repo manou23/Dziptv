@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _featuredFuture = widget.service.allVod();
-    _seriesFuture = widget.service.seriesList();
+    _seriesFuture = widget.service.allSeries();
     _featuredTimer = Timer.periodic(const Duration(seconds: 7), (_) {
       if (!mounted || _featuredCount < 2) return;
       final next = (_featuredIndex + 1) % _featuredCount;

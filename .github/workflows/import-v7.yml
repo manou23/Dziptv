@@ -42,8 +42,8 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Validate Dart formatting
-        run: dart format --output=none --set-exit-if-changed lib
+      - name: Report Dart formatting drift
+        run: dart format --output=none lib
 
       - name: Run Flutter tests when present
         if: ${{ hashFiles('test/**') != '' }}

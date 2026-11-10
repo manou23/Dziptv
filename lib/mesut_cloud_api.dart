@@ -297,7 +297,11 @@ class MesutCloudApi {
     final records = <String, dynamic>{
       for (final entry in updated.entries) entry.key: entry.value['value'],
     };
-    await Store.applyCloudRecords(records, profileId: profileId);
+    // A profile may be switched while the request is in flight. Never apply
+    // the old profile's data to the newly active local profile.
+    if (Store.cloudProfileId == profileId) {
+      await Store.applyCloudRecords(records, profileId: profileId);
+    }
   }
 
   static Future<void> signOut() async {

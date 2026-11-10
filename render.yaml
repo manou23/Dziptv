@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mesut-iptv-api
+    runtime: node
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install --no-audit --no-fund && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        value: ""

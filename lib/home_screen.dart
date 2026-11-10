@@ -29,7 +29,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final Future<Map<String, String>> _acc = widget.service.account();
   late final Future<List<MediaItem>> _featuredFuture;
+  late final Future<List<MediaItem>> _seriesFuture;
   final PageController _featuredController = PageController();
+  final ScrollController _mobileScrollController = ScrollController();
   Timer? _featuredTimer;
   int _featuredIndex = 0;
   int _featuredCount = 0;
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _featuredFuture = widget.service.allVod();
+    _seriesFuture = widget.service.seriesList();
     _featuredTimer = Timer.periodic(const Duration(seconds: 7), (_) {
       if (!mounted || _featuredCount < 2) return;
       final next = (_featuredIndex + 1) % _featuredCount;
@@ -50,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _featuredTimer?.cancel();
     _featuredController.dispose();
+    _mobileScrollController.dispose();
     super.dispose();
   }
 
@@ -146,41 +150,100 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Mobile-first Netflix-inspired discovery header.
+  // ---------------- تجربة الهاتف: واجهة اكتشاف سينمائية ----------------
   Widget _mobileHeader() {
+    final active = Store.active;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(18, 10, 14, 8),
       child: Row(children: [
         Container(
-          width: 38, height: 38,
+          width: 34, height: 38,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(colors: [kViolet, kAccent]),
+            borderRadius: BorderRadius.circular(9),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [Color(0xFFB21D2B), Color(0xFF74101C)],
+            ),
           ),
           child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 27),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 9),
         const Expanded(child: Text('MESUT', style: TextStyle(
-          fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: 1.4))),
-        _topAction(Icons.people_alt_rounded, 'البروفايلات', () => _push(const ProfilesScreen())),
-        _topAction(Icons.search_rounded, 'البحث', () => _push(SearchScreen(service: s))),
-        _topAction(Icons.favorite_rounded, 'المفضلة', _openFavorites),
-        _topAction(Icons.settings_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
+          fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5,
+        ))),
+        _mobileHeaderAction(Icons.search_rounded, 'بحث', () => _push(SearchScreen(service: s))),
+        const SizedBox(width: 3),
+        _mobileHeaderAction(Icons.tune_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
+        const SizedBox(width: 7),
+        GestureDetector(
+          onTap: () => _push(const ProfilesScreen()),
+          child: Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFF252A36),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Center(child: Text(
+              (active?.name.trim().isNotEmpty == true ? active!.name.trim()[0] : 'M').toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.white),
+            )),
+          ),
+        ),
       ]),
     );
   }
 
-  Widget _topAction(IconData icon, String label, VoidCallback action) => IconButton(
-    tooltip: label, onPressed: action, visualDensity: VisualDensity.compact,
-    icon: Icon(icon, size: 22, color: Colors.white.withOpacity(0.88)),
-  );
+  Widget _mobileHeaderAction(IconData icon, String label, VoidCallback action) =>
+      IconButton(
+        tooltip: tr(label),
+        onPressed: action,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
+        icon: Icon(icon, size: 22, color: Colors.white.withOpacity(0.9)),
+      );
+
+  Widget _mobileBrowseTabs() {
+    Widget tab(String label, VoidCallback action, {bool selected = false}) =>
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: 9),
+          child: Material(
+            color: selected ? Colors.white : const Color(0xFF242832),
+            borderRadius: BorderRadius.circular(7),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(7),
+              onTap: action,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                child: Text(label, style: TextStyle(
+                  color: selected ? const Color(0xFF101116) : Colors.white,
+                  fontSize: 12, fontWeight: FontWeight.w800,
+                )),
+              ),
+            ),
+          ),
+        );
+    return SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        children: [
+          tab('لك', () => _mobileScrollController.animateTo(0,
+            duration: const Duration(milliseconds: 350), curve: Curves.easeOut), selected: true),
+          tab('أفلام', _openMovies),
+          tab('مسلسلات', _openSeries),
+          tab('مباشر', () => _openLive()),
+        ],
+      ),
+    );
+  }
 
   List<MediaItem> _latestMovies(List<MediaItem> source, {int limit = 18}) {
     final filtered = source
         .where((item) => !Store.kidsMode || !isAdult(item.name))
         .toList();
-    // Xtream's "added" field is a Unix timestamp. Keep provider order when
-    // the server does not supply timestamps instead of guessing recency.
     if (filtered.any((item) => item.added > 0)) {
       final indexed = filtered.asMap().entries.toList();
       indexed.sort((a, b) {
@@ -200,164 +263,283 @@ class _HomeScreenState extends State<HomeScreen> {
         _featuredCount = movies.length;
         if (movies.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 18),
             child: Container(
-              height: 270, decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(colors: [Color(0xFF30245F), Color(0xFF101C38)],
-                    begin: Alignment.topRight, end: Alignment.bottomLeft),
+              height: 405,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(
+                  begin: Alignment.topRight, end: Alignment.bottomLeft,
+                  colors: [Color(0xFF35151D), Color(0xFF15171D), Color(0xFF090A0D)],
+                ),
               ),
               child: Center(child: snapshot.connectionState == ConnectionState.waiting
-                  ? const CircularProgressIndicator(color: kAccent)
-                  : const Text('أضف اشتراكك لعرض مكتبة الأفلام', style: TextStyle(color: Colors.white70))),
+                ? const CircularProgressIndicator(color: Color(0xFFE50914))
+                : const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('أضف اشتراكك لعرض مكتبة الأفلام',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: 15)),
+                  )),
             ),
           );
         }
         return Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
           child: SizedBox(
-            height: 310,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(children: [
-                PageView.builder(
-                  controller: _featuredController,
-                  itemCount: movies.length,
-                  onPageChanged: (index) => setState(() => _featuredIndex = index),
-                  itemBuilder: (context, index) {
-                    final movie = movies[index];
-                    return GestureDetector(
-                      onTap: () => _openVod(movie),
-                      child: Stack(fit: StackFit.expand, children: [
-                        if (movie.image.isNotEmpty)
-                          Image.network(movie.image, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(color: const Color(0xFF202A4B))),
-                        if (movie.image.isEmpty) Container(color: const Color(0xFF202A4B)),
-                        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+            height: 440,
+            child: Stack(children: [
+              PageView.builder(
+                controller: _featuredController,
+                itemCount: movies.length,
+                onPageChanged: (index) => setState(() => _featuredIndex = index),
+                itemBuilder: (context, index) {
+                  final movie = movies[index];
+                  return GestureDetector(
+                    onTap: () => _openVod(movie),
+                    child: Stack(fit: StackFit.expand, children: [
+                      if (movie.image.isNotEmpty)
+                        Image.network(movie.image, fit: BoxFit.cover,
+                          cacheWidth: 900,
+                          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF25212A)))
+                      else
+                        Container(color: const Color(0xFF25212A)),
+                      const DecoratedBox(decoration: BoxDecoration(
+                        gradient: LinearGradient(
                           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [Color(0x16000000), Color(0xEE080D1B)],
-                          stops: [0.12, 1.0],
-                        ))),
-                        Positioned(left: 18, right: 18, bottom: 22, child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          colors: [
+                            Color(0x9907090D), Color(0x1107090D),
+                            Color(0x2207090D), Color(0xF5090A0D),
+                          ],
+                          stops: [0.0, 0.28, 0.48, 1.0],
+                        ),
+                      )),
+                      Positioned(
+                        left: 22, right: 22, bottom: 26,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(7)),
-                              child: const Text('اكتشف الآن', style: TextStyle(
-                                color: Colors.black, fontSize: 11, fontWeight: FontWeight.w900)),
+                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE50914),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('اختيار MESUT',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.6, color: Colors.white)),
                             ),
+                            const SizedBox(height: 13),
+                            Text(movie.name, maxLines: 2, textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 27, height: 1.12,
+                                fontWeight: FontWeight.w900, color: Colors.white,
+                                shadows: [Shadow(color: Colors.black54, blurRadius: 12)])),
                             const SizedBox(height: 10),
-                            Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.12)),
-                            const SizedBox(height: 12),
-                            Row(children: [
+                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFE5C46B), size: 15),
+                              const SizedBox(width: 5),
+                              Text(movie.rating.isNotEmpty ? movie.rating : 'من مكتبتك',
+                                style: const TextStyle(fontSize: 12, color: Colors.white70,
+                                  fontWeight: FontWeight.w700)),
+                            ]),
+                            const SizedBox(height: 17),
+                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                               FilledButton.icon(
                                 onPressed: () => _openVod(movie),
-                                icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                                label: const Text('شاهد الآن'),
-                                style: FilledButton.styleFrom(backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 17)),
+                                icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                                label: const Text('تشغيل'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                  minimumSize: const Size(126, 44),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                                ),
                               ),
                               const SizedBox(width: 10),
-                              if (movie.rating.isNotEmpty) Text('★ ${movie.rating}',
-                                style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                              OutlinedButton.icon(
+                                onPressed: () => _openVod(movie),
+                                icon: const Icon(Icons.info_outline_rounded, size: 19),
+                                label: const Text('التفاصيل'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white54),
+                                  minimumSize: const Size(126, 44),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                ),
+                              ),
+                            ]),
+                            const SizedBox(height: 18),
+                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              for (var i = 0; i < movies.length; i++)
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 220),
+                                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                                  width: i == _featuredIndex ? 19 : 5,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: i == _featuredIndex ? const Color(0xFFE50914) : Colors.white54,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
                             ]),
                           ],
-                        )),
-                      ]),
-                    );
-                  },
-                ),
-                Positioned(top: 14, right: 16, child: Row(children: [
-                  const Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 15),
-                  const SizedBox(width: 5),
-                  Text('مختارات من مكتبتك', style: TextStyle(
-                    color: Colors.white.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w700)),
-                ])),
-                Positioned(bottom: 8, right: 18, child: Row(children: [
-                  for (var i = 0; i < movies.length; i++)
-                    AnimatedContainer(duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.only(left: 4), width: i == _featuredIndex ? 18 : 5,
-                      height: 5, decoration: BoxDecoration(
-                        color: i == _featuredIndex ? kAccent : Colors.white54,
-                        borderRadius: BorderRadius.circular(8))),
-                ])),
-              ]),
-            ),
+                        ),
+                      ),
+                    ]),
+                  );
+                },
+              ),
+              Positioned(
+                top: 15, left: 18, right: 18,
+                child: Row(children: [
+                  const Text('MESUT', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2,
+                    color: Colors.white, shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                  )),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.black38,
+                      borderRadius: BorderRadius.circular(4)),
+                    child: const Text('مميز لك', style: TextStyle(
+                      color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+            ]),
           ),
         );
       },
     );
+  }
+
+  Widget _mobilePosterRow(String title, List<MediaItem> items, ValueChanged<MediaItem> onOpen,
+      {VoidCallback? onSeeAll}) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(17, 12, 17, 11),
+        child: Row(children: [
+          Expanded(child: Text(title, style: const TextStyle(
+            fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white))),
+          if (onSeeAll != null)
+            InkWell(onTap: onSeeAll, child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+              child: Row(children: [
+                Text('عرض الكل', style: TextStyle(fontSize: 11,
+                  color: Color(0xFFB8BAC2), fontWeight: FontWeight.w700)),
+                Icon(Icons.chevron_right_rounded, size: 17, color: Color(0xFFB8BAC2)),
+              ]),
+            )),
+        ]),
+      ),
+      SizedBox(
+        height: 211,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 17),
+          scrollDirection: Axis.horizontal,
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return SizedBox(
+              width: 119,
+              child: GestureDetector(
+                onTap: () => onOpen(item),
+                onLongPress: () async {
+                  await Store.toggleFav(item, item.type == 'series' ? 'series' : 'vod');
+                  if (mounted) setState(() {});
+                },
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: Stack(fit: StackFit.expand, children: [
+                      Container(color: const Color(0xFF252832)),
+                      if (item.image.isNotEmpty)
+                        Image.network(item.image, fit: BoxFit.cover, cacheWidth: 300,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                      if (item.image.isEmpty)
+                        const Center(child: Icon(Icons.movie_creation_outlined,
+                          size: 32, color: Colors.white24)),
+                      Positioned(left: 5, top: 5, child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: Colors.black54,
+                          borderRadius: BorderRadius.circular(4)),
+                        child: const Icon(Icons.play_arrow_rounded, size: 13, color: Colors.white),
+                      )),
+                    ]),
+                  )),
+                  const SizedBox(height: 7),
+                  Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, height: 1.2,
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            );
+          },
+        ),
+      ),
+    ]);
   }
 
   Widget _mobileMoviesRow() {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
+      builder: (context, snapshot) => _mobilePosterRow(
+        'أحدث الأفلام', _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18),
+        _openVod, onSeeAll: _openMovies,
+      ),
+    );
+  }
+
+  Widget _mobileSeriesRow() {
+    return FutureBuilder<List<MediaItem>>(
+      future: _seriesFuture,
       builder: (context, snapshot) {
-        final movies = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
-        if (movies.isEmpty) return const SizedBox.shrink();
-        return _row('أحدث الأفلام', [for (final movie in movies)
-          _MiniCard(image: movie.image, title: movie.name, onTap: () => _openVod(movie))]);
+        final items = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
+        return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, onSeeAll: _openSeries);
       },
     );
   }
 
   Widget _mobileBottomBar() {
-    Widget item(IconData icon, String label, List<Color> colors, VoidCallback action) =>
-        Expanded(
+    Widget item(IconData icon, String label, VoidCallback action, {bool selected = false}) =>
+        Expanded(child: InkWell(
+          onTap: action,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Material(
-              color: Colors.white.withOpacity(0.045),
-              borderRadius: BorderRadius.circular(15),
-              child: InkWell(
-                onTap: action,
-                borderRadius: BorderRadius.circular(15),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Container(
-                      width: 32,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topRight,
-                          end: Alignment.bottomLeft,
-                          colors: colors,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [BoxShadow(
-                          color: colors.first.withOpacity(0.24),
-                          blurRadius: 9,
-                          offset: const Offset(0, 3),
-                        )],
-                      ),
-                      child: Icon(icon, size: 19, color: Colors.white),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
-                  ]),
-                ),
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 22,
+                color: selected ? Colors.white : Colors.white54),
+              const SizedBox(height: 4),
+              Text(label, maxLines: 1, style: TextStyle(
+                fontSize: 10, fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+                color: selected ? Colors.white : Colors.white54)),
+            ]),
           ),
-        );
+        ));
     return SafeArea(
       top: false,
       child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xF20B1228),
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.10))),
+        decoration: const BoxDecoration(
+          color: Color(0xF20A0B0F),
+          border: Border(top: BorderSide(color: Color(0xFF292B32), width: 0.8)),
         ),
-        padding: const EdgeInsets.fromLTRB(8, 7, 8, 5),
+        padding: const EdgeInsets.fromLTRB(5, 4, 5, 2),
         child: Row(children: [
-          item(Icons.live_tv_rounded, 'بث مباشر',
-              const [Color(0xFF8264FF), Color(0xFF4932B5)], () => _openLive()),
-          item(Icons.movie_filter_rounded, 'أفلام',
-              const [Color(0xFF36B8FF), Color(0xFF1765B5)], _openMovies),
-          item(Icons.video_library_rounded, 'مسلسلات',
-              const [Color(0xFF26C6A6), Color(0xFF087D70)], _openSeries),
+          item(Icons.home_rounded, 'الرئيسية', () {
+            if (_mobileScrollController.hasClients) {
+              _mobileScrollController.animateTo(0,
+                duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+            }
+          }, selected: true),
+          item(Icons.live_tv_rounded, 'TV', () => _openLive()),
+          item(Icons.movie_filter_rounded, 'أفلام', _openMovies),
+          item(Icons.video_library_rounded, 'مسلسلات', _openSeries),
         ]),
       ),
     );
@@ -581,30 +763,47 @@ class _HomeScreenState extends State<HomeScreen> {
       final order = Store.homeOrder();
       final hidden = Store.homeHidden();
       return Scaffold(
-        body: Container(decoration: kBgGradient, child: SafeArea(child: ListView(
-          padding: const EdgeInsets.only(bottom: 16),
-          children: [
-            _mobileHeader(),
-            _mobileHero(),
-            _mobileMoviesRow(),
-            for (final id in order)
-              if (!hidden.contains(id) && id != 'favorites') _section(id),
-            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: GlassBox(
-              radius: 15, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              child: FutureBuilder<Map<String, String>>(future: _acc, builder: (_, snap) {
-                final account = snap.data;
-                return Row(children: [
-                  const Icon(Icons.person_rounded, size: 18, color: kAccent),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(s.name, overflow: TextOverflow.ellipsis,
-                    textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 12))),
-                  Text(account == null ? '...' : '${tr('ينتهي')}: ${account['exp']}',
-                    style: const TextStyle(fontSize: 11, color: Colors.white70)),
-                ]);
-              }),
-            )),
-          ],
-        ))),
+        backgroundColor: const Color(0xFF090A0D),
+        body: Container(
+          color: const Color(0xFF090A0D),
+          child: SafeArea(
+            bottom: false,
+            child: ListView(
+              controller: _mobileScrollController,
+              padding: const EdgeInsets.only(bottom: 22),
+              children: [
+                _mobileHeader(),
+                _mobileBrowseTabs(),
+                _mobileHero(),
+                for (final id in order)
+                  if (!hidden.contains(id) && id == 'continue') _section(id),
+                _mobileMoviesRow(),
+                _mobileSeriesRow(),
+                for (final id in order)
+                  if (!hidden.contains(id) && id != 'continue' && id != 'favorites') _section(id),
+                if (!hidden.contains('favorites')) _section('favorites'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(17, 18, 17, 10),
+                  child: FutureBuilder<Map<String, String>>(
+                    future: _acc,
+                    builder: (_, snap) {
+                      final account = snap.data;
+                      return Row(children: [
+                        const Icon(Icons.verified_user_outlined, size: 15, color: Colors.white38),
+                        const SizedBox(width: 7),
+                        Expanded(child: Text(s.name, overflow: TextOverflow.ellipsis,
+                          textDirection: TextDirection.ltr,
+                          style: const TextStyle(fontSize: 10, color: Colors.white38))),
+                        Text(account == null ? '...' : '${tr('ينتهي')}: ${account['exp']}',
+                          style: const TextStyle(fontSize: 10, color: Colors.white38)),
+                      ]);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         bottomNavigationBar: _mobileBottomBar(),
       );
     }

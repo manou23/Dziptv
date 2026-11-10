@@ -25,9 +25,15 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ));
     await Store.init();
+    // Every local favorite/history/settings change schedules automatic cloud sync.
+    Store.cloudSyncCallback = MesutCloudApi.scheduleSync;
     I18n.init();
     // حساب MESUT إلزامي قبل السماح بإضافة حساب Xtream أو دخول التطبيق.
     final mesutSignedIn = await MesutCloudApi.isSignedIn;
+    if (mesutSignedIn) {
+      // Sync on every app launch; failed attempts are retried by the cloud service.
+      await MesutCloudApi.scheduleSync();
+    }
     if (!mesutSignedIn) {
       start = MesutAccountScreen(
         onAuthenticated: () {

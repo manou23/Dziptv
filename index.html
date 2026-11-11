@@ -290,7 +290,34 @@
       .faq details{transition:none!important}
     }
 
-  </style>
+  
+    /* MESUT performance layer: keep the cinematic look while reducing mobile GPU work */
+    @media(max-width:768px){
+      .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(6,11,26,.97)}
+      .language-menu{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0d162e}
+      body:before,.orb,.launch-banner:after{animation:none!important;filter:none!important}
+      .orb{opacity:.62}
+      .device{box-shadow:0 12px 34px #0008,0 0 18px #7654ff33}
+      .cinema-divider{box-shadow:none!important}
+      .feature,.screen-card,.download-card,.step{transition:transform .18s ease,border-color .18s ease}
+      .motion-ready [data-reveal]{transition:opacity .32s ease,transform .32s ease}
+    }
+    @media(max-width:480px){
+      body{background:linear-gradient(180deg,#0a1022 0%,#080d1b 48%,#080d1b 100%)}
+      .visual .orb,.cinema-reel{display:none}
+      .device{box-shadow:0 10px 26px #0008}
+      .feature,.screen-card,.download-card,.step{box-shadow:none}
+    }
+    @media(prefers-reduced-motion:reduce){
+      body:before,.orb,.visual .tv,.visual .phone,.visual .cinema-reel{animation:none!important}
+      .motion-ready [data-reveal]{opacity:1!important;transform:none!important;transition:none!important}
+    }
+    @supports(content-visibility:auto){
+      .section{content-visibility:auto;contain-intrinsic-size:auto 760px}
+      #screens{contain-intrinsic-size:auto 900px}
+      #download{contain-intrinsic-size:auto 620px}
+    }
+</style>
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
@@ -509,7 +536,7 @@
     }
   }
   updateLaunchCountdown();
-  window.setInterval(updateLaunchCountdown,1000);
+  const countdownTimer=window.setInterval(()=>{updateLaunchCountdown();if(Date.now()>=launchTarget)window.clearInterval(countdownTimer);},1000);
   window.addEventListener("storage",function(event){if(event.key==="mesut-site-language" && ["ar","fr","en"].includes(event.newValue)) applyLanguage(event.newValue);});
 
 

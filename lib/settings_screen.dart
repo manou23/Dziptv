@@ -282,6 +282,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    String confirmLabel = 'متابعة',
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   Widget _section(String t) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
         child: Text(t,
@@ -305,6 +331,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(14),
           children: [
+            _box(
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        gradient: const LinearGradient(
+                          colors: [kGold, Color(0xFFB77A22)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: const Icon(Icons.workspace_premium_rounded,
+                          color: Color(0xFF101A34), size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('مركز إعدادات MESUT',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(
+                            (kIsTvBuild ? 'Android TV' : 'نسخة الهاتف') +
+                                ' • الإصدار $kVersion',
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                          if (Store.active != null) ...[
+                            const SizedBox(height: 3),
+                            Text('الحساب النشط: ' + Store.active!.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: kGold, fontSize: 11)),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.tune_rounded, color: kGold, size: 22),
+                  ],
+                ),
+              ),
+            ),
             _section('اللغة'),
             _box(Padding(
               padding: const EdgeInsets.all(14),
@@ -415,10 +488,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _box(ListTile(
               leading: const Icon(Icons.cleaning_services_rounded),
               title: const Text('مسح الذاكرة المؤقتة للصور'),
-              onTap: () {
+              onTap: () async {
+                final confirmed = await _confirmAction(
+                  title: 'مسح الذاكرة المؤقتة؟',
+                  message: 'سيتم حذف الصور المخزنة مؤقتاً فقط. لن تُحذف حساباتك أو المفضلة أو سجل المشاهدة.',
+                  confirmLabel: 'مسح الآن',
+                );
+                if (!confirmed) return;
                 PaintingBinding.instance.imageCache.clear();
                 PaintingBinding.instance.imageCache.clearLiveImages();
-                _toast('تم المسح');
+                _toast('تم مسح الذاكرة المؤقتة للصور');
               },
             )),
             _section('البيانات'),
@@ -426,16 +505,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.history_rounded),
               title: const Text('مسح سجل المشاهدة'),
               onTap: () async {
+                final confirmed = await _confirmAction(
+                  title: 'مسح سجل المشاهدة؟',
+                  message: 'سيُحذف سجل المشاهدة لهذا الحساب من هذا الجهاز والمزامنة المرتبطة به. لا يمكن التراجع عن ذلك.',
+                  confirmLabel: 'مسح السجل',
+                );
+                if (!confirmed) return;
                 await Store.clearHistory();
-                _toast('تم مسح السجل');
+                if (mounted) _toast('تم مسح سجل المشاهدة');
               },
             )),
             _box(ListTile(
               leading: const Icon(Icons.star_border_rounded),
               title: const Text('مسح المفضلة'),
               onTap: () async {
+                final confirmed = await _confirmAction(
+                  title: 'مسح المفضلة؟',
+                  message: 'سيتم حذف جميع العناصر المفضلة لهذا الحساب من هذا الجهاز والمزامنة المرتبطة به.',
+                  confirmLabel: 'مسح المفضلة',
+                );
+                if (!confirmed) return;
                 await Store.clearFavs();
-                _toast('تم مسح المفضلة');
+                if (mounted) _toast('تم مسح المفضلة');
               },
             )),
             _section('حول التطبيق'),
@@ -462,6 +553,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _box(ListTile(
               leading: const Icon(Icons.system_update_rounded),
               title: const Text('التحقق من التحديثات'),
+              subtitle: Text(kIsTvBuild ? 'فحص وتنزيل تحديث Android TV' : 'فحص وتنزيل تحديث الهاتف'),
               onTap: _checkUpdate,
             )),
             const SizedBox(height: 20),

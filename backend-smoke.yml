@@ -1,0 +1,235 @@
+name: MESUT IPTV Backend Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesut-backend-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify official website browser CORS
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          # Render deploys asynchronously after a push. Retry the preflight
+          # while the new allowlist is rolling out instead of failing early.
+          headers=""
+          for attempt in $(seq 1 18); do
+            headers="$(curl --silent --show-error --dump-header - --output /dev/null \
+              -X OPTIONS "$API_BASE/api/v1/auth/login" \
+              -H 'Origin: https://mesutiptv.pages.dev' \
+              -H 'Access-Control-Request-Method: POST' \
+              -H 'Access-Control-Request-Headers: content-type' || true)"
+            if grep -qi '^access-control-allow-origin: https://mesutiptv.pages.dev' <<<"$headers"; then
+              printf '%s\\n' "$headers"
+              exit 0
+            fi
+            echo "Official-site CORS is not live yet (attempt $attempt/18)."
+            printf '%s\\n' "$headers"
+            sleep 10
+          done
+          echo "The live API did not allow the official Cloudflare Pages origin."
+          exit 1
+      - name: Check live API and database readiness
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          echo "Checking API and PostgreSQL readiness..."
+          curl --fail --silent --show-error \
+            --retry 8 --retry-all-errors --retry-delay 10 \
+            --max-time 35 "$API_BASE/health/ready"
+
+          # Render may deploy asynchronously after the GitHub merge. Wait for
+          # the API version that contains the quota enforcement before testing it.
+          for attempt in $(seq 1 18); do
+            health="$(curl --silent --show-error --max-time 15 "$API_BASE/health/ready" || true)"
+            if jq -e '.apiVersion == 2' <<<"$health" >/dev/null 2>&1; then
+              echo "$health"
+              break
+            fi
+            if [ "$attempt" = "18" ]; then
+              echo "Render has not deployed the quota-aware API yet."
+              echo "$health"
+              exit 1
+            fi
+            sleep 10
+          done
+
+
+
+      - name: Test disposable account, device registration, and cloud sync
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          email="ci-smoke-${GITHUB_RUN_ID}@example.invalid"
+          password="$(openssl rand -hex 24)"
+          echo "Creating an isolated disposable smoke-test account..."
+          registered="$(curl --fail --silent --show-error --max-time 35 \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg email "$email" --arg password "$password" '{email:$email,password:$password}')" \
+            "$API_BASE/api/v1/auth/register")"
+          token="$(jq -r '.token // empty' <<<"$registered")"
+          test -n "$token"
+
+          logged_in="$(curl --fail --silent --show-error --max-time 35 \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg email "$email" --arg password "$password" '{email:$email,password:$password}')" \
+            "$API_BASE/api/v1/auth/login")"
+          login_token="$(jq -r '.token // empty' <<<"$logged_in")"
+          test -n "$login_token"
+
+          echo "Waiting for the authenticated atomic sync route to reach Render..."
+          route_status=""
+          for attempt in $(seq 1 12); do
+            route_status="$(curl --silent --show-error --output /tmp/batch-route.json \
+              --write-out '%{http_code}' --max-time 20 -X POST \
+              -H "Authorization: Bearer $login_token" \
+              -H 'Content-Type: application/json' -d '{}' \
+              "$API_BASE/api/v1/sync/batch")"
+            if [ "$route_status" = "400" ]; then break; fi
+            if [ "$route_status" != "404" ]; then
+              cat /tmp/batch-route.json
+              exit 1
+            fi
+            sleep 10
+          done
+          test "$route_status" = "400"
+
+          device_ids=()
+          for index in 1 2 3 4 5; do
+            device="$(curl --fail --silent --show-error --max-time 35 \
+              -H "Authorization: Bearer $login_token" \
+              -H 'Content-Type: application/json' \
+              -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$index" '{deviceKey:$key,name:("CI Smoke Test "+$key),platform:"android"}')" \
+              "$API_BASE/api/v1/devices/register")"
+            device_id="$(jq -r '.device.id // empty' <<<"$device")"
+            test -n "$device_id"
+            device_ids+=("$device_id")
+          done
+
+          sixth_status="$(curl --silent --show-error --output /tmp/device-limit.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-sixth" '{deviceKey:$key,name:"CI Sixth Device",platform:"android"}')" \
+            "$API_BASE/api/v1/devices/register")"
+          test "$sixth_status" = "409"
+          grep -q '"error":"DEVICE_LIMIT_REACHED"' /tmp/device-limit.json
+
+          device_list="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/devices")"
+          test "$(jq '.devices | length' <<<"$device_list")" = "5"
+          for device_id in "${device_ids[@]}"; do
+            curl --fail --silent --show-error --output /dev/null --max-time 35 \
+              -X DELETE -H "Authorization: Bearer $login_token" \
+              "$API_BASE/api/v1/devices/$device_id"
+          done
+
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{_smokeTest:$run}}')" \
+            "$API_BASE/api/v1/sync/settings"
+
+          # Verify the collection metadata record used for deletion-safe sync.
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg run "$GITHUB_RUN_ID" '{value:{favorites:{"profile-a":($run|tonumber),"profile-b":(($run|tonumber)+1)},watch_history:{"profile-a":($run|tonumber),"profile-b":(($run|tonumber)+1)}}}')" \
+            "$API_BASE/api/v1/sync/sync_meta"
+
+          # Empty snapshots are valid deletions, and records remain isolated per profile.
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d '{"value":{"profiles":{"profile-a":{"live":[],"vod":[],"series":[]},"profile-b":{"live":[],"vod":[],"series":[]}}}}' \
+            "$API_BASE/api/v1/sync/favorites"
+          curl --fail --silent --show-error --max-time 35 \
+            -X PUT -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' \
+            -d '{"value":{"profiles":{"profile-a":[],"profile-b":[]}}}' \
+            "$API_BASE/api/v1/sync/watch_history"
+
+          records="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+
+          # Exercise the atomic compare-and-swap endpoint used by current clients.
+          versions="$(jq -c '[.records[] | {key, value: .version}] | from_entries' <<<"$records")"
+          batch_body="$(jq -n --argjson versions "$versions" --arg run "$GITHUB_RUN_ID" \
+            '{records:{
+              settings:{expectedVersion:$versions.settings,value:{_batchSmoke:$run}},
+              favorites:{expectedVersion:$versions.favorites,value:{profiles:{}}},
+              watch_history:{expectedVersion:$versions.watch_history,value:{profiles:{}}},
+              sync_meta:{expectedVersion:$versions.sync_meta,value:{favorites:{},watch_history:{}}},
+              profiles:{expectedVersion:0,profileCount:5,value:{format:"MESUT_PROFILE_V1",nonce:"Y2k=",cipherText:"Y2k=",mac:"Y2k="}}
+            }}')"
+          curl --fail --silent --show-error --max-time 35 \
+            -X POST -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$batch_body" \
+            "$API_BASE/api/v1/sync/batch"
+
+          # The encrypted vault count is metadata only; the server enforces the
+          # five-profile limit without decrypting or inspecting credentials.
+          updated_records="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+          profile_version="$(jq -r '.records[] | select(.key == "profiles") | .version' <<<"$updated_records")"
+          profile_limit_body="$(jq -n --argjson version "$profile_version" \
+            '{records:{profiles:{expectedVersion:$version,profileCount:6,value:{format:"MESUT_PROFILE_V1",nonce:"Y2k=",cipherText:"Y2k=",mac:"Y2k="}}}}')"
+          profile_limit_status="$(curl --silent --show-error --output /tmp/profile-limit.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$profile_limit_body" \
+            "$API_BASE/api/v1/sync/batch")"
+          test "$profile_limit_status" = "409"
+          grep -q '"error":"PROFILE_LIMIT_REACHED"' /tmp/profile-limit.json
+
+          # Replaying the old versions must return 409 and must not partially write.
+          conflict_status="$(curl --silent --show-error --output /tmp/batch-conflict.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$batch_body" \
+            "$API_BASE/api/v1/sync/batch")"
+          test "$conflict_status" = "409"
+          grep -q '"error":"SYNC_VERSION_CONFLICT"' /tmp/batch-conflict.json
+          after_conflict="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "settings") | .value._batchSmoke == $run' \
+            <<<"$after_conflict"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "settings") | .value._smokeTest == $run' \
+            <<<"$records"
+          jq -e --arg run "$GITHUB_RUN_ID" \
+            '.records[] | select(.key == "sync_meta") | .value.favorites["profile-a"] == ($run|tonumber) and .value.favorites["profile-b"] == (($run|tonumber)+1)' \
+            <<<"$records"
+          jq -e '.records[] | select(.key == "favorites") | .value.profiles["profile-a"].live == [] and .value.profiles["profile-b"].series == []' \
+            <<<"$records"
+          jq -e '.records[] | select(.key == "watch_history") | .value.profiles["profile-a"] == [] and .value.profiles["profile-b"] == []' \
+            <<<"$records"
+
+      - name: Verify protected sync endpoint rejects anonymous access
+        env:
+          API_BASE: https://mesut-iptv-api.onrender.com
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /tmp/sync-response.json \
+            --write-out '%{http_code}' --max-time 35 "$API_BASE/api/v1/sync")"
+          cat /tmp/sync-response.json
+          test "$status" = "401"
+          grep -q '"error":"AUTH_REQUIRED"' /tmp/sync-response.json

@@ -640,7 +640,7 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
                     SizedBox(height: 8),
                     Text('كلمات مرور Xtream ورموز PIN تُشفّر على الجهاز قبل المزامنة. لا يستطيع الخادم قراءة محتوى الخزنة.', style: TextStyle(color: Colors.white60, fontSize: 12)),
                   ])),
-                  _sectionTitle('الأجهزة المرتبطة', 'الأجهزة التي تستخدم حساب MESUT نفسه',
+                  _sectionTitle(tr('الأجهزة المرتبطة'), tr('الأجهزة التي تستخدم حساب MESUT نفسه') + ' (' + _devices.length.toString() + '/5)',
                     trailing: IconButton(
                       tooltip: 'تحديث الأجهزة',
                       onPressed: _loadingDevices ? null : _loadDevices,

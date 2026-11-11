@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
+import 'models.dart';
 import 'theme.dart';
 import 'store.dart';
 import 'xtream_service.dart';
@@ -46,7 +48,20 @@ class _LoginScreenState extends State<LoginScreen> {
     final s = XtreamService(url, user, pass, _name.text.trim());
     try {
       await s.login();
-      await Store.addAccount(s.toAccount());
+      final account = s.toAccount();
+      final existing = Store.accounts().where((a) => a.id == account.id);
+      const avatarIds = [
+        'preset:man', 'preset:glasses', 'preset:woman', 'preset:beard',
+        'preset:elder', 'preset:elder-woman', 'preset:boy', 'preset:girl',
+        'preset:child', 'preset:person', 'preset:cool', 'preset:family',
+      ];
+      final avatar = existing.isNotEmpty
+          ? existing.first.avatar
+          : avatarIds[Random.secure().nextInt(avatarIds.length)];
+      await Store.addAccount(Account(
+        account.name, account.url, account.user, account.pass,
+        avatar: avatar,
+      ));
       if (!mounted) return;
       if (widget.returnToProfiles) {
         Navigator.of(context).pop();

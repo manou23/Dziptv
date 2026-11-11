@@ -59,6 +59,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   XtreamService get s => widget.service;
 
+  Widget _activeProfileAvatar({double size = 34}) {
+    final account = Store.active;
+    const emojis = <String, String>{
+      'preset:man': '👨', 'preset:glasses': '🤓', 'preset:woman': '👩',
+      'preset:beard': '🧔', 'preset:elder': '👴', 'preset:elder-woman': '👵',
+      'preset:boy': '👦', 'preset:girl': '👧', 'preset:child': '🧒',
+      'preset:person': '🙂', 'preset:cool': '😎', 'preset:family': '👨‍👩‍👧',
+    };
+    final avatar = account?.avatar ?? '';
+    final emoji = emojis[avatar] ?? (account?.name.trim().isNotEmpty == true
+        ? String.fromCharCode(account!.name.trim().runes.first).toUpperCase()
+        : 'M');
+    return Tooltip(
+      message: tr('تغيير البروفايل'),
+      child: Material(
+        color: kPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(size * .28),
+          side: const BorderSide(color: Colors.white30),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _push(const ProfilesScreen()),
+          child: SizedBox(
+            width: size, height: size,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [kViolet, kAccent], begin: Alignment.topRight, end: Alignment.bottomLeft),
+              ),
+              child: Center(child: Text(emoji, style: TextStyle(
+                color: Colors.white, fontSize: size * .57, fontWeight: FontWeight.w900,
+              ))),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _push(Widget w) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => w));
     if (mounted) setState(() {});
@@ -132,14 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.search_rounded),
             onPressed: () => _push(SearchScreen(service: s)),
           ),
-          IconButton(
-            tooltip: tr('تبديل الحساب'),
-            icon: const Icon(Icons.switch_account_rounded),
-            onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute<void>(builder: (_) => const ServicesHomeScreen()),
-              (r) => false,
-            ),
-          ),
+          _activeProfileAvatar(size: 34),
           IconButton(
             tooltip: tr('الإعدادات'),
             icon: const Icon(Icons.settings_rounded),
@@ -152,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---------------- تجربة الهاتف: واجهة اكتشاف سينمائية ----------------
   Widget _mobileHeader() {
-    final active = Store.active;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 14, 8),
       child: Row(children: [
@@ -176,21 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 3),
         _mobileHeaderAction(Icons.tune_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
         const SizedBox(width: 7),
-        GestureDetector(
-          onTap: () => _push(const ProfilesScreen()),
-          child: Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(
-              color: kPanel,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: Center(child: Text(
-              (active?.name.trim().isNotEmpty == true ? active!.name.trim()[0] : 'M').toUpperCase(),
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.white),
-            )),
-          ),
-        ),
+        _activeProfileAvatar(size: 34),
       ]),
     );
   }

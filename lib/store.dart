@@ -183,6 +183,54 @@ class Store {
     await _markCloudProfilesChanged();
   }
 
+  /// Replace a profile's Xtream details without losing its avatar, PIN or
+  /// profile-scoped preferences. Credentials remain in secure storage.
+  static Future<void> updateAccount(String oldId, Account replacement) async {
+    final list = accounts();
+    final index = list.indexWhere((account) => account.id == oldId);
+    if (index < 0) throw Exception('البروفايل غير موجود');
+    final duplicate = list.indexWhere(
+        (account) => account.id == replacement.id && account.id != oldId);
+    if (duplicate >= 0) throw Exception('هذا الاشتراك موجود بالفعل');
+
+    final old = list[index];
+    final previousActive = _p.getInt('active') ?? 0;
+    final next = Account(
+      replacement.name,
+      replacement.url,
+      replacement.user,
+      replacement.pass,
+      avatar: replacement.avatar.isNotEmpty ? replacement.avatar : old.avatar,
+    );
+    final pinHash = oldId == next.id
+        ? null
+        : await ProfilePinService.exportHash(oldId);
+
+    await _secure.write(key: _passwordKey(next.id), value: next.pass);
+    _passwords[next.id] = next.pass;
+    if (oldId != next.id) {
+      if (pinHash != null) {
+        await ProfilePinService.importHash(next.id, pinHash);
+      }
+      for (final suffix in [
+        'hidden_categories_live',
+        'hidden_categories_vod',
+        'hidden_categories_series',
+      ]) {
+        final value = _p.getStringList('${oldId}|$suffix');
+        if (value != null) await _p.setStringList('${next.id}|$suffix', value);
+        await _p.remove('${oldId}|$suffix');
+      }
+      await _secure.delete(key: _passwordKey(oldId));
+      _passwords.remove(oldId);
+      await ProfilePinService.remove(oldId);
+    }
+    list[index] = next;
+    await _saveAccounts(list);
+    await _p.setInt('active', previousActive.clamp(0, list.length - 1).toInt());
+    await _markCloudProfilesChanged();
+  }
+
   static Future<void> setActive(int index) async {
     await _p.setInt('active', index);
     await _markCloudProfilesChanged();

@@ -14,9 +14,9 @@ import 'store.dart';
 import 'utils.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
+import 'mesut_account_screen.dart';
 import 'login_screen.dart';
 import 'profiles_screen.dart';
-import 'mesut_account_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final XtreamService service;
@@ -36,21 +36,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => a == null
-            ? const LoginScreen()
+            ? LoginScreen()
             : HomeScreen(service: XtreamService.fromAccount(a)),
       ),
       (r) => false,
     );
-  }
-
-  Future<void> _switch(int i) async {
-    await Store.setActive(i);
-    _goHome();
-  }
-
-  Future<void> _remove(int i) async {
-    await Store.removeAccount(i);
-    _goHome();
   }
 
   Future<String?> _askNewPin(String title) {
@@ -140,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     I18n.init();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const ProfilesScreen()),
+      MaterialPageRoute<void>(builder: (_) => ProfilesScreen()),
       (r) => false,
     );
   }
@@ -284,9 +274,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accs = Store.accounts();
-    final act = Store.activeIndex;
-
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
       body: Container(
@@ -312,35 +299,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
               ),
-            )),
-            _section('الحسابات'),
-            _box(ListTile(
-              leading: const Icon(Icons.switch_account_rounded),
-              title: const Text('تبديل الحساب'),
-              onTap: () => Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const ProfilesScreen()),
-                (r) => false,
-              ),
-            )),
-            for (var i = 0; i < accs.length; i++)
-              _box(ListTile(
-                leading: Icon(
-                  i == act ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: i == act ? kAccent : Colors.white54,
-                ),
-                title: Text(accs[i].name),
-                subtitle: Text(accs[i].url, textDirection: TextDirection.ltr),
-                onTap: i == act ? null : () => _switch(i),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  onPressed: () => _remove(i),
-                ),
-              )),
-            _box(ListTile(
-              leading: const Icon(Icons.add_circle_outline_rounded),
-              title: const Text('إضافة حساب'),
-              onTap: () => Navigator.of(context)
-                  .push<void>(MaterialPageRoute<void>(builder: (_) => const LoginScreen())),
             )),
             _box(ListTile(
               leading: const Icon(Icons.cloud_sync_rounded),

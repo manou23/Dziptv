@@ -1,21 +1,21 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-const kBg = Color(0xFF080D1B);
-const kPanel = Color(0xFF101A34);
-const kPanel2 = Color(0xFF121D3D);
-const kViolet = Color(0xFF8668FF);
-const kAccent = Color(0xFF35B8FF);
+const kBg = Color(0xFF090D20);
+const kPanel = Color(0xFF11172F);
+const kPanel2 = Color(0xFF25153B);
+const kViolet = Color(0xFFD6AA50);
+const kAccent = Color(0xFFF5C45E);
 const kGreen = Color(0xFF28D59A);
-const kMuted = Color(0xFFAAB5D1);
-const kLine = Color(0x1FFFFFFF);
-const kGold = Color(0xFFFFC857);
+const kMuted = Color(0xFFB9C2D8);
+const kLine = Color(0x55E5BD68);
+const kGold = Color(0xFFF5C45E);
 
 const kBgGradient = BoxDecoration(
   gradient: LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0xFF1A2760), Color(0xFF101A34), Color(0xFF35145F), Color(0xFF080D1B)],
+    colors: [Color(0xFF11172F), Color(0xFF090D20), Color(0xFF25153B), Color(0xFF090D20)],
     stops: [0.0, 0.42, 0.72, 1.0],
   ),
 );
@@ -81,9 +81,9 @@ class _TvFocusState extends State<TvFocus> {
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             borderRadius: r,
-            border: Border.all(color: _f ? kAccent : Colors.transparent, width: 2.5),
+            border: Border.all(color: _f ? kGold : Colors.transparent, width: 2.5),
             boxShadow: _f
-                ? [BoxShadow(color: kAccent.withOpacity(0.45), blurRadius: 18)]
+                ? [BoxShadow(color: kGold.withOpacity(0.45), blurRadius: 18)]
                 : null,
           ),
           child: ClipRRect(

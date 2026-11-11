@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
-import 'app_config.dart';
 import 'i18n.dart';
 import 'login_screen.dart';
 import 'mesut_cloud_api.dart';

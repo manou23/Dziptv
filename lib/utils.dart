@@ -7,9 +7,9 @@ import 'store.dart';
 bool isAdult(String name) {
   final n = name
       .toLowerCase()
-      .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670]'), '')
-      .replaceAll(RegExp(r'[_./\\-]+'), ' ')
-      .replaceAll(RegExp(r'\\s+'), ' ')
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+      .replaceAll(RegExp(r'[_./\-]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
   if (n.isEmpty) return false;
 
@@ -26,7 +26,7 @@ bool isAdult(String name) {
     }
   }
 
-  if (RegExp(r'(^|\\D)(18\\s*\\+|\\+\\s*18|21\\s*\\+|\\+\\s*21)(\\D|$)').hasMatch(n)) {
+  if (RegExp(r'(^|\D)(18\s*\+|\+\s*18|21\s*\+|\+\s*21)(\D|$)').hasMatch(n)) {
     return true;
   }
 

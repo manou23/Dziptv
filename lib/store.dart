@@ -292,6 +292,25 @@ class Store {
   static String get liveFormat => _p.getString('fmt') ?? 'ts';
   static Future<void> setLiveFormat(String v) async { await _p.setString('fmt', v); await _markCloudSettingsChanged(); }
 
+  // Playback defaults are device-local so phone and TV can keep independent controls.
+  static double get playbackSpeed {
+    final value = _p.getDouble('playback_speed') ?? 1.0;
+    return [0.75, 1.0, 1.25, 1.5, 2.0].contains(value) ? value : 1.0;
+  }
+  static Future<void> setPlaybackSpeed(double value) async {
+    if (![0.75, 1.0, 1.25, 1.5, 2.0].contains(value)) return;
+    await _p.setDouble('playback_speed', value);
+  }
+
+  static String get playbackFit {
+    final value = _p.getString('playback_fit') ?? 'contain';
+    return ['contain', 'cover', 'fill'].contains(value) ? value : 'contain';
+  }
+  static Future<void> setPlaybackFit(String value) async {
+    if (!['contain', 'cover', 'fill'].contains(value)) return;
+    await _p.setString('playback_fit', value);
+  }
+
   static String? get pin => _pinCache;
   static Future<void> setPin(String? value) async {
     if (value == null || value.isEmpty) {

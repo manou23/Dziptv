@@ -156,12 +156,15 @@ class Store {
   }
 
   static Future<void> addAccount(Account account) async {
+    final list = accounts();
+    final index = list.indexWhere((a) => a.id == account.id);
+    if (index < 0 && list.length >= 5) {
+      throw Exception('يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.');
+    }
     // Save the secret first; only publish account metadata after it succeeds.
     await _secure.write(
         key: _passwordKey(account.id), value: account.pass);
     _passwords[account.id] = account.pass;
-    final list = accounts();
-    final index = list.indexWhere((a) => a.id == account.id);
     if (index >= 0) {
       list[index] = Account(account.name, account.url, account.user, account.pass,
           avatar: account.avatar.isNotEmpty ? account.avatar : list[index].avatar);

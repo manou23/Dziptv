@@ -70,7 +70,7 @@ class _LiveScreenState extends State<LiveScreen> {
       }
     });
     _errorSub = _ctrl!.stream.error.listen((message) {
-      if (message.isNotEmpty) _retryPlayback();
+      if (message.isNotEmpty && !_isPlaying) _retryPlayback();
     });
     _loadCats();
   }
@@ -203,7 +203,14 @@ class _LiveScreenState extends State<LiveScreen> {
   // Retry automatically when the stream or decoder reports an error.
   void _retryPlayback() {
     final ch = _current;
-    if (ch == null || !mounted || _retries >= 3 || _retryScheduled) return;
+    if (ch == null || !mounted || _retryScheduled) return;
+    if (_retries >= 3) {
+      setState(() {
+        _loadingVideo = false;
+        _error = 'تعذر تشغيل القناة';
+      });
+      return;
+    }
     _retryScheduled = true;
     _retries++;
     final token = _token;

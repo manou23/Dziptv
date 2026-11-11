@@ -148,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     http.Client? client;
     File? apkFile;
+    var progressDialogOpen = true;
     try {
       client = http.Client();
       final request = http.Request('GET', Uri.parse(apkUrl));
@@ -182,11 +183,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
+      progressDialogOpen = false;
       await OpenFilex.open(apkFile.path, type: 'application/vnd.android.package-archive');
       _toast('تم تنزيل التحديث. أكّد التثبيت في نافذة Android للاحتفاظ ببياناتك.');
     } catch (e) {
       if (mounted) {
-        Navigator.of(context, rootNavigator: true).maybePop();
+        if (progressDialogOpen) {
+          Navigator.of(context, rootNavigator: true).maybePop();
+          progressDialogOpen = false;
+        }
         _toast('تعذر تنزيل التحديث: ' + e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {

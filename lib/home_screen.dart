@@ -1334,7 +1334,7 @@ class _MyListScreenState extends State<_MyListScreen> {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               tr('أضف الأفلام والمسلسلات والقنوات إلى قائمتك لتجدها هنا'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -1397,7 +1397,7 @@ class _MyListScreenState extends State<_MyListScreen> {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.black70,
+                                              color: const Color(0xB3000000),
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),

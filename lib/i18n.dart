@@ -160,6 +160,7 @@ const Map<String, List<String>> _d = {
   'التشغيل': ["Lecture", "Playback"],
   'صيغة البث المباشر': ["Format du direct", "Live stream format"],
   'جرّب m3u8 إذا كان ts لا يعمل مع سيرفرك': ["Essayez m3u8 si ts ne marche pas avec votre serveur", "Try m3u8 if ts doesn't work with your server"],
+  'سيحاول التطبيق تلقائياً الصيغة البديلة عند فشل البث': ["L’application essaiera automatiquement l’autre format si le flux échoue", "The app automatically tries the alternate format if playback fails"],
   'الحماية': ["Sécurité", "Security"],
   'تعيين رمز سري': ["Définir un code PIN", "Set PIN"],
   'تغيير الرمز السري': ["Changer le code PIN", "Change PIN"],

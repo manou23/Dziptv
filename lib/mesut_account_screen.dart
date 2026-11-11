@@ -107,6 +107,9 @@ class _MesutAccountScreenState extends State<MesutAccountScreen> {
     if (confirmed != true) return;
     try {
       await MesutCloudApi.removeDevice(id);
+      // A free slot is now available: register this installation and resume
+      // cloud sync without touching the encrypted profile vault.
+      await MesutCloudApi.syncNow();
       await _loadDevices();
     } catch (e) {
       if (mounted) setState(() => _message = e.toString().replaceFirst('Exception: ', ''));

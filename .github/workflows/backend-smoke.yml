@@ -77,7 +77,7 @@ jobs:
           API_BASE: https://mesut-iptv-api.onrender.com
         run: |
           set -euo pipefail
-          email="ci-smoke-${GITHUB_RUN_ID}@example.invalid"
+          email="ci-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.invalid"
           password="$(openssl rand -hex 24)"
           echo "Creating an isolated disposable smoke-test account..."
           registered="$(curl --fail --silent --show-error --max-time 35 \
@@ -117,7 +117,7 @@ jobs:
               --write-out '%{http_code}' --max-time 35 -X POST \
               -H "Authorization: Bearer $login_token" \
               -H 'Content-Type: application/json' \
-              -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$index" '{deviceKey:$key,name:("CI Smoke Test "+$key),platform:"android"}')" \
+              -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$index" '{deviceKey:$key,name:("CI Smoke Test "+$key),platform:"android"}')" \
               "$API_BASE/api/v1/devices/register")"
             if [ "$device_status" != "200" ]; then
               echo "Device registration failed with HTTP $device_status:"
@@ -133,7 +133,7 @@ jobs:
             --write-out '%{http_code}' --max-time 35 -X POST \
             -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
-            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-sixth" '{deviceKey:$key,name:"CI Sixth Device",platform:"android"}')" \
+            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-sixth" '{deviceKey:$key,name:"CI Sixth Device",platform:"android"}')" \
             "$API_BASE/api/v1/devices/register")"
           test "$sixth_status" = "409"
           grep -q '"error":"DEVICE_LIMIT_REACHED"' /tmp/device-limit.json

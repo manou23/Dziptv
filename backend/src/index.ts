@@ -37,11 +37,11 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "256kb" }));
 
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "mesut-iptv-api" }));
+app.get("/health", (_req, res) => res.json({ status: "ok", service: "mesut-iptv-api", apiVersion: 2 }));
 app.get("/health/ready", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: "ready", service: "mesut-iptv-api", database: "connected" });
+    res.json({ status: "ready", service: "mesut-iptv-api", database: "connected", apiVersion: 2 });
   } catch {
     res.status(503).json({ status: "not_ready", service: "mesut-iptv-api", database: "unavailable" });
   }

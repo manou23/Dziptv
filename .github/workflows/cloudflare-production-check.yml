@@ -18,18 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Detect official launch content on Cloudflare Pages
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Detect official launch content in the committed source
         id: launch
-        env:
-          SITE_URL: https://mesutiptv.pages.dev/
         run: |
           set -euo pipefail
-          html="$(curl --fail --silent --show-error --max-time 30 \
-            -H 'Cache-Control: no-cache' \
-            "${SITE_URL}?production_check=${GITHUB_SHA}" || true)"
-          if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' <<<"$html" \
-            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
-            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
+          if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' index.html \
+            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' index.html \
+            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' index.html; then
             echo "launch_present=true" >> "$GITHUB_OUTPUT"
           else
             echo "launch_present=false" >> "$GITHUB_OUTPUT"

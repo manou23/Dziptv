@@ -186,7 +186,16 @@ class Store {
       list[index] = Account(account.name, account.url, account.user, account.pass,
           avatar: account.avatar.isNotEmpty ? account.avatar : list[index].avatar);
     } else {
-      list.add(account);
+      const avatarIds = <String>[
+        'preset:man', 'preset:glasses', 'preset:woman', 'preset:beard',
+        'preset:elder', 'preset:elder-woman', 'preset:boy', 'preset:girl',
+        'preset:child', 'preset:person', 'preset:cool', 'preset:family',
+      ];
+      final avatar = account.avatar.isNotEmpty
+          ? account.avatar
+          : avatarIds[Random.secure().nextInt(avatarIds.length)];
+      list.add(Account(account.name, account.url, account.user, account.pass,
+          avatar: avatar));
     }
     await _saveAccounts(list);
     await _p.setInt('active', index >= 0 ? index : list.length - 1);

@@ -7,6 +7,12 @@ on:
   # 17:30 in Algeria (UTC+1) on the official launch date.
   schedule:
     - cron: "30 16 11 11 *"
+  # Keep any release created by an older automatic trigger in prerelease
+  # status until the official launch window.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nova-official-release.yml"
 
 permissions:
   actions: read
@@ -17,6 +23,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  hold_early_release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Mark any premature NOVA release as prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          launch_epoch="$(date -u -d '2026-11-11T16:30:00Z' +%s)"
+          now_epoch="$(date -u +%s)"
+          if [ "$now_epoch" -lt "$launch_epoch" ]; then
+            release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v8.0.0" --jq '.id' 2>/dev/null || true)"
+            if [ -n "$release_id" ]; then
+              gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/$release_id" \
+                -F prerelease=true -F make_latest=false
+              echo "NOVA 8.0.0 is marked as prerelease until launch."
+            fi
+          fi
+
   publish:
     if: >
       github.event_name == 'schedule' ||

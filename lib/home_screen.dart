@@ -29,7 +29,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final Future<Map<String, String>> _acc = widget.service.account();
   late final Future<List<MediaItem>> _featuredFuture;
-  late final Future<List<MediaItem>> _seriesFuture;
+  Future<List<MediaItem>>? _seriesFuture;
   final PageController _featuredController = PageController();
   final ScrollController _mobileScrollController = ScrollController();
   Timer? _featuredTimer;
@@ -40,13 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _featuredFuture = widget.service.allVod();
-    _seriesFuture = widget.service.allSeries();
+    // Load the series catalog only when its row is actually reached.
     _featuredTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       // Avoid needless carousel work while the app is backgrounded or covered.
       if (!mounted ||
           _featuredCount < 2 ||
           WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
-          ModalRoute.of(context)?.isCurrent != true) {
+          ModalRoute.of(context)?.isCurrent != true ||
+          !_mobileScrollController.hasClients ||
+          _mobileScrollController.offset > 360) {
         return;
       }
       final next = (_featuredIndex + 1) % _featuredCount;
@@ -644,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _mobileSeriesRow() {
     return FutureBuilder<List<MediaItem>>(
-      future: _seriesFuture,
+      future: _seriesFuture ??= widget.service.allSeries(),
       builder: (context, snapshot) {
         final items = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
         return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, favoriteType: 'series', onSeeAll: _openSeries);

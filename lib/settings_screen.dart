@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'app_info.dart';
 import 'app_config.dart';
@@ -121,6 +124,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _downloadAndInstallUpdate(String apkUrl) async {
+    final progress = ValueNotifier<double?>(0);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('تنزيل التحديث'),
+        content: ValueListenableBuilder<double?>(
+          valueListenable: progress,
+          builder: (_, value, __) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LinearProgressIndicator(value: value),
+              const SizedBox(height: 12),
+              Text(value == null
+                  ? 'جارٍ تجهيز ملف التحديث...'
+                  : 'تم تنزيل ' + (value * 100).toStringAsFixed(0) + '٪'),
+            ],
+          ),
+        ),
+      ),
+    );
+    http.Client? client;
+    File? apkFile;
+    try {
+      client = http.Client();
+      final request = http.Request('GET', Uri.parse(apkUrl));
+      final response = await client.send(request).timeout(const Duration(seconds: 45));
+      if (response.statusCode != 200) {
+        throw Exception('تعذر تنزيل ملف التحديث (' + response.statusCode.toString() + ')');
+      }
+      final total = response.contentLength ?? 0;
+      final directory = await getTemporaryDirectory();
+      apkFile = File(directory.path + '/mesut-iptv-update.apk');
+      if (await apkFile.exists()) await apkFile.delete();
+      final sink = apkFile.openWrite();
+      var received = 0;
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0) progress.value = (received / total).clamp(0.0, 1.0);
+        }
+        await sink.flush();
+      } finally {
+        await sink.close();
+      }
+      if (received < 5 * 1024 * 1024 || !await apkFile.exists()) {
+        throw Exception('ملف التحديث غير مكتمل');
+      }
+      final header = await apkFile.open();
+      final signature = await header.read(4);
+      await header.close();
+      if (signature.length < 2 || signature[0] != 0x50 || signature[1] != 0x4b) {
+        throw Exception('الملف الذي تم تنزيله ليس APK صالحاً');
+      }
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      await OpenFilex.open(apkFile.path, type: 'application/vnd.android.package-archive');
+      _toast('تم تنزيل التحديث. أكّد التثبيت في نافذة Android للاحتفاظ ببياناتك.');
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+        _toast('تعذر تنزيل التحديث: ' + e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      client?.close();
+      progress.dispose();
+    }
+  }
+
   Future<void> _checkUpdate() async {
     try {
       final uri = Uri.parse(
@@ -136,7 +210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final assets = release['assets'] is List ? release['assets'] as List : const [];
       String? apkUrl;
       for (final asset in assets) {
-        if (asset is Map && asset['name'] == (kIsTvBuild ? 'mesut-iptv-tv.apk' : 'mesut-iptv-phone.apk')) {
+        if (asset is Map &&
+            asset['name'] == (kIsTvBuild ? 'mesut-iptv-tv.apk' : 'mesut-iptv-phone.apk')) {
           apkUrl = asset['browser_download_url']?.toString();
           break;
         }
@@ -177,26 +252,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('يتوفر تحديث جديد'),
-          content: const Text(
-              'توجد نسخة أحدث من MESUT IPTV. نزّل ملف APK وثبّته فوق النسخة الحالية للاحتفاظ ببياناتك.'),
+          content: Text(
+              'يتوفر الإصدار ' + remoteVersion + ' لنسخة ' +
+              (kIsTvBuild ? 'Android TV' : 'الهاتف') +
+              '. سيتم تنزيله داخل التطبيق، ثم يطلب Android تأكيد التثبيت.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('لاحقاً'),
             ),
             FilledButton.icon(
-              onPressed: () async {
-                final opened = await launchUrl(
-                  Uri.parse(apkUrl!),
-                  mode: LaunchMode.externalApplication,
-                );
-                if (!opened && mounted) {
-                  _toast('تعذر فتح رابط التحميل');
-                }
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _downloadAndInstallUpdate(apkUrl!);
               },
               icon: const Icon(Icons.download_rounded),
-              label: const Text('تنزيل التحديث'),
+              label: const Text('تنزيل وتثبيت'),
             ),
           ],
         ),

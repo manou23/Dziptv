@@ -5,6 +5,7 @@ import 'models.dart';
 import 'store.dart';
 import 'xtream_service.dart';
 import 'player_screen.dart';
+import 'utils.dart';
 
 class SeriesDetailScreen extends StatefulWidget {
   final XtreamService service;
@@ -24,6 +25,10 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
   @override
   void initState() {
     super.initState();
+    if (isAdult(widget.item.name)) {
+      _error = 'تم حظر هذا المحتوى ضمن الحماية الدائمة';
+      return;
+    }
     widget.service.seriesEpisodes(widget.item.id).then((m) {
       if (!mounted) return;
       final keys = m.keys.toList()..sort();
@@ -42,6 +47,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
   }
 
   Future<void> _play(List<Episode> list, int index) async {
+    if (isAdult(widget.item.name)) return;
     final it = widget.item;
     final items = list.map((e) {
       final t = e.title.isEmpty ? '${tr('الحلقة')} ${e.number}' : e.title;

@@ -192,7 +192,7 @@ class _LiveScreenState extends State<LiveScreen> {
       final ch = await widget.service.liveStreams(c.id);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
-        _channels = ch;
+        _channels = ch.where((item) => !isAdult(item.name)).toList();
         _loadingList = false;
       });
     } catch (e) {
@@ -219,6 +219,10 @@ class _LiveScreenState extends State<LiveScreen> {
   }
 
   Future<void> _play(MediaItem ch, {bool auto = false}) async {
+    if (isAdult(ch.name)) {
+      if (mounted) setState(() { _loadingVideo = false; _error = 'تم حظر هذا المحتوى ضمن الحماية الدائمة'; });
+      return;
+    }
     if (!auto) _retries = 0;
     _retryScheduled = false;
     final token = ++_token;

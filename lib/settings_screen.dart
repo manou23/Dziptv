@@ -323,6 +323,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 4),
                   const Text('جرّب m3u8 إذا كان ts لا يعمل مع سيرفرك',
                       style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(tr('سيحاول التطبيق تلقائياً الصيغة البديلة عند فشل البث'),
+                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
                   const SizedBox(height: 10),
                   SegmentedButton<String>(
                     segments: const [

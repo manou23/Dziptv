@@ -127,8 +127,8 @@ class MesutCloudApi {
       // profile picker makes a valid cloud account look like it has no data.
       rethrow;
     } on CloudDeviceLimitException {
-      await signOut();
-      rethrow;
+      // Keep the authenticated session so the user can open device management
+      // and remove an older device before registering this installation.
     } on CloudProfileLimitException {
       // Keep the user signed in and preserve the local vault. The app must
       // remain usable so the user can remove an extra legacy profile and sync again.
@@ -236,7 +236,8 @@ class MesutCloudApi {
   }
 
   static Future<List<Map<String, dynamic>>> listDevices() async {
-    await _registerDevice();
+    // Reading the device list must remain possible when the account is full.
+    // Registration is performed separately after the user frees a slot.
     final response = await http.get(
       _uri('/api/v1/devices'),
       headers: await _authHeaders(),

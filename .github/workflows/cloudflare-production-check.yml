@@ -1,0 +1,74 @@
+name: Verify MESUT Cloudflare Pages production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "README.md"
+      - "assets/**"
+      - "sitemap.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for the official launch content on Cloudflare Pages
+        env:
+          SITE_URL: https://mesutiptv.pages.dev/
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            html="$(curl --fail --silent --show-error --max-time 30 \
+              -H 'Cache-Control: no-cache' \
+              "${SITE_URL}?production_check=${GITHUB_SHA}" || true)"
+            if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' <<<"$html" \
+              && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
+              && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
+              echo "Cloudflare Pages is serving the NOVA 8.0.0 launch content."
+              break
+            fi
+            if [ "$attempt" -eq 24 ]; then
+              echo "Cloudflare Pages did not expose the expected launch content."
+              exit 1
+            fi
+            echo "Waiting for Cloudflare Pages deployment ($attempt/24)..."
+            sleep 10
+          done
+
+      - name: Verify the stable GitHub release and its four assets
+        env:
+          RELEASE_API: https://api.github.com/repos/manou23/Dziptv/releases/tags/v8.0.0
+        run: |
+          set -euo pipefail
+          release="$(curl --fail --silent --show-error "$RELEASE_API")"
+          jq -e '.prerelease == false and .draft == false' <<<"$release" >/dev/null
+          for asset in \
+            mesut-iptv-phone.apk \
+            mesut-iptv-phone.apk.sha256 \
+            mesut-iptv-tv.apk \
+            mesut-iptv-tv.apk.sha256; do
+            jq -e --arg name "$asset" '.assets[] | select(.name == $name and .size > 0)' \
+              <<<"$release" >/dev/null
+          done
+          echo "Stable v8.0.0 release and all four assets are present."
+
+      - name: Verify direct download endpoints
+        run: |
+          set -euo pipefail
+          for asset in \
+            mesut-iptv-phone.apk \
+            mesut-iptv-phone.apk.sha256 \
+            mesut-iptv-tv.apk \
+            mesut-iptv-tv.apk.sha256; do
+            url="https://github.com/manou23/Dziptv/releases/download/v8.0.0/$asset"
+            status="$(curl --silent --show-error --location --head --output /dev/null \
+              --write-out '%{http_code}' --max-time 60 "$url")"
+            test "$status" = "200"
+            echo "$asset: HTTP $status"
+          done

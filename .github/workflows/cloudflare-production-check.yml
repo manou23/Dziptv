@@ -34,26 +34,31 @@ jobs:
             echo "This homepage change does not contain the official launch yet; release verification is skipped."
           fi
 
-      - name: Wait for Cloudflare Pages production update
-        if: steps.launch.outputs.launch_present == 'true'
+      - name: Wait for Cloudflare Pages to serve the committed homepage
         env:
           SITE_URL: https://mesutiptv.pages.dev/
+          LAUNCH_PRESENT: ${{ steps.launch.outputs.launch_present }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 24); do
             html="$(curl --fail --silent --show-error --max-time 30 \
               -H 'Cache-Control: no-cache' \
               "${SITE_URL}?production_check=${GITHUB_SHA}" || true)"
-            if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' <<<"$html" \
-              && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
-              && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
-              echo "Cloudflare Pages is serving the NOVA 8.0.0 launch content."
+            if [ "$LAUNCH_PRESENT" = "true" ]; then
+              if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' <<<"$html" \
+                && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
+                && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
+                echo "Cloudflare Pages is serving the official NOVA 8.0.0 launch content."
+                exit 0
+              fi
+            elif grep -Fq '11 نوفمبر 2026 · 17:30 بتوقيت الجزائر' <<<"$html"; then
+              echo "Cloudflare Pages is serving the updated 17:30 Algeria launch countdown."
               exit 0
             fi
             echo "Waiting for Cloudflare Pages deployment ($attempt/24)..."
             sleep 10
           done
-          echo "Cloudflare Pages did not expose the expected launch content."
+          echo "Cloudflare Pages did not expose the content from this homepage commit."
           exit 1
 
       - name: Verify the stable GitHub release and its four assets

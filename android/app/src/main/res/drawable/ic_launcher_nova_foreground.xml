@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:pathData="M8,69 C24,90 84,91 100,62"
-        android:strokeColor="#27CFFF" android:strokeWidth="4"
-        android:strokeLineCap="round" android:fillColor="#00000000"/>
-    <path android:pathData="M22,75 L22,38 C22,30 28,24 36,24 L39,24 L54,43 L69,24 L72,24 C80,24 86,30 86,38 L86,75 L75,75 L75,43 L54,66 L33,43 L33,75 Z"
-        android:fillColor="#A85CFF"/>
-    <path android:pathData="M47,51 L65,60 L47,69 Z"
-        android:fillColor="#39DFFF"/>
-    <path android:pathData="M34,22 L31,12 L42,18 L54,7 L66,18 L77,12 L74,22 Z"
-        android:fillColor="#FFC64D"/>
-    <path android:pathData="M54,5 A2,2 0 1,0 54.1,5" android:fillColor="#FFF1B8"/>
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Gold crown matching the MESUT website identity -->
+    <path
+        android:pathData="M35,37 L31,23 L43,30 L54,14 L65,30 L77,23 L73,37 Z"
+        android:fillColor="#F5C45E"
+        android:strokeColor="#FFF1B8"
+        android:strokeWidth="1.5"
+        android:strokeLineJoin="round"/>
+    <path
+        android:pathData="M36,44 H46 V68 C46,72 48,75 53,75 H55 C60,75 62,72 62,68 V44 H72 V69 C72,80 65,87 55,87 H53 C43,87 36,80 36,69 Z"
+        android:fillColor="#D8E5FF"/>
+    <path
+        android:pathData="M43,28 L45,23 M54,18 L54,23 M65,23 L67,28"
+        android:strokeColor="#FFF5CF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"/>
 </vector>

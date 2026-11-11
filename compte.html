@@ -6,7 +6,7 @@
 <title>إدارة حساب MESUT | MESUT IPTV</title>
 <meta name="description" content="إدارة حساب MESUT IPTV والبروفايلات واشتراكات Xtream وصور الحسابات ورموز PIN بأمان عبر الخزنة السحابية المشفرة.">
 <link rel="canonical" href="https://manou23.github.io/Dziptv/compte.html">
-<link rel="icon" href="assets/tv/banner.png">
+<link rel="icon" type="image/svg+xml" href="assets/icon/nova.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -28,11 +28,22 @@ main{padding:38px 0 70px}.intro{text-align:center;margin:10px auto 28px;max-widt
 footer{padding:25px 0;text-align:center;color:#8290b0;font-size:11px;border-top:1px solid var(--line)}
 @media(max-width:680px){.nav{height:64px}.brand{font-size:18px}.brand img{width:36px;height:36px}.navlink,.nav-actions .btn{font-size:11px;padding:8px 10px}.profile-grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.stats{gap:7px}.stat{padding:10px}.stat strong{font-size:18px}.profile-card{padding:13px}.avatar-grid{grid-template-columns:repeat(3,1fr)}main{padding-top:24px}}
  .language-select{max-width:145px;border:1px solid #8b78ff66;border-radius:12px;padding:9px 10px;background:#111b35;color:#eef3ff;font:800 12px Cairo,Tahoma,Arial,sans-serif;outline:none}.language-select option{background:#101a34;color:#fff}@media(max-width:680px){.language-select{max-width:112px;padding:8px 6px;font-size:10px}}
+
+/* Shared MESUT royal identity */
+.brand{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1}
+.royal-wordmark{direction:ltr;display:flex;align-items:baseline;font:1000 25px/1 Arial,sans-serif;letter-spacing:1.3px;color:#f7f8ff}
+.royal-u{position:relative;display:inline-block;margin:0 1px;background:linear-gradient(180deg,#fff1b4,#f7c65d 42%,#b97921);-webkit-background-clip:text;background-clip:text;color:transparent}
+.royal-crown{position:absolute;left:50%;top:-16px;transform:translateX(-50%) rotate(-5deg);font:normal 16px/1 Georgia,serif;color:#ffd36a;text-shadow:0 0 12px #ffc34f77}
+.brand-caption{direction:ltr;margin-top:4px;font:800 7px/1 Arial,sans-serif;letter-spacing:2.8px;color:#9eacd0}
+.brand-caption i{font-style:normal;color:#e9bd62}
+header{background:#070b19e8;border-bottom-color:#d9b45a2a;box-shadow:0 8px 30px #0003}
+@media(max-width:680px){.royal-wordmark{font-size:22px}.royal-crown{top:-14px;font-size:14px}.brand-caption{font-size:6px}}
+
 </style>
 </head>
 <body>
 <header><div class="wrap nav">
-<a class="brand" href="index.html"><img src="assets/tv/banner.png" alt="MESUT"><span>MESUT <em>IPTV</em></span></a>
+<a class="brand" href="index.html" aria-label="MESUT IPTV"><span class="royal-wordmark" aria-hidden="true"><span>MES</span><span class="royal-u">U<i class="royal-crown">♛</i></span><span>T</span></span><span class="brand-caption">IPTV <i>•</i> NOVA</span></a>
 <div class="nav-actions"><select id="siteLanguage" class="language-select" aria-label="Language"><option value="ar">🇩🇿 العربية</option><option value="fr">🇫🇷 Français</option><option value="en">🇬🇧 English</option></select><a class="navlink" href="index.html">الصفحة الرئيسية</a><button class="btn ghost" id="logoutTop" hidden>خروج</button></div>
 </div></header>
 <main class="wrap">

@@ -78,7 +78,7 @@ class MesutCloudApi {
         }
         if (code == 'PROFILE_LIMIT_REACHED') {
           throw const CloudProfileLimitException(
-              'يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم قبل إضافة آخر.');
+              'يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.');
         }
         if (code == 'EMAIL_ALREADY_REGISTERED') {
           throw Exception('هذا البريد مسجل مسبقاً');

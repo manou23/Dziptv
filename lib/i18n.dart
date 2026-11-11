@@ -161,6 +161,7 @@ const Map<String, List<String>> _d = {
   'يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.': ["Votre compte MESUT autorise cinq profils maximum. Supprimez un profil inutilisé avant d'en ajouter un autre.", "Your MESUT account allows up to five profiles. Remove an unused profile before adding another."],
   'الأجهزة المرتبطة': ["Appareils associés", "Linked devices"],
   'الأجهزة التي تستخدم حساب MESUT نفسه': ["Appareils utilisant le même compte MESUT", "Devices using the same MESUT account"],
+  'وصلت إلى الحد الأقصى وهو 5 أجهزة مرتبطة. احذف جهازاً قديماً من حساب MESUT ثم حاول مجدداً.': ["Vous avez atteint la limite de 5 appareils associés. Supprimez un ancien appareil du compte MESUT puis réessayez.", "You've reached the 5 linked-device limit. Remove an old device from your MESUT account and try again."],
   'التشغيل': ["Lecture", "Playback"],
   'صيغة البث المباشر': ["Format du direct", "Live stream format"],
   'جرّب m3u8 إذا كان ts لا يعمل مع سيرفرك': ["Essayez m3u8 si ts ne marche pas avec votre serveur", "Try m3u8 if ts doesn't work with your server"],

@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: nova-official-release-${{ github.event.workflow_run.head_sha }}
+  group: nova-official-release
   cancel-in-progress: false
 
 jobs:

@@ -149,7 +149,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final remoteCommit = commitMatch?.group(1) ?? '';
       if (!mounted) return;
       if (remoteVersion == null) {
-        _toast(tr('تعذر قراءة رقم الإصدار المنشور. حاول لاحقاً'));
+        final remoteMatchesCurrent = remoteCommit.isNotEmpty &&
+            kBuildCommit != 'unknown' &&
+            remoteCommit == kBuildCommit;
+        _toast(remoteMatchesCurrent
+            ? 'أنت تستخدم أحدث إصدار'
+            : tr('تعذر قراءة رقم الإصدار المنشور. حاول لاحقاً'));
         return;
       }
       final versionOrder = compareAppVersions(remoteVersion, kVersion);

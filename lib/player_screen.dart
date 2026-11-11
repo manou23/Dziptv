@@ -33,8 +33,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   String? _err;
   Duration _pos = Duration.zero, _dur = Duration.zero;
   double? _drag;
-  double _speed = 1;
-  BoxFit _fit = BoxFit.contain;
+  double _speed = Store.playbackSpeed;
+  BoxFit _fit = Store.playbackFit == 'cover'
+      ? BoxFit.cover
+      : Store.playbackFit == 'fill'
+          ? BoxFit.fill
+          : BoxFit.contain;
   Timer? _hide, _saveTimer;
   int _tok = 0;
 
@@ -302,6 +306,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     const speeds = [1.0, 1.25, 1.5, 2.0, 0.75];
     _speed = speeds[(speeds.indexOf(_speed) + 1) % speeds.length];
     _p.setRate(_speed);
+    unawaited(Store.setPlaybackSpeed(_speed));
     setState(() {});
     _autoHide();
   }
@@ -408,6 +413,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ? BoxFit.fill
               : BoxFit.contain;
     });
+    unawaited(Store.setPlaybackFit(_fit == BoxFit.cover
+        ? 'cover'
+        : _fit == BoxFit.fill
+            ? 'fill'
+            : 'contain'));
     _autoHide();
   }
 

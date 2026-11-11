@@ -438,6 +438,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             )),
+            const SizedBox(height: 8),
+            _box(Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.speed_rounded, color: kAccent),
+                      SizedBox(width: 8),
+                      Text('سرعة التشغيل الافتراضية',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  const Text('تُطبّق تلقائياً عند بدء تشغيل كل فيديو، ويمكن تغييرها من المشغّل.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  SegmentedButton<double>(
+                    segments: const [
+                      ButtonSegment(value: 0.75, label: Text('0.75×')),
+                      ButtonSegment(value: 1.0, label: Text('1×')),
+                      ButtonSegment(value: 1.25, label: Text('1.25×')),
+                      ButtonSegment(value: 1.5, label: Text('1.5×')),
+                      ButtonSegment(value: 2.0, label: Text('2×')),
+                    ],
+                    selected: {Store.playbackSpeed},
+                    onSelectionChanged: (values) async {
+                      await Store.setPlaybackSpeed(values.first);
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            )),
+            _box(Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.fit_screen_rounded, color: kAccent),
+                      SizedBox(width: 8),
+                      Text('طريقة عرض الفيديو',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  const Text('اختر كيف يملأ الفيديو مساحة الشاشة. يؤثر هذا الإعداد على التشغيل القادم.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'contain', label: Text('كامل')),
+                      ButtonSegment(value: 'cover', label: Text('ملء')),
+                      ButtonSegment(value: 'fill', label: Text('تمديد')),
+                    ],
+                    selected: {Store.playbackFit},
+                    onSelectionChanged: (values) async {
+                      await Store.setPlaybackFit(values.first);
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            )),
             _section('الحماية'),
             _box(ListTile(
               leading: const Icon(Icons.shield_rounded, color: kAccent),

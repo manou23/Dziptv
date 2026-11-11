@@ -523,7 +523,7 @@
     const register=document.querySelector("[data-account-register]");
     const settings=document.querySelector("[data-account-settings]");
     const logout=document.querySelector("[data-account-logout]");
-    if(trigger)trigger.firstChild.nodeValue=signedIn?"إعدادات الحساب ":"الحساب ";
+    if(trigger){const lang=document.documentElement.lang||"ar";trigger.firstChild.nodeValue=signedIn?(lang==="fr"?"Paramètres du compte ":lang==="en"?"Account settings ":"إعدادات الحساب "):(lang==="fr"?"Compte ":lang==="en"?"Account ":"الحساب ");}
     if(login)login.hidden=signedIn;
     if(register)register.hidden=signedIn;
     if(settings)settings.hidden=!signedIn;

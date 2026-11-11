@@ -176,6 +176,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _open() async {
+    if (isAdult(_item.title)) {
+      if (mounted) setState(() { _loading = false; _err = 'تم حظر هذا المحتوى ضمن الحماية الدائمة'; });
+      return;
+    }
     final token = ++_tok;
     _watch?.cancel();
     _diag = '';

@@ -144,24 +144,6 @@
       .feature:hover,.screen-card:hover,.download-card:hover,.step:hover,.feature:hover .ico{transform:none!important}
     }
 
-    /* Cinematic photography: gentle Ken Burns motion, layered fades, no autoplay video */
-    .visual{isolation:isolate}
-    .cinema-reel{position:absolute;inset:7% 1% 8%;z-index:0;overflow:hidden;border-radius:34px;opacity:.72;mask-image:radial-gradient(ellipse at center,#000 28%,transparent 78%);pointer-events:none}
-    .cinema-reel span,.cinema-divider span{position:absolute;inset:0;background-size:cover;background-position:center;will-change:transform,opacity}
-    .cinema-reel span:nth-child(1),.cinema-divider span:nth-child(1){background-image:url("https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1800&q=80")}
-    .cinema-reel span:nth-child(2),.cinema-divider span:nth-child(2){background-image:url("https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=1800&q=80")}
-    .cinema-reel span:nth-child(3),.cinema-divider span:nth-child(3){background-image:url("https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1800&q=80")}
-    .cinema-reel span{opacity:0;animation:mesutPhotoCrossfade 24s ease-in-out infinite,mesutPhotoDrift 24s ease-in-out infinite alternate}
-    .cinema-reel span:nth-child(1),.cinema-divider span:nth-child(1){animation-delay:0s}
-    .cinema-reel span:nth-child(2),.cinema-divider span:nth-child(2){animation-delay:8s}
-    .cinema-reel span:nth-child(3),.cinema-divider span:nth-child(3){animation-delay:16s}
-    .cinema-divider{position:relative;isolation:isolate;width:min(1160px,calc(100% - 36px));height:150px;margin:5px auto 22px;overflow:hidden;border:1px solid #ffffff1b;border-radius:25px;background:#080d1b;box-shadow:0 18px 50px #0005}
-    .cinema-divider:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#080d1b 0%,#080d1b66 35%,#080d1b66 65%,#080d1b 100%),linear-gradient(0deg,#080d1b99,transparent 50%,#080d1b66);pointer-events:none}
-    .cinema-divider:after{content:"";position:absolute;inset:0;z-index:2;border:1px solid #a98bff24;border-radius:inherit;box-shadow:inset 0 0 55px #070b1b99;pointer-events:none}
-    .cinema-divider span{opacity:0;animation:mesutPhotoCrossfade 24s ease-in-out infinite,mesutPhotoDrift 24s ease-in-out infinite alternate}
-    .cinema-divider-wide{height:185px;margin-top:24px;margin-bottom:10px}
-    @keyframes mesutPhotoCrossfade{0%,5%{opacity:0}12%,29%{opacity:1}37%,100%{opacity:0}}
-    @keyframes mesutPhotoDrift{0%{transform:scale(1.04) translate3d(-1%,0,0)}100%{transform:scale(1.16) translate3d(1.5%,-1%,0)}}
     .section{position:relative}
     .section+.section{border-top:1px solid #ffffff08}
     .section+.section:before{content:"";position:absolute;top:-1px;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,#8e78ff88,#35b8ff88,transparent);transform-origin:center;animation:mesutSectionLight 8s ease-in-out infinite}
@@ -172,13 +154,12 @@
     .feature-grid .feature:nth-child(4n+3){transition-delay:.14s}
     .feature-grid .feature:nth-child(4n){transition-delay:.21s}
     @media(max-width:680px){
-      .cinema-reel{inset:5% -18% 7%;opacity:.55}
-      .cinema-divider{width:calc(100% - 28px);height:105px;border-radius:17px;margin:0 auto 15px}
-      .cinema-divider-wide{height:125px;margin-top:14px}
+
+
     }
     @media(prefers-reduced-motion:reduce){
-      .cinema-reel span,.cinema-divider span,.cinema-divider:before,.section+.section:before{animation:none!important}
-      .cinema-reel span:first-child,.cinema-divider span:first-child{opacity:.65}
+
+
       .motion-ready [data-reveal]{filter:none!important}
     }
 
@@ -227,8 +208,7 @@
     .device{border-color:#e2c16b88;box-shadow:0 30px 90px #000b,0 0 45px #8d6de044,inset 0 1px #fff2}
     .tv-screen{background:linear-gradient(150deg,#18284d,#080e20)}
     .tv-feature{background:linear-gradient(110deg,#172d60,#54266f 58%,#0d6c83)}
-    .cinema-reel{opacity:.82;filter:saturate(1.08) contrast(1.08)}
-    .cinema-divider{border-color:#e2c16b38;box-shadow:0 22px 60px #0008,0 0 30px #8166d51a}
+
     .section{padding:76px 0}
     .section-head{margin-bottom:38px}
     .section-head .kicker{color:#e8c36d;letter-spacing:1.8px;text-transform:uppercase}
@@ -282,7 +262,7 @@
       .feature{border-radius:17px;padding:16px;min-height:150px}
       .screen-card,.download-card{border-radius:19px;padding:18px}
       .launch-banner{margin-top:16px}
-      .cinema-divider{box-shadow:0 12px 32px #0007}
+
     }
     @media(min-width:681px) and (max-width:1050px){.links{gap:10px;font-size:12px}.nav-cta{padding:9px 12px}}
     @media(prefers-reduced-motion:reduce){
@@ -298,18 +278,18 @@
       body:before,.orb,.launch-banner:after{animation:none!important;filter:none!important}
       .orb{opacity:.62}
       .device{box-shadow:0 12px 34px #0008,0 0 18px #7654ff33}
-      .cinema-divider{box-shadow:none!important}
+
       .feature,.screen-card,.download-card,.step{transition:transform .18s ease,border-color .18s ease}
       .motion-ready [data-reveal]{transition:opacity .32s ease,transform .32s ease}
     }
     @media(max-width:480px){
       body{background:linear-gradient(180deg,#0a1022 0%,#080d1b 48%,#080d1b 100%)}
-      .visual .orb,.cinema-reel{display:none}
+      .visual .orb{display:none}
       .device{box-shadow:0 10px 26px #0008}
       .feature,.screen-card,.download-card,.step{box-shadow:none}
     }
     @media(prefers-reduced-motion:reduce){
-      body:before,.orb,.visual .tv,.visual .phone,.visual .cinema-reel{animation:none!important}
+      body:before,.orb,.visual .tv,.visual .phone{animation:none!important}
       .motion-ready [data-reveal]{opacity:1!important;transform:none!important;transition:none!important}
     }
     @supports(content-visibility:auto){
@@ -375,7 +355,6 @@
     </div>
     <div class="visual" aria-label="تصور لواجهة MESUT IPTV على الهاتف والتلفاز">
       <div class="orb"></div>
-      <div class="cinema-reel" aria-hidden="true"><span></span><span></span><span></span></div>
       <div class="device tv">
         <div class="tv-screen"><div class="tv-head"><span>▶ MESUT <b>IPTV</b></span><span>⌕　◉　⚙</span></div><div class="tv-layout"><aside class="tv-side"><div>⌂　الرئيسية</div><div>♡　المفضلة</div><div>▣　IPTV</div><div>▤　الأفلام</div><div>▥　المسلسلات</div><div>⚙　الإعدادات</div></aside><div class="tv-main"><div class="tv-feature"><small>ابدأ المشاهدة</small><strong>محتواك في مكان واحد</strong></div><div class="poster-row"><i class="poster"></i><i class="poster"></i><i class="poster"></i></div></div></div></div>
       </div>
@@ -392,8 +371,6 @@
          data-full-width-responsive="true"></ins>
     <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
   </div>
-
-  <div class="cinema-divider" aria-hidden="true"><span></span><span></span><span></span></div>
 
   <section class="section">
     <div class="wrap"><div class="section-head"><span class="kicker">مصمم لتجربة استخدام مرتبة</span><h2>كل ما تحتاجه في تجربة واحدة</h2><p>خصائص عملية لتنظيم مكتبتك والاستمتاع بها على الشاشة المناسبة.</p></div>
@@ -420,8 +397,6 @@
       <article class="screen-card" style="margin-top:18px"><h3>👤 شاشة البروفايلات ورمز PIN</h3><p>اختيار بروفايل مستقل لكل اشتراك، مع إمكانية تعيين رمز PIN أو تغييره أو إزالته.</p><div class="mock-wrap" style="height:190px"><div><div class="profile-demo"><div class="profile"><div class="avatar">M</div>البروفايل الأول</div><div class="profile"><div class="avatar">S</div>البروفايل الثاني</div><div class="profile"><div class="avatar">+</div>إضافة حساب</div></div><div class="pin">🔒　••••　رمز PIN للبروفايل</div></div></div></article>
     </div>
   </section>
-
-  <div class="cinema-divider cinema-divider-wide" aria-hidden="true"><span></span><span></span><span></span></div>
 
   <section class="section" id="download">
     <div class="wrap"><div class="section-head"><span class="kicker">تحميل الإصدار الحالي</span><h2>اختر النسخة المناسبة لجهازك</h2><p>ملفا APK منفصلان للهاتف وAndroid TV.</p><span class="release-version" aria-label="Application version 7.1.0, build 10">الإصدار 7.1.0 · رقم البناء 10</span></div>
@@ -598,7 +573,7 @@
 <script>
 (function(){
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const targets = document.querySelectorAll(".hero-copy,.visual,.section-head,.feature,.screen-card,.download-card,.step,.faq details,.cinema-divider");
+  const targets = document.querySelectorAll(".hero-copy,.visual,.section-head,.feature,.screen-card,.download-card,.step,.faq details");
   targets.forEach((el)=>el.setAttribute("data-reveal",""));
   if(reduce || !("IntersectionObserver" in window)){targets.forEach(el=>el.classList.add("is-visible"));return;}
   document.body.classList.add("motion-ready");

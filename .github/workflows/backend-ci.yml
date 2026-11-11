@@ -40,3 +40,4 @@ jobs:
         run: npx prisma generate
       - name: TypeScript build
         run: npm run build
+# Release-gate revalidation: this no-op comment lets CI run against the current main backend tree.

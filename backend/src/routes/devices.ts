@@ -54,7 +54,7 @@ router.post("/register", deviceWriteLimiter, async (req: AuthenticatedRequest, r
     const device = await prisma.$transaction(async (tx) => {
       // Serialize registrations per account so simultaneous devices cannot
       // both pass the linked-device quota check.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
+      await tx.$queryRaw`SELECT 1 WHERE pg_advisory_xact_lock(hashtext(${userId})) IS NULL`;
       const existing = await tx.device.findUnique({
         where: { userId_deviceKey: { userId, deviceKey: parsed.data.deviceKey } }
       });

@@ -41,11 +41,20 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _featuredFuture = widget.service.allVod();
     _seriesFuture = widget.service.allSeries();
-    _featuredTimer = Timer.periodic(const Duration(seconds: 7), (_) {
-      if (!mounted || _featuredCount < 2) return;
+    _featuredTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      // Avoid needless carousel work while the app is backgrounded or covered.
+      if (!mounted ||
+          _featuredCount < 2 ||
+          WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
       final next = (_featuredIndex + 1) % _featuredCount;
-      _featuredController.animateToPage(next,
-          duration: const Duration(milliseconds: 650), curve: Curves.easeInOutCubic);
+      _featuredController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
+      );
     });
   }
 
@@ -524,40 +533,68 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _mobileBottomBar() {
-    Widget item(IconData icon, String label, VoidCallback action, {bool selected = false}) =>
-        Expanded(child: InkWell(
+    Widget item(
+      IconData icon,
+      String label,
+      VoidCallback action, {
+      bool selected = false,
+    }) {
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
           onTap: action,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 22,
-                color: selected ? Colors.white : Colors.white54),
-              const SizedBox(height: 4),
-              Text(label, maxLines: 1, style: TextStyle(
-                fontSize: 10, fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-                color: selected ? Colors.white : Colors.white54)),
-            ]),
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22,
+                    color: selected ? Colors.white : Colors.white54),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+                    color: selected ? Colors.white : Colors.white54,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ));
+        ),
+      );
+    }
+
     return SafeArea(
       top: false,
       child: Container(
         decoration: const BoxDecoration(
           color: Color(0xF20A0B0F),
-          border: Border(top: BorderSide(color: Color(0xFF292B32), width: 0.8)),
+          border: Border(
+            top: BorderSide(color: Color(0xFF292B32), width: 0.8),
+          ),
         ),
         padding: const EdgeInsets.fromLTRB(5, 4, 5, 2),
-        child: Row(children: [
-          item(Icons.home_rounded, 'الرئيسية', () {
-            if (_mobileScrollController.hasClients) {
-              _mobileScrollController.animateTo(0,
-                duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
-            }
-          }, selected: true),
-          item(Icons.live_tv_rounded, 'TV', () => _openLive()),
-          item(Icons.movie_filter_rounded, 'أفلام', _openMovies),
-          item(Icons.video_library_rounded, 'مسلسلات', _openSeries),
-        ]),
+        child: Row(
+          children: [
+            item(Icons.home_rounded, 'الرئيسية', () {
+              if (_mobileScrollController.hasClients) {
+                _mobileScrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            }, selected: true),
+            item(Icons.live_tv_rounded, 'مباشر', () => _openLive()),
+            item(Icons.search_rounded, 'بحث',
+                () => _push(SearchScreen(service: s))),
+            item(Icons.bookmark_rounded, 'قائمتي', _openFavorites),
+          ],
+        ),
       ),
     );
   }

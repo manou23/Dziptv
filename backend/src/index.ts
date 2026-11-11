@@ -19,6 +19,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 app.disable("x-powered-by");
 app.use(helmet());
 const allowedOrigins = new Set([
+  "https://mesutiptv.pages.dev",
   "https://manou23.github.io",
   ...(process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()).filter(Boolean) ?? [])
 ]);

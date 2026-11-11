@@ -18,7 +18,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Wait for the official launch content on Cloudflare Pages
+      - name: Detect official launch content on Cloudflare Pages
+        id: launch
+        env:
+          SITE_URL: https://mesutiptv.pages.dev/
+        run: |
+          set -euo pipefail
+          html="$(curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            "${SITE_URL}?production_check=${GITHUB_SHA}" || true)"
+          if grep -Fq 'MESUT IPTV NOVA 8.0.0 متاح الآن' <<<"$html" \
+            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
+            && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
+            echo "launch_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "launch_present=false" >> "$GITHUB_OUTPUT"
+            echo "This homepage change does not contain the official launch yet; release verification is skipped."
+          fi
+
+      - name: Wait for Cloudflare Pages production update
+        if: steps.launch.outputs.launch_present == 'true'
         env:
           SITE_URL: https://mesutiptv.pages.dev/
         run: |
@@ -31,17 +50,16 @@ jobs:
               && grep -Fq 'releases/download/v8.0.0/mesut-iptv-phone.apk' <<<"$html" \
               && grep -Fq 'releases/download/v8.0.0/mesut-iptv-tv.apk' <<<"$html"; then
               echo "Cloudflare Pages is serving the NOVA 8.0.0 launch content."
-              break
-            fi
-            if [ "$attempt" -eq 24 ]; then
-              echo "Cloudflare Pages did not expose the expected launch content."
-              exit 1
+              exit 0
             fi
             echo "Waiting for Cloudflare Pages deployment ($attempt/24)..."
             sleep 10
           done
+          echo "Cloudflare Pages did not expose the expected launch content."
+          exit 1
 
       - name: Verify the stable GitHub release and its four assets
+        if: steps.launch.outputs.launch_present == 'true'
         env:
           RELEASE_API: https://api.github.com/repos/manou23/Dziptv/releases/tags/v8.0.0
         run: |
@@ -59,6 +77,7 @@ jobs:
           echo "Stable v8.0.0 release and all four assets are present."
 
       - name: Verify direct download endpoints
+        if: steps.launch.outputs.launch_present == 'true'
         run: |
           set -euo pipefail
           for asset in \

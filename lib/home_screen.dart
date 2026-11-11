@@ -13,7 +13,6 @@ import 'movie_detail_screen.dart';
 import 'series_detail_screen.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
-import 'services_home_screen.dart';
 import 'profiles_screen.dart';
 import 'search_screen.dart';
 import 'utils.dart';
@@ -1383,7 +1382,7 @@ class _MyListScreenState extends State<_MyListScreen> {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.black70,
+                                              color: Colors.black.withValues(alpha: 0.70),
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),

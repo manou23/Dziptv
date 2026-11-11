@@ -83,19 +83,35 @@ jobs:
           done
           test "$route_status" = "400"
 
-          device="$(curl --fail --silent --show-error --max-time 35 \
+          device_ids=()
+          for index in 1 2 3 4 5; do
+            device="$(curl --fail --silent --show-error --max-time 35 \
+              -H "Authorization: Bearer $login_token" \
+              -H 'Content-Type: application/json' \
+              -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$index" '{deviceKey:$key,name:("CI Smoke Test "+$key),platform:"android"}')" \
+              "$API_BASE/api/v1/devices/register")"
+            device_id="$(jq -r '.device.id // empty' <<<"$device")"
+            test -n "$device_id"
+            device_ids+=("$device_id")
+          done
+
+          sixth_status="$(curl --silent --show-error --output /tmp/device-limit.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
             -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' \
-            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID" '{deviceKey:$key,name:"CI Smoke Test",platform:"android"}')" \
+            -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-sixth" '{deviceKey:$key,name:"CI Sixth Device",platform:"android"}')" \
             "$API_BASE/api/v1/devices/register")"
-          device_id="$(jq -r '.device.id // empty' <<<"$device")"
-          test -n "$device_id"
+          test "$sixth_status" = "409"
+          grep -q '"error":"DEVICE_LIMIT_REACHED"' /tmp/device-limit.json
+
           device_list="$(curl --fail --silent --show-error --max-time 35 \
             -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/devices")"
-          jq -e --arg id "$device_id" '.devices[] | select(.id == $id)' <<<"$device_list"
-          curl --fail --silent --show-error --output /dev/null --max-time 35 \
-            -X DELETE -H "Authorization: Bearer $login_token" \
-            "$API_BASE/api/v1/devices/$device_id"
+          test "$(jq '.devices | length' <<<"$device_list")" = "5"
+          for device_id in "${device_ids[@]}"; do
+            curl --fail --silent --show-error --output /dev/null --max-time 35 \
+              -X DELETE -H "Authorization: Bearer $login_token" \
+              "$API_BASE/api/v1/devices/$device_id"
+          done
 
           curl --fail --silent --show-error --max-time 35 \
             -X PUT -H "Authorization: Bearer $login_token" \
@@ -132,12 +148,28 @@ jobs:
               settings:{expectedVersion:$versions.settings,value:{_batchSmoke:$run}},
               favorites:{expectedVersion:$versions.favorites,value:{profiles:{}}},
               watch_history:{expectedVersion:$versions.watch_history,value:{profiles:{}}},
-              sync_meta:{expectedVersion:$versions.sync_meta,value:{favorites:{},watch_history:{}}}
+              sync_meta:{expectedVersion:$versions.sync_meta,value:{favorites:{},watch_history:{}}},
+              profiles:{expectedVersion:0,profileCount:5,value:{format:"MESUT_PROFILE_V1",nonce:"Y2k=",cipherText:"Y2k=",mac:"Y2k="}}
             }}')"
           curl --fail --silent --show-error --max-time 35 \
             -X POST -H "Authorization: Bearer $login_token" \
             -H 'Content-Type: application/json' -d "$batch_body" \
             "$API_BASE/api/v1/sync/batch"
+
+          # The encrypted vault count is metadata only; the server enforces the
+          # five-profile limit without decrypting or inspecting credentials.
+          updated_records="$(curl --fail --silent --show-error --max-time 35 \
+            -H "Authorization: Bearer $login_token" "$API_BASE/api/v1/sync")"
+          profile_version="$(jq -r '.records[] | select(.key == "profiles") | .version' <<<"$updated_records")"
+          profile_limit_body="$(jq -n --argjson version "$profile_version" \
+            '{records:{profiles:{expectedVersion:$version,profileCount:6,value:{format:"MESUT_PROFILE_V1",nonce:"Y2k=",cipherText:"Y2k=",mac:"Y2k="}}}}')"
+          profile_limit_status="$(curl --silent --show-error --output /tmp/profile-limit.json \
+            --write-out '%{http_code}' --max-time 35 -X POST \
+            -H "Authorization: Bearer $login_token" \
+            -H 'Content-Type: application/json' -d "$profile_limit_body" \
+            "$API_BASE/api/v1/sync/batch")"
+          test "$profile_limit_status" = "409"
+          grep -q '"error":"PROFILE_LIMIT_REACHED"' /tmp/profile-limit.json
 
           # Replaying the old versions must return 409 and must not partially write.
           conflict_status="$(curl --silent --show-error --output /tmp/batch-conflict.json \

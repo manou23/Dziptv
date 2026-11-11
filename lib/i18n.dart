@@ -219,6 +219,7 @@ const Map<String, List<String>> _d = {
   'لا توجد عناصر في هذا القسم': ["Aucun élément dans cette catégorie", "No items in this category"],
   'أضف الأفلام والمسلسلات والقنوات إلى قائمتك لتجدها هنا': ["Ajoutez des films, séries et chaînes à votre liste pour les retrouver ici", "Add movies, series, and channels to your list to find them here"],
   'إزالة من قائمتي': ["Retirer de ma liste", "Remove from My List"],
+  'تم حظر هذا المحتوى ضمن الحماية الدائمة': ["Ce contenu est bloqué par la protection permanente", "This content is blocked by permanent protection"],
   'أفلام': ["Films", "Movies"],
   'مسلسلات': ["Séries", "Series"],
   'مباشر': ["Direct", "Live"],

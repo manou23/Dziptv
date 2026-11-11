@@ -15,6 +15,8 @@ import 'utils.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'mesut_account_screen.dart';
+import 'login_screen.dart';
+import 'profiles_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final XtreamService service;

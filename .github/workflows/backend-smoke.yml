@@ -113,12 +113,18 @@ jobs:
 
           device_ids=()
           for index in 1 2 3 4 5; do
-            device="$(curl --fail --silent --show-error --max-time 35 \
+            device_status="$(curl --silent --show-error --output /tmp/device-register.json \
+              --write-out '%{http_code}' --max-time 35 -X POST \
               -H "Authorization: Bearer $login_token" \
               -H 'Content-Type: application/json' \
               -d "$(jq -n --arg key "ci-smoke-$GITHUB_RUN_ID-$index" '{deviceKey:$key,name:("CI Smoke Test "+$key),platform:"android"}')" \
               "$API_BASE/api/v1/devices/register")"
-            device_id="$(jq -r '.device.id // empty' <<<"$device")"
+            if [ "$device_status" != "200" ]; then
+              echo "Device registration failed with HTTP $device_status:"
+              cat /tmp/device-register.json
+              exit 1
+            fi
+            device_id="$(jq -r '.device.id // empty' /tmp/device-register.json)"
             test -n "$device_id"
             device_ids+=("$device_id")
           done

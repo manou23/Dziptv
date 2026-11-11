@@ -720,25 +720,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openFavorites() {
-    final live = Store.favs('live');
-    final vod = Store.favs('vod');
-    final series = Store.favs('series');
-    showModalBottomSheet<void>(
-      context: context, isScrollControlled: true, backgroundColor: const Color(0xFF101A32),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetContext) => SafeArea(child: SizedBox(height: MediaQuery.of(sheetContext).size.height * 0.72,
-        child: ListView(padding: const EdgeInsets.all(18), children: [
-          const Text('المفضلة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          if (live.isEmpty && vod.isEmpty && series.isEmpty)
-            const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('لم تضف أي عنصر إلى المفضلة بعد'))),
-          for (final item in live) ListTile(leading: const Icon(Icons.live_tv_rounded), title: Text(item.name),
-            onTap: () { Navigator.pop(sheetContext); _openLive(item); }),
-          for (final item in vod) ListTile(leading: const Icon(Icons.movie_rounded), title: Text(item.name),
-            onTap: () { Navigator.pop(sheetContext); _openVod(item); }),
-          for (final item in series) ListTile(leading: const Icon(Icons.video_library_rounded), title: Text(item.name),
-            onTap: () { Navigator.pop(sheetContext); _openSeriesItem(item); }),
-        ]))),
+    final live = Store.favs('live')
+        .where((item) => !Store.kidsMode || !isAdult(item.name))
+        .toList();
+    final vod = Store.favs('vod')
+        .where((item) => !Store.kidsMode || !isAdult(item.name))
+        .toList();
+    final series = Store.favs('series')
+        .where((item) => !Store.kidsMode || !isAdult(item.name))
+        .toList();
+
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _MyListScreen(
+          live: live,
+          vod: vod,
+          series: series,
+          onOpenLive: _openLive,
+          onOpenVod: _openVod,
+          onOpenSeries: _openSeriesItem,
+        ),
+      ),
     );
   }
 
@@ -1174,6 +1176,289 @@ class _MiniCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SavedMedia {
+  final String type;
+  final MediaItem item;
+
+  const _SavedMedia(this.type, this.item);
+}
+
+class _MyListScreen extends StatefulWidget {
+  final List<MediaItem> live;
+  final List<MediaItem> vod;
+  final List<MediaItem> series;
+  final ValueChanged<MediaItem> onOpenLive;
+  final ValueChanged<MediaItem> onOpenVod;
+  final ValueChanged<MediaItem> onOpenSeries;
+
+  const _MyListScreen({
+    required this.live,
+    required this.vod,
+    required this.series,
+    required this.onOpenLive,
+    required this.onOpenVod,
+    required this.onOpenSeries,
+  });
+
+  @override
+  State<_MyListScreen> createState() => _MyListScreenState();
+}
+
+class _MyListScreenState extends State<_MyListScreen> {
+  late final List<_SavedMedia> _items = [
+    ...widget.live.map((item) => _SavedMedia('live', item)),
+    ...widget.vod.map((item) => _SavedMedia('vod', item)),
+    ...widget.series.map((item) => _SavedMedia('series', item)),
+  ];
+  String _filter = 'all';
+
+  List<_SavedMedia> get _visibleItems => _filter == 'all'
+      ? _items
+      : _items.where((entry) => entry.type == _filter).toList();
+
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'live':
+        return 'مباشر';
+      case 'vod':
+        return 'فيلم';
+      default:
+        return 'مسلسل';
+    }
+  }
+
+  void _open(_SavedMedia entry) {
+    switch (entry.type) {
+      case 'live':
+        widget.onOpenLive(entry.item);
+        break;
+      case 'vod':
+        widget.onOpenVod(entry.item);
+        break;
+      default:
+        widget.onOpenSeries(entry.item);
+    }
+  }
+
+  Future<void> _remove(_SavedMedia entry) async {
+    await Store.toggleFav(entry.type, entry.item);
+    if (mounted) {
+      setState(() => _items.remove(entry));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = _visibleItems;
+    return Scaffold(
+      backgroundColor: kBg,
+      appBar: AppBar(
+        title: const Text(
+          'قائمتي',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        centerTitle: false,
+        backgroundColor: kBg,
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+              child: Text(
+                '${_items.length} عنصر محفوظ',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ),
+            SizedBox(
+              height: 42,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _filterChip('all', 'الكل'),
+                  const SizedBox(width: 8),
+                  _filterChip('live', 'مباشر'),
+                  const SizedBox(width: 8),
+                  _filterChip('vod', 'أفلام'),
+                  const SizedBox(width: 8),
+                  _filterChip('series', 'مسلسلات'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: visible.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(30),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.bookmark_border_rounded,
+                              size: 54,
+                              color: Colors.white24,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _items.isEmpty
+                                  ? 'لم تحفظ أي محتوى بعد'
+                                  : 'لا توجد عناصر في هذا القسم',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'أضف الأفلام والمسلسلات والقنوات إلى قائمتك لتجدها هنا',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      itemCount: visible.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.66,
+                      ),
+                      itemBuilder: (context, index) {
+                        final entry = visible[index];
+                        final item = entry.item;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(9),
+                            onTap: () => _open(entry),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Container(color: kPanel2),
+                                        if (item.image.isNotEmpty)
+                                          Image.network(
+                                            item.image,
+                                            fit: BoxFit.cover,
+                                            cacheWidth: 420,
+                                            errorBuilder: (_, __, ___) =>
+                                                const Center(
+                                              child: Icon(
+                                                Icons.movie_outlined,
+                                                color: Colors.white24,
+                                                size: 34,
+                                              ),
+                                            ),
+                                          ),
+                                        Positioned(
+                                          top: 7,
+                                          left: 7,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black70,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              _typeLabel(entry.type),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          right: 3,
+                                          top: 3,
+                                          child: IconButton(
+                                            tooltip: 'إزالة من قائمتي',
+                                            onPressed: () => _remove(entry),
+                                            icon: const Icon(
+                                              Icons.bookmark_remove_rounded,
+                                              color: Colors.white,
+                                              shadows: [
+                                                Shadow(
+                                                  color: Colors.black87,
+                                                  blurRadius: 8,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  item.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String value, String label) {
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _filter = value),
+      selectedColor: Colors.white,
+      backgroundColor: kPanel2,
+      labelStyle: TextStyle(
+        color: selected ? kBg : Colors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: 12,
+      ),
+      side: BorderSide.none,
+      showCheckmark: false,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
       ),
     );
   }

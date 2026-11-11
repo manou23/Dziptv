@@ -130,7 +130,8 @@ class MesutCloudApi {
       await signOut();
       rethrow;
     } on CloudProfileLimitException {
-      rethrow;
+      // Keep the user signed in and preserve the local vault. The app must
+      // remain usable so the user can remove an extra legacy profile and sync again.
     } catch (_) {
       // Network failures are recoverable and should not block sign-in.
       await scheduleSync();

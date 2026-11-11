@@ -548,6 +548,7 @@
     try{
       const db=await new Promise((resolve,reject)=>{
         const request=indexedDB.open("mesut-account-session-v1",1);
+        request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains("sessions"))request.result.createObjectStore("sessions",{keyPath:"id"});};
         request.onsuccess=()=>resolve(request.result);
         request.onerror=()=>reject(request.error);
       });

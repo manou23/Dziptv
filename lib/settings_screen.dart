@@ -143,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       final body = release['body']?.toString() ?? '';
       final versionMatch =
-          RegExp(r'App version:\\s*([0-9]+\\.[0-9]+\\.[0-9]+)').firstMatch(body);
+          RegExp(r'App version:\s*([0-9]+\.[0-9]+\.[0-9]+)').firstMatch(body);
       final remoteVersion = versionMatch?.group(1);
       final commitMatch = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
       final remoteCommit = commitMatch?.group(1) ?? '';

@@ -4,6 +4,9 @@ on:
   workflow_run:
     workflows: ["MESUT IPTV Android APK"]
     types: [completed]
+  # 17:30 in Algeria (UTC+1) on the official launch date.
+  schedule:
+    - cron: "30 16 11 11 *"
 
 permissions:
   actions: read
@@ -15,34 +18,105 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     steps:
+      - name: Gate official release until scheduled launch
+        id: gate
+        run: |
+          launch_epoch="$(date -u -d '2026-11-11T16:30:00Z' +%s)"
+          now_epoch="$(date -u +%s)"
+          if [ "$now_epoch" -ge "$launch_epoch" ]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            echo "Stable release is held until 17:30 Algeria time."
+          fi
+
+      - name: Resolve successful build source
+        id: source
+        if: steps.gate.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/android-latest")"
+            body="$(jq -r '.body' <<<"$release_json")"
+            sha="$(sed -n 's/^Build commit: //p' <<<"$body" | head -n1)"
+            test -n "$sha"
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout the exact successful build commit
+        if: steps.gate.outputs.allowed == 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.source.outputs.sha }}
 
-      - name: Download verified Android APK artifact
+      - name: Confirm NOVA 8.0.0 source version
+        if: steps.gate.outputs.allowed == 'true'
+        run: |
+          version="$(grep '^version:' pubspec.yaml | head -n1 | cut -d' ' -f2 | cut -d'+' -f1)"
+          test "$version" = "8.0.0"
+          echo "Verified app version: $version"
+
+      - name: Download APKs from the successful main build
+        if: steps.gate.outputs.allowed == 'true' && github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
         with:
           name: mesut-iptv-android-release
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: dist
 
+      - name: Download APKs from the rolling build release
+        if: steps.gate.outputs.allowed == 'true' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          gh release download android-latest \
+            --pattern 'mesut-iptv-phone.apk' \
+            --pattern 'mesut-iptv-phone.apk.sha256' \
+            --pattern 'mesut-iptv-tv.apk' \
+            --pattern 'mesut-iptv-tv.apk.sha256' \
+            --dir dist
+
+      - name: Verify both APKs and SHA-256 checksums
+        if: steps.gate.outputs.allowed == 'true'
+        run: |
+          set -euo pipefail
+          for file in \
+            mesut-iptv-phone.apk \
+            mesut-iptv-phone.apk.sha256 \
+            mesut-iptv-tv.apk \
+            mesut-iptv-tv.apk.sha256; do
+            test -s "dist/$file"
+          done
+          (cd dist && sha256sum -c mesut-iptv-phone.apk.sha256)
+          (cd dist && sha256sum -c mesut-iptv-tv.apk.sha256)
+
       - name: Read app version
+        if: steps.gate.outputs.allowed == 'true'
         id: app_version
         run: |
           version="$(grep '^version:' pubspec.yaml | head -n1 | cut -d' ' -f2 | cut -d'+' -f1)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Publish stable versioned release
+        if: steps.gate.outputs.allowed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
           name: MESUT IPTV - NOVA ${{ steps.app_version.outputs.version }}
-          target_commitish: ${{ github.event.workflow_run.head_sha }}
+          target_commitish: ${{ steps.source.outputs.sha }}
           prerelease: false
           make_latest: true
           overwrite_files: true
@@ -54,7 +128,7 @@ jobs:
 
             App version: ${{ steps.app_version.outputs.version }}
 
-            Build commit: ${{ github.event.workflow_run.head_sha }}
+            Build commit: ${{ steps.source.outputs.sha }}
 
             Phone APK: mesut-iptv-phone.apk
             Android TV APK: mesut-iptv-tv.apk

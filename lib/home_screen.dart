@@ -296,147 +296,267 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 gradient: const LinearGradient(
-                  begin: Alignment.topRight, end: Alignment.bottomLeft,
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                   colors: [Color(0xFF1A2760), kPanel, kBg],
                 ),
               ),
-              child: Center(child: snapshot.connectionState == ConnectionState.waiting
-                ? const CircularProgressIndicator(color: kViolet)
-                : const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('أضف اشتراكك لعرض مكتبة الأفلام',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white70, fontSize: 15)),
-                  )),
+              child: Center(
+                child: snapshot.connectionState == ConnectionState.waiting
+                    ? const CircularProgressIndicator(color: kViolet)
+                    : const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'أضف اشتراكك لعرض مكتبة الأفلام',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70, fontSize: 15),
+                        ),
+                      ),
+              ),
             ),
           );
         }
+
         return Padding(
-          padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
-          child: SizedBox(
-            height: 440,
-            child: Stack(children: [
-              PageView.builder(
-                controller: _featuredController,
-                itemCount: movies.length,
-                onPageChanged: (index) => setState(() => _featuredIndex = index),
-                itemBuilder: (context, index) {
-                  final movie = movies[index];
-                  return GestureDetector(
-                    onTap: () => _openVod(movie),
-                    child: Stack(fit: StackFit.expand, children: [
-                      if (movie.image.isNotEmpty)
-                        Image.network(movie.image, fit: BoxFit.cover,
-                          cacheWidth: 900,
-                          errorBuilder: (_, __, ___) => Container(color: kPanel2))
-                      else
-                        Container(color: kPanel2),
-                      const DecoratedBox(decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0x9907090D), Color(0x1107090D),
-                            Color(0x2207090D), Color(0xF5090A0D),
-                          ],
-                          stops: [0.0, 0.28, 0.48, 1.0],
-                        ),
-                      )),
-                      Positioned(
-                        left: 22, right: 22, bottom: 26,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 430,
+              child: Stack(
+                children: [
+                  PageView.builder(
+                    controller: _featuredController,
+                    itemCount: movies.length,
+                    onPageChanged: (index) {
+                      if (mounted) setState(() => _featuredIndex = index);
+                    },
+                    itemBuilder: (context, index) {
+                      final movie = movies[index];
+                      final isSaved = Store.isFav('vod', movie.id);
+                      return GestureDetector(
+                        onTap: () => _openVod(movie),
+                        child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                            if (movie.image.isNotEmpty)
+                              Image.network(
+                                movie.image,
+                                fit: BoxFit.cover,
+                                cacheWidth: 900,
+                                errorBuilder: (_, __, ___) =>
+                                    Container(color: kPanel2),
+                              )
+                            else
+                              Container(color: kPanel2),
+                            const DecoratedBox(
                               decoration: BoxDecoration(
-                                color: kViolet,
-                                borderRadius: BorderRadius.circular(4),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0x6607090D),
+                                    Color(0x1107090D),
+                                    Color(0x4407090D),
+                                    Color(0xF5090A0D),
+                                  ],
+                                  stops: [0.0, 0.24, 0.48, 1.0],
+                                ),
                               ),
-                              child: const Text('اختيار MESUT',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.6, color: Colors.white)),
                             ),
-                            const SizedBox(height: 13),
-                            Text(movie.name, maxLines: 2, textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 27, height: 1.12,
-                                fontWeight: FontWeight.w900, color: Colors.white,
-                                shadows: [Shadow(color: Colors.black54, blurRadius: 12)])),
-                            const SizedBox(height: 10),
-                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              const Icon(Icons.auto_awesome_rounded, color: kAccent, size: 15),
-                              const SizedBox(width: 5),
-                              Text(movie.rating.isNotEmpty ? movie.rating : 'من مكتبتك',
-                                style: const TextStyle(fontSize: 12, color: Colors.white70,
-                                  fontWeight: FontWeight.w700)),
-                            ]),
-                            const SizedBox(height: 17),
-                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              FilledButton.icon(
-                                onPressed: () => _openVod(movie),
-                                icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                                label: const Text('تشغيل'),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: kViolet,
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(126, 44),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              OutlinedButton.icon(
-                                onPressed: () => _openVod(movie),
-                                icon: const Icon(Icons.info_outline_rounded, size: 19),
-                                label: const Text('التفاصيل'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: kAccent),
-                                  minimumSize: const Size(126, 44),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                                ),
-                              ),
-                            ]),
-                            const SizedBox(height: 18),
-                            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              for (var i = 0; i < movies.length; i++)
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 220),
-                                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                                  width: i == _featuredIndex ? 19 : 5,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: i == _featuredIndex ? kViolet : Colors.white54,
-                                    borderRadius: BorderRadius.circular(8),
+                            Positioned(
+                              left: 20,
+                              right: 20,
+                              bottom: 22,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: kViolet,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'اختيار MESUT',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                            ]),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    movie.name,
+                                    maxLines: 2,
+                                    textAlign: TextAlign.start,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 27,
+                                      height: 1.12,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(color: Colors.black54, blurRadius: 12),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.auto_awesome_rounded,
+                                        color: kAccent,
+                                        size: 15,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        movie.rating.isNotEmpty
+                                            ? movie.rating
+                                            : 'من مكتبتك',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: () => _openVod(movie),
+                                          icon: const Icon(
+                                            Icons.play_arrow_rounded,
+                                            size: 22,
+                                          ),
+                                          label: const Text('تشغيل'),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: Colors.black87,
+                                            minimumSize: const Size(0, 44),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            textStyle: const TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 9),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await Store.toggleFav('vod', movie);
+                                            if (mounted) setState(() {});
+                                          },
+                                          icon: Icon(
+                                            isSaved
+                                                ? Icons.check_rounded
+                                                : Icons.add_rounded,
+                                            size: 19,
+                                          ),
+                                          label: Text(
+                                            isSaved ? 'في قائمتي' : 'قائمتي',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.white,
+                                            backgroundColor: Colors.black38,
+                                            side: const BorderSide(
+                                              color: Colors.white54,
+                                            ),
+                                            minimumSize: const Size(0, 44),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            textStyle: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 15),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      for (var i = 0; i < movies.length; i++)
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 220),
+                                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                                          width: i == _featuredIndex ? 19 : 5,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: i == _featuredIndex
+                                                ? kViolet
+                                                : Colors.white54,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ]),
-                  );
-                },
-              ),
-              Positioned(
-                top: 15, left: 18, right: 18,
-                child: Row(children: [
-                  const Text('MESUT', style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2,
-                    color: Colors.white, shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-                  )),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.black38,
-                      borderRadius: BorderRadius.circular(4)),
-                    child: const Text('مميز لك', style: TextStyle(
-                      color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                      );
+                    },
                   ),
-                ]),
+                  Positioned(
+                    top: 14,
+                    left: 17,
+                    right: 17,
+                    child: Row(
+                      children: [
+                        const Text(
+                          'MESUT',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(color: Colors.black54, blurRadius: 8),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black38,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'مميز لك',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ]),
+            ),
           ),
         );
       },

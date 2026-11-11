@@ -12,16 +12,19 @@ on:
       - "pubspec.yaml"
       - "pubspec.lock"
       - ".github/workflows/flutter-apk.yml"
+      - ".github/workflows/nova-official-release.yml"
       - "README.md"
   pull_request:
     branches: [main]
     paths:
       - "lib/**"
+      - "test/**"
       - "assets/**"
       - "android/**"
       - "pubspec.yaml"
       - "pubspec.lock"
       - ".github/workflows/flutter-apk.yml"
+      - ".github/workflows/nova-official-release.yml"
 
 permissions:
   contents: write

@@ -47,6 +47,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _touch(Object a, Object b) {}
 
+  Map<String, String> _streamHeaders(String url) {
+    final uri = Uri.tryParse(url);
+    final origin = uri == null
+        ? null
+        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/';
+    return {
+      'User-Agent': kUserAgent,
+      'Accept': '*/*',
+      if (origin != null) 'Referer': origin,
+      'Connection': 'keep-alive',
+    };
+  }
+
+  String _redactLog(String value) =>
+      value.replaceAll(RegExp(r'https?://\S+'), '[stream URL hidden]');
+
+
   @override
   void initState() {
     super.initState();
@@ -102,7 +119,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       }),
       _p.stream.error.listen((e) {
         if (mounted && e.isNotEmpty) {
-          _logs.add('error: $e');
+          _logs.add('player error received');
           // أخطاء المشغّل قد تكون تحذيرات (ترجمة/صوت): لا نعرضها إن كان الفيديو يعمل
           if (!_started) {
             setState(() {
@@ -114,7 +131,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         }
       }),
       _p.stream.log.listen((l) {
-        _logs.add('${l.prefix}: ${l.text}'.trim());
+        _logs.add('${l.prefix}: ${_redactLog(l.text)}'.trim());
         if (_logs.length > 8) _logs.removeAt(0);
       }),
     ]);
@@ -176,6 +193,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _open() async {
+    if (isAdult(_item.title)) {
+      if (mounted) setState(() { _loading = false; _err = tr('تم حظر هذا المحتوى ضمن الحماية الدائمة'); });
+      return;
+    }
     final token = ++_tok;
     _watch?.cancel();
     _diag = '';
@@ -190,7 +211,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
     try {
       await _p.open(
-        Media(_item.url, httpHeaders: const {'User-Agent': kUserAgent}),
+        Media(_item.url, httpHeaders: _streamHeaders(_item.url)),
         play: true,
       );
       final saved = Store.position(_item.key);
@@ -221,7 +242,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         setState(() {
           _loading = false;
           _err = 'تعذر تشغيل الفيديو';
-          _logs.add('open: $e');
+          _logs.add('open failed: ${e.runtimeType}');
         });
         _runProbe();
       }

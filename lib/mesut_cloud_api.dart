@@ -14,6 +14,20 @@ class ProfileVaultRestoreException implements Exception {
   String toString() => message;
 }
 
+class CloudDeviceLimitException implements Exception {
+  final String message;
+  const CloudDeviceLimitException(this.message);
+  @override
+  String toString() => message;
+}
+
+class CloudProfileLimitException implements Exception {
+  final String message;
+  const CloudProfileLimitException(this.message);
+  @override
+  String toString() => message;
+}
+
 class MesutCloudApi {
   MesutCloudApi._();
   static const _secure = FlutterSecureStorage();
@@ -58,6 +72,14 @@ class MesutCloudApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = body['error']?.toString() ?? 'REQUEST_FAILED';
       if (response.statusCode == 409) {
+        if (code == 'DEVICE_LIMIT_REACHED') {
+          throw const CloudDeviceLimitException(
+              'وصلت إلى الحد الأقصى وهو 5 أجهزة مرتبطة. احذف جهازاً قديماً من حساب MESUT ثم حاول مجدداً.');
+        }
+        if (code == 'PROFILE_LIMIT_REACHED') {
+          throw const CloudProfileLimitException(
+              'يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.');
+        }
         if (code == 'EMAIL_ALREADY_REGISTERED') {
           throw Exception('هذا البريد مسجل مسبقاً');
         }
@@ -104,6 +126,12 @@ class MesutCloudApi {
       // A failed vault restore must be visible; silently entering an empty
       // profile picker makes a valid cloud account look like it has no data.
       rethrow;
+    } on CloudDeviceLimitException {
+      await signOut();
+      rethrow;
+    } on CloudProfileLimitException {
+      // Keep the user signed in and preserve the local vault. The app must
+      // remain usable so the user can remove an extra legacy profile and sync again.
     } catch (_) {
       // Network failures are recoverable and should not block sign-in.
       await scheduleSync();
@@ -450,10 +478,16 @@ class MesutCloudApi {
         ? hasLocalProfiles
         : localProfileTime > remoteProfileTime;
     if (await hasProfileEncryptionKey && shouldPublishProfileVault) {
+      final profileCount = (profilePayload['profiles'] as List).length;
       batch['profiles'] = {
         'value': await _encryptProfiles(profilePayload),
         'expectedVersion':
             (remote['profiles']?['version'] as num?)?.toInt() ?? 0,
+        // Existing local vaults with more than five profiles are migrated
+        // without blocking their first cloud upload; the server then
+        // grandfather-protects that count from growing further.
+        if (profileCount <= 5 || remote['profiles'] != null)
+          'profileCount': profileCount,
       };
     }
     final response = await http.post(

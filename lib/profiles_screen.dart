@@ -648,7 +648,14 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
     );
   }
 
+  void _showProfileLimit() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.')),
+    );
+  }
+
   Widget _addTile({bool autofocus = false}) {
+    final limitReached = Store.accounts().length >= 5;
     return SizedBox(
       width: kIsTvBuild ? 136 : 96,
       child: Column(
@@ -659,21 +666,23 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
             child: TvFocus(
               radius: 20,
               autofocus: autofocus,
-              onTap: _add,
+              onTap: limitReached ? _showProfileLimit : _add,
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white10,
-                  border: Border.all(color: Colors.white24, width: 1.5),
+                  border: Border.all(color: limitReached ? Colors.white12 : Colors.white24, width: 1.5),
                   borderRadius: BorderRadius.circular(kIsTvBuild ? 20 : 11),
                 ),
-                child: const Center(
-                  child: Icon(Icons.add_rounded, size: kIsTvBuild ? 60 : 44, color: Colors.white70),
+                child: Center(
+                  child: Icon(limitReached ? Icons.lock_rounded : Icons.add_rounded,
+                    size: kIsTvBuild ? 60 : 44,
+                    color: limitReached ? Colors.white38 : Colors.white70),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Text('إضافة حساب',
+          Text(limitReached ? 'الحد الأقصى 5' : 'إضافة حساب',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

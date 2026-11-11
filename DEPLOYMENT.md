@@ -61,6 +61,13 @@ The cloud sync payload includes favorites, watch-history metadata (title, item k
 
 The first sync merges favorites and watch-history metadata. Settings use a last-change timestamp so a new device can inherit the existing account settings. Cloud sync is currently manual from the MESUT account screen.
 
+## Account quotas and request limits
+
+- Each MESUT account can link up to **5 devices**. Existing devices can continue to check in; a sixth new device is rejected until an older device is removed from the account portal or the app's device-management screen.
+- Each account can add up to **5 IPTV profiles**. Existing encrypted vaults that already contain more than five profiles are grandfathered so users do not lose access to their data; they can edit or reduce that list, but cannot grow it further.
+- The profile vault remains encrypted end-to-end. The server stores only a non-sensitive `profileCount` value beside the ciphertext; it cannot decrypt the vault to independently verify that count. The official app and website enforce the limit before adding a profile.
+- Authenticated sync requests are limited to 300 per account per 15 minutes. Device reads are limited to 90 and device registration/removal to 30 per account per 15 minutes. These in-process limits suit the current single-instance deployment; use a shared rate-limit store before scaling to multiple API instances.
+
 ## Before production
 
-Add email verification and password reset, refresh-token rotation/revocation, account and device limits, backups/restore drills, monitoring/alerts, and automated integration tests. Review the Render and Neon plan limits and configure a paid always-on API instance before relying on it for production availability.
+Add email verification and password reset, refresh-token rotation/revocation, database backups and restore drills, monitoring/alerts, and automated integration tests. Review the Render and Neon plan limits and configure a paid always-on API instance before relying on it for production availability.

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -120,6 +121,28 @@ class Store {
       }
       await _p.setBool('cloud_profile_pin_hash_v1_migrated', true);
     }
+
+    // Create a one-time, device-local lock marker on first launch.
+    // A secure-storage failure must never prevent the app from starting;
+    // adult filtering remains fail-closed through the always-on kidsMode getter.
+    try {
+      await _ensureAdultContentLock();
+    } catch (_) {
+      // Retry marker creation on a later launch; keep content filtering enabled.
+    }
+    await _p.setBool('kids_mode', true);
+  }
+
+  static const String _adultContentLockId = 'mesut_global_adult_content_lock_v1';
+
+  static Future<void> _ensureAdultContentLock() async {
+    if (await ProfilePinService.hasPin(_adultContentLockId)) return;
+    final pin = List<String>.generate(
+      6,
+      (_) => Random.secure().nextInt(10).toString(),
+    ).join();
+    // Store only the salted PBKDF2 hash; never expose or persist the PIN.
+    await ProfilePinService.setPin(_adultContentLockId, pin);
   }
 
   // ---------------- اللغة ----------------
@@ -156,17 +179,29 @@ class Store {
   }
 
   static Future<void> addAccount(Account account) async {
-    // Save the secret first; only publish account metadata after it succeeds.
-    await _secure.write(
-        key: _passwordKey(account.id), value: account.pass);
-    _passwords[account.id] = account.pass;
     final list = accounts();
     final index = list.indexWhere((a) => a.id == account.id);
+    if (index < 0 && list.length >= 5) {
+      throw Exception('يسمح حساب MESUT بخمسة بروفايلات كحد أقصى. احذف بروفايلاً غير مستخدم أولاً.');
+    }
+    // Save the secret first; only publish account metadata after it succeeds.
+    await _secure.write(
+        key: _passwordKey(account.id), value: account.pass); 
+    _passwords[account.id] = account.pass;
     if (index >= 0) {
       list[index] = Account(account.name, account.url, account.user, account.pass,
           avatar: account.avatar.isNotEmpty ? account.avatar : list[index].avatar);
     } else {
-      list.add(account);
+      const avatarIds = <String>[
+        'preset:man', 'preset:glasses', 'preset:woman', 'preset:beard',
+        'preset:elder', 'preset:elder-woman', 'preset:boy', 'preset:girl',
+        'preset:child', 'preset:person', 'preset:cool', 'preset:family',
+      ];
+      final avatar = account.avatar.isNotEmpty
+          ? account.avatar
+          : avatarIds[Random.secure().nextInt(avatarIds.length)];
+      list.add(Account(account.name, account.url, account.user, account.pass,
+          avatar: avatar));
     }
     await _saveAccounts(list);
     await _p.setInt('active', index >= 0 ? index : list.length - 1);
@@ -378,10 +413,10 @@ class Store {
   }
 
   // ---------------- الرياضة ----------------
-  static bool get kidsMode => _p.getBool('kids_mode') ?? false;
+  // Adult-content protection is a permanent app policy for every profile.
+  static bool get kidsMode => true;
   static Future<void> setKidsMode(bool value) async {
-    await _p.setBool('kids_mode', value);
-    await _markCloudSettingsChanged();
+    await _p.setBool('kids_mode', true);
   }
 
   static Set<String> hiddenCategories(String type) =>
@@ -619,7 +654,7 @@ class Store {
         'fmt': liveFormat,
         'home_order': homeOrder(),
         'home_hidden': homeHidden().toList(),
-        'kids_mode': kidsMode,
+        'kids_mode': true,
         'sports_key': sportsKey,
         '_updatedAt': _p.getInt('cloud_settings_updated_at') ?? 0,
       },
@@ -725,9 +760,8 @@ class Store {
       if (values['home_hidden'] is List && (values['home_hidden'] as List).every((e) => e is String)) {
         await _p.setStringList('home_hidden', List<String>.from(values['home_hidden'] as List));
       }
-      if (values['kids_mode'] is bool) {
-        await _p.setBool('kids_mode', values['kids_mode'] as bool);
-      }
+      // Ignore cloud attempts to disable the permanent local content lock.
+      await _p.setBool('kids_mode', true);
       if (values['sports_key'] is String) {
         await _p.setString('sports_key', values['sports_key'] as String);
       }

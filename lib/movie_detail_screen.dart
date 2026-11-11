@@ -31,6 +31,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   Future<void> _play() async {
+    if (isAdult(widget.item.name)) return;
     final it = widget.item;
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(
       builder: (_) => PlayerScreen(items: [
@@ -62,6 +63,12 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final it = widget.item;
+    if (isAdult(it.name)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('المحتوى محظور')),
+        body: const Center(child: Text('تم حظر هذا المحتوى ضمن الحماية الدائمة')),
+      );
+    }
     final i = _info;
     final pos = Store.position(_key);
     final plot = (i?['plot'] ?? '').isEmpty ? 'لا يوجد وصف' : i!['plot']!;

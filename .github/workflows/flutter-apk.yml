@@ -12,6 +12,15 @@ on:
       - "pubspec.lock"
       - ".github/workflows/flutter-apk.yml"
       - "README.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/flutter-apk.yml"
 
 permissions:
   contents: write
@@ -42,6 +51,12 @@ jobs:
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Analyze Dart and Flutter code
+        run: flutter analyze --no-pub --no-fatal-infos
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub --reporter expanded
 
       - name: Build phone APK (ARM64)
         run: >-

@@ -34,7 +34,6 @@ class _LiveScreenState extends State<LiveScreen> {
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _bufferingSub;
   StreamSubscription<String>? _errorSub;
-  bool _isPlaying = false;
   bool _loadingList = true, _loadingVideo = false, _full = false, _search = false;
   bool _ov = true;
   String? _error;
@@ -59,7 +58,6 @@ class _LiveScreenState extends State<LiveScreen> {
     _playingSub = _ctrl!.stream.playing.listen((playing) {
       if (!mounted) return;
       setState(() {
-        _isPlaying = playing;
         if (playing) _loadingVideo = false;
       });
       if (playing) _pokeOv();
@@ -228,7 +226,6 @@ class _LiveScreenState extends State<LiveScreen> {
       _current = ch;
       _loadingVideo = true;
       _error = null;
-      _isPlaying = false;
       _epg = [];
     });
 

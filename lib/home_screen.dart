@@ -563,9 +563,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openFavorites() {
-    final live = Store.favs('live');
-    final vod = Store.favs('vod');
-    final series = Store.favs('series');
+    final live = Store.favs('live').where((item) => !isAdult(item.name)).toList();
+    final vod = Store.favs('vod').where((item) => !isAdult(item.name)).toList();
+    final series = Store.favs('series').where((item) => !isAdult(item.name)).toList();
     showModalBottomSheet<void>(
       context: context, isScrollControlled: true, backgroundColor: const Color(0xFF101A32),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),

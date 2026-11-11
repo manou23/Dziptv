@@ -93,19 +93,25 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Read app version
+        id: app_version
+        run: |
+          version="$(grep '^version:' pubspec.yaml | head -n1 | cut -d' ' -f2 | cut -d'+' -f1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Publish rolling direct-download release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: MESUT IPTV - Latest Android Build
+          name: MESUT IPTV - NOVA ${{ steps.app_version.outputs.version }} (Android latest)
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
           overwrite_files: true
           fail_on_unmatched_files: true
           body: |
-            Automated Android release built from the latest successful main-branch workflow run.
+            Automated Android release built from the latest successful main-branch workflow run.\n\n            App version: ${{ steps.app_version.outputs.version }}
 
             Build commit: ${{ github.sha }}
 

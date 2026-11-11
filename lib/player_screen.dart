@@ -51,7 +51,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final uri = Uri.tryParse(url);
     final origin = uri == null
         ? null
-        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':\${uri.port}' : ''}/';
+        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/';
     return {
       'User-Agent': kUserAgent,
       'Accept': '*/*',
@@ -61,7 +61,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   String _redactLog(String value) =>
-      value.replaceAll(RegExp(r'https?://\\S+'), '[stream URL hidden]');
+      value.replaceAll(RegExp(r'https?://\S+'), '[stream URL hidden]');
 
 
   @override

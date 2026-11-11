@@ -229,7 +229,7 @@ class _LiveScreenState extends State<LiveScreen> {
     final uri = Uri.tryParse(url);
     final origin = uri == null
         ? null
-        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':\${uri.port}' : ''}/';
+        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}/';
     return {
       'User-Agent': kUserAgent,
       if (!minimal) 'Accept': '*/*',

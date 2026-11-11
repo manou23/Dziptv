@@ -218,6 +218,19 @@ class _LiveScreenState extends State<LiveScreen> {
     });
   }
 
+  Map<String, String> _streamHeaders(String url, {bool minimal = false}) {
+    final uri = Uri.tryParse(url);
+    final origin = uri == null
+        ? null
+        : '${uri.scheme}://${uri.host}${uri.hasPort ? ':\${uri.port}' : ''}/';
+    return {
+      'User-Agent': kUserAgent,
+      if (!minimal) 'Accept': '*/*',
+      if (!minimal && origin != null) 'Referer': origin,
+      if (!minimal) 'Connection': 'keep-alive',
+    };
+  }
+
   Future<void> _play(MediaItem ch, {bool auto = false}) async {
     if (!auto) _retries = 0;
     _retryScheduled = false;
@@ -234,11 +247,14 @@ class _LiveScreenState extends State<LiveScreen> {
 
     try {
       await player.stop();
+      final preferred = Store.liveFormat;
+      final alternate = preferred.toLowerCase() == 'ts' ? 'm3u8' : 'ts';
+      // First retry switches the container; second retries the preferred
+      // container with minimal headers; third tries the alternate again.
+      final format = (_retries == 1 || _retries == 3) ? alternate : preferred;
+      final streamUrl = widget.service.liveUrl(ch.id, format: format);
       await player.open(
-        Media(
-          widget.service.liveUrl(ch.id),
-          httpHeaders: const {'User-Agent': kUserAgent},
-        ),
+        Media(streamUrl, httpHeaders: _streamHeaders(streamUrl, minimal: _retries == 2)),
         play: true,
       ).timeout(const Duration(seconds: 30));
       if (token != _token || !mounted) return;

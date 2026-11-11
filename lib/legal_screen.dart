@@ -50,20 +50,24 @@ class LegalScreen extends StatelessWidget {
                     Text('Mesut23',
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    SelectableText(kContactUrl,
+                    SelectableText(kContactEmail,
                         textDirection: TextDirection.ltr,
                         style: const TextStyle(fontSize: 16, color: kAccent)),
+                    const SizedBox(height: 8),
+                    SelectableText(kContactUrl,
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(fontSize: 13, color: Colors.white70)),
                     const SizedBox(height: 14),
                     FilledButton.icon(
                       onPressed: () async {
-                        await Clipboard.setData(const ClipboardData(text: kContactUrl));
+                        await Clipboard.setData(const ClipboardData(text: kContactEmail));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(tr('تم النسخ'))));
                         }
                       },
                       icon: const Icon(Icons.copy_rounded),
-                      label: const Text('نسخ رابط الدعم'),
+                      label: const Text('نسخ البريد الإلكتروني'),
                     ),
                   ],
                 )

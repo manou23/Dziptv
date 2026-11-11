@@ -220,6 +220,8 @@ const Map<String, List<String>> _d = {
   'أضف الأفلام والمسلسلات والقنوات إلى قائمتك لتجدها هنا': ["Ajoutez des films, séries et chaînes à votre liste pour les retrouver ici", "Add movies, series, and channels to your list to find them here"],
   'إزالة من قائمتي': ["Retirer de ma liste", "Remove from My List"],
   'تم حظر هذا المحتوى ضمن الحماية الدائمة': ["Ce contenu est bloqué par la protection permanente", "This content is blocked by permanent protection"],
+  'تعذر قراءة رقم الإصدار المنشور. حاول لاحقاً': ["Impossible de lire la version publiée. Réessayez plus tard", "Could not read the published version. Try again later"],
+  'أنت تستخدم إصداراً أحدث من الإصدار المنشور': ["Vous utilisez une version plus récente que celle publiée", "You are using a newer version than the published one"],
   'أفلام': ["Films", "Movies"],
   'مسلسلات': ["Séries", "Series"],
   'مباشر': ["Direct", "Live"],

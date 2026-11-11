@@ -1,7 +1,7 @@
 name: mesut_iptv
 description: Mesut IPTV player for Xtream Codes
 publish_to: 'none'
-version: 8.0.0+15
+version: 8.0.0+16
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

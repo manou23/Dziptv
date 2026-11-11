@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => a == null
-            ? const LoginScreen()
+            ? LoginScreen()
             : HomeScreen(service: XtreamService.fromAccount(a)),
       ),
       (r) => false,
@@ -128,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     I18n.init();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const ProfilesScreen()),
+      MaterialPageRoute<void>(builder: (_) => ProfilesScreen()),
       (r) => false,
     );
   }

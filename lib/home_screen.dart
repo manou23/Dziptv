@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _featuredFuture = widget.service.allVod();
-    // Load the series catalog only when its row is actually reached.
+    _mobileScrollController.addListener(_loadSeriesWhenNear);
     _featuredTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       // Avoid needless carousel work while the app is backgrounded or covered.
       if (!mounted ||
@@ -60,10 +60,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _loadSeriesWhenNear() {
+    if (kIsTvBuild || _seriesFuture != null ||
+        !_mobileScrollController.hasClients ||
+        _mobileScrollController.offset < 420) {
+      return;
+    }
+    setState(() {
+      _seriesFuture = widget.service.allSeries();
+    });
+  }
+
   @override
   void dispose() {
     _featuredTimer?.cancel();
     _featuredController.dispose();
+    _mobileScrollController.removeListener(_loadSeriesWhenNear);
     _mobileScrollController.dispose();
     super.dispose();
   }
@@ -645,8 +657,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _mobileSeriesRow() {
+    final future = _seriesFuture;
+    if (future == null) return const SizedBox.shrink();
     return FutureBuilder<List<MediaItem>>(
-      future: _seriesFuture ??= widget.service.allSeries(),
+      future: future,
       builder: (context, snapshot) {
         final items = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
         return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, favoriteType: 'series', onSeeAll: _openSeries);

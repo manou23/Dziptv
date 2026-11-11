@@ -456,17 +456,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Text('تُطبّق تلقائياً عند بدء تشغيل كل فيديو، ويمكن تغييرها من المشغّل.',
                       style: TextStyle(color: Colors.white54, fontSize: 12)),
                   const SizedBox(height: 12),
-                  SegmentedButton<double>(
-                    segments: const [
-                      ButtonSegment(value: 0.75, label: Text('0.75×')),
-                      ButtonSegment(value: 1.0, label: Text('1×')),
-                      ButtonSegment(value: 1.25, label: Text('1.25×')),
-                      ButtonSegment(value: 1.5, label: Text('1.5×')),
-                      ButtonSegment(value: 2.0, label: Text('2×')),
+                  DropdownButton<double>(
+                    value: Store.playbackSpeed,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 0.75, child: Text('0.75×')),
+                      DropdownMenuItem(value: 1.0, child: Text('1× (عادية)')),
+                      DropdownMenuItem(value: 1.25, child: Text('1.25×')),
+                      DropdownMenuItem(value: 1.5, child: Text('1.5×')),
+                      DropdownMenuItem(value: 2.0, child: Text('2×')),
                     ],
-                    selected: {Store.playbackSpeed},
-                    onSelectionChanged: (values) async {
-                      await Store.setPlaybackSpeed(values.first);
+                    onChanged: (value) async {
+                      if (value == null) return;
+                      await Store.setPlaybackSpeed(value);
                       if (mounted) setState(() {});
                     },
                   ),

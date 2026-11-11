@@ -12,6 +12,8 @@
 
 واجهة أنيقة، تشغيل مباشر، ومكتبة ترفيهية في مكان واحد.
 
+> 🚀 **NOVA 8.0.0 — تحديث الإطلاق الرسمي قيد التطوير.** نعيد بناء تجربة الهاتف ونرفع مستوى السلاسة والاستقرار مع الحفاظ على تجربة Android TV. روابط التنزيل أدناه تبقى للنسخة المستقرة الحالية إلى أن ينجح اعتماد الإصدار الجديد ونشر ملفاته.
+
 <p>
   <img src="https://img.shields.io/badge/STATUS-ACTIVE-20C997?style=for-the-badge" alt="Project status">
   <img src="https://img.shields.io/badge/ANDROID-TV-111827?style=for-the-badge&logo=androidtv&logoColor=3DDC84" alt="Android TV">

@@ -6,12 +6,25 @@ on:
     branches: [main, 'release/**']
     paths:
       - "lib/**"
+      - "test/**"
       - "assets/**"
       - "android/**"
       - "pubspec.yaml"
       - "pubspec.lock"
       - ".github/workflows/flutter-apk.yml"
+      - ".github/workflows/nova-official-release.yml"
       - "README.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "assets/**"
+      - "android/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/flutter-apk.yml"
+      - ".github/workflows/nova-official-release.yml"
 
 permissions:
   contents: write
@@ -42,6 +55,12 @@ jobs:
 
       - name: Install Flutter dependencies
         run: flutter pub get
+
+      - name: Analyze Dart and Flutter code
+        run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub --reporter expanded
 
       - name: Build phone APK (ARM64)
         run: >-
@@ -77,12 +96,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Read app version
+        id: app_version
+        run: |
+          version="$(grep '^version:' pubspec.yaml | head -n1 | cut -d' ' -f2 | cut -d'+' -f1)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Publish rolling direct-download release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: MESUT IPTV - Latest Android Build
+          name: MESUT IPTV - NOVA ${{ steps.app_version.outputs.version }} (Android latest)
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
@@ -90,6 +115,8 @@ jobs:
           fail_on_unmatched_files: true
           body: |
             Automated Android release built from the latest successful main-branch workflow run.
+
+            App version: ${{ steps.app_version.outputs.version }}
 
             Build commit: ${{ github.sha }}
 

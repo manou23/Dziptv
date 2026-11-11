@@ -541,10 +541,27 @@
 
 
 
-  function refreshAccountMenu(){
+  let accountMenuCheck=0;
+  async function refreshAccountMenu(){
+    const check=++accountMenuCheck;
     let signedIn=false;
-    try{const saved=JSON.parse(localStorage.getItem("mesut-account-state")||"null");signedIn=!!(saved&&saved.email&&saved.signedIn===true);}
-    catch(_){}
+    try{
+      const db=await new Promise((resolve,reject)=>{
+        const request=indexedDB.open("mesut-account-session-v1",1);
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+      });
+      const saved=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("sessions","readonly");
+        const req=tx.objectStore("sessions").get("active");
+        req.onsuccess=()=>resolve(req.result||null);
+        req.onerror=()=>reject(req.error);
+      });
+      db.close();
+      signedIn=!!(saved&&saved.token&&saved.email&&saved.key&&Number.isFinite(saved.savedAt)&&Date.now()-saved.savedAt<=30*24*60*60*1000);
+      if(!signedIn){try{localStorage.removeItem("mesut-account-state");}catch(_){}}
+    }catch(_){signedIn=false;try{localStorage.removeItem("mesut-account-state");}catch(__){}}
+    if(check!==accountMenuCheck)return;
     const trigger=document.getElementById("accountTrigger");
     const login=document.querySelector("[data-account-login]");
     const register=document.querySelector("[data-account-register]");

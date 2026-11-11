@@ -3,6 +3,7 @@ const String kBrand = 'Mesut23';
 const String kVersion = '8.0.0';
 
 /// قناة الدعم الرسمية للمشروع.
+const String kContactEmail = 'mesut.amari23@gmail.com';
 const String kContactUrl = 'https://github.com/manou23/Dziptv/issues';
 
 /// مستودع GitHub لفحص التحديثات، مثال: 'user/repo'. فارغ = معطّل

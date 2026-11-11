@@ -226,7 +226,11 @@ class XtreamService {
   // ---------- الروابط ----------
   String get _auth =>
       '${Uri.encodeComponent(username)}/${Uri.encodeComponent(password)}';
-  String liveUrl(String id) => '$baseUrl/live/$_auth/$id.${Store.liveFormat}';
+  String liveUrl(String id, {String? format}) {
+    final requested = (format ?? Store.liveFormat).toLowerCase();
+    final extension = requested == 'm3u8' ? 'm3u8' : 'ts';
+    return '$baseUrl/live/$_auth/$id.$extension';
+  }
   String movieUrl(String id, String ext) => '$baseUrl/movie/$_auth/$id.$ext';
   String episodeUrl(String id, String ext) => '$baseUrl/series/$_auth/$id.$ext';
 }

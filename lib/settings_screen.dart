@@ -11,7 +11,6 @@ import 'legal_screen.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'store.dart';
-import 'utils.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'mesut_account_screen.dart';

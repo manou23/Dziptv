@@ -11,7 +11,6 @@ import 'legal_screen.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'store.dart';
-import 'utils.dart';
 import 'xtream_service.dart';
 import 'home_screen.dart';
 import 'mesut_account_screen.dart';
@@ -41,74 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       (r) => false,
     );
-  }
-
-  Future<String?> _askNewPin(String title) {
-    final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          obscureText: true,
-          maxLength: 4,
-          keyboardType: TextInputType.number,
-          textDirection: TextDirection.ltr,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('إلغاء')),
-          FilledButton(
-              onPressed: () => Navigator.pop(c, ctrl.text),
-              child: const Text('حفظ')),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _setPin() async {
-    if (Store.pin != null && !await askPin(context)) return;
-    final p = await _askNewPin('رمز سري جديد (4 أرقام)');
-    if (p == null) return;
-    if (p.length != 4) {
-      _toast('يجب أن يتكون الرمز من 4 أرقام');
-      return;
-    }
-    await Store.setPin(p);
-    if (mounted) setState(() {});
-    _toast('تم حفظ الرمز السري');
-  }
-
-  Future<void> _toggleKidsMode(bool enabled) async {
-    if (enabled) {
-      if (Store.pin == null) {
-        final pin = await _askNewPin('أنشئ رمزاً سرياً من 4 أرقام لتأمين وضع الأطفال');
-        if (pin == null) return;
-        if (pin.length != 4 || int.tryParse(pin) == null) {
-          _toast('يجب أن يتكون الرمز من 4 أرقام');
-          return;
-        }
-        await Store.setPin(pin);
-      }
-      await Store.setKidsMode(true);
-    } else {
-      if (!await askPin(context)) return;
-      await Store.setKidsMode(false);
-    }
-    if (mounted) setState(() {});
-    _toast(enabled ? 'تم تفعيل وضع الأطفال' : 'تم إيقاف وضع الأطفال');
-  }
-
-  Future<void> _removePin() async {
-    if (Store.kidsMode) {
-      _toast('أوقف وضع الأطفال أولاً');
-      return;
-    }
-    if (!await askPin(context)) return;
-    await Store.setPin(null);
-    if (mounted) setState(() {});
-    _toast('تم حذف الرمز السري');
   }
 
   void _legal(String kind) => Navigator.of(context)
@@ -211,12 +142,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
       final body = release['body']?.toString() ?? '';
-      final match = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
-      final remoteCommit = match?.group(1) ?? '';
-      final isCurrent = remoteCommit.isNotEmpty &&
-          kBuildCommit != 'unknown' &&
-          remoteCommit == kBuildCommit;
+      final versionMatch =
+          RegExp(r'App version:\s*([0-9]+\.[0-9]+\.[0-9]+)').firstMatch(body);
+      final remoteVersion = versionMatch?.group(1);
+      final commitMatch = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
+      final remoteCommit = commitMatch?.group(1) ?? '';
       if (!mounted) return;
+      if (remoteVersion == null) {
+        final remoteMatchesCurrent = remoteCommit.isNotEmpty &&
+            kBuildCommit != 'unknown' &&
+            remoteCommit == kBuildCommit;
+        _toast(remoteMatchesCurrent
+            ? 'أنت تستخدم أحدث إصدار'
+            : tr('تعذر قراءة رقم الإصدار المنشور. حاول لاحقاً'));
+        return;
+      }
+      final versionOrder = compareAppVersions(remoteVersion, kVersion);
+      if (versionOrder < 0) {
+        _toast(tr('أنت تستخدم إصداراً أحدث من الإصدار المنشور'));
+        return;
+      }
+      final isCurrent = versionOrder == 0 &&
+          (remoteCommit.isEmpty ||
+              (kBuildCommit != 'unknown' && remoteCommit == kBuildCommit));
       if (isCurrent) {
         _toast('أنت تستخدم أحدث إصدار');
         return;
@@ -323,6 +271,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 4),
                   const Text('جرّب m3u8 إذا كان ts لا يعمل مع سيرفرك',
                       style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(tr('سيحاول التطبيق تلقائياً الصيغة البديلة عند فشل البث'),
+                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
                   const SizedBox(height: 10),
                   SegmentedButton<String>(
                     segments: const [
@@ -339,26 +290,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             )),
             _section('الحماية'),
-            _box(SwitchListTile(
-              secondary: const Icon(Icons.child_care_rounded),
-              title: const Text('وضع الأطفال'),
-              subtitle: const Text('إخفاء التصنيفات والعناوين المصنفة للكبار'),
-              value: Store.kidsMode,
-              onChanged: _toggleKidsMode,
-            )),
             _box(ListTile(
-              leading: const Icon(Icons.lock_rounded),
-              title: Text(Store.pin == null ? 'تعيين رمز سري' : 'تغيير الرمز السري'),
-              subtitle: const Text('يحمي التصنيفات المخصصة للكبار',
-                  style: TextStyle(fontSize: 12)),
-              onTap: _setPin,
+              leading: const Icon(Icons.shield_rounded, color: kAccent),
+              title: const Text('حماية المحتوى الإباحي'),
+              subtitle: const Text(
+                'مفعّلة تلقائياً ودائماً على جميع البروفايلات. لا يوجد خيار لإيقافها أو فتح المحتوى المحظور.',
+                style: TextStyle(fontSize: 12),
+              ),
+              trailing: const Icon(Icons.verified_user_rounded, color: kAccent),
             )),
-            if (Store.pin != null)
-              _box(ListTile(
-                leading: const Icon(Icons.lock_open_rounded),
-                title: const Text('حذف الرمز السري'),
-                onTap: _removePin,
-              )),
             _section('إدارة القنوات'),
             _box(ListTile(
               leading: const Icon(Icons.tune_rounded),

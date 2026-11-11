@@ -123,7 +123,13 @@ class Store {
     }
 
     // Create a one-time, device-local lock marker on first launch.
-    await _ensureAdultContentLock();
+    // A secure-storage failure must never prevent the app from starting;
+    // adult filtering remains fail-closed through the always-on kidsMode getter.
+    try {
+      await _ensureAdultContentLock();
+    } catch (_) {
+      // Retry marker creation on a later launch; keep content filtering enabled.
+    }
     await _p.setBool('kids_mode', true);
   }
 

@@ -78,11 +78,19 @@ jobs:
 
       - name: Prepare separate downloads and checksums
         run: |
+          set -euo pipefail
           cd build/app/outputs/flutter-apk
           cp app-phone-release.apk mesut-iptv-phone.apk
           cp app-tv-release.apk mesut-iptv-tv.apk
+          test -s mesut-iptv-phone.apk
+          test -s mesut-iptv-tv.apk
           sha256sum mesut-iptv-phone.apk > mesut-iptv-phone.apk.sha256
           sha256sum mesut-iptv-tv.apk > mesut-iptv-tv.apk.sha256
+          sha256sum -c mesut-iptv-phone.apk.sha256
+          sha256sum -c mesut-iptv-tv.apk.sha256
+          unzip -t mesut-iptv-phone.apk >/dev/null
+          unzip -t mesut-iptv-tv.apk >/dev/null
+          echo "Both APK archives and SHA-256 checksums are valid."
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

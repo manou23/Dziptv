@@ -65,23 +65,40 @@ jobs:
             echo "Stable release is held until 17:30 Algeria time."
           fi
 
-      - name: Resolve successful build source
+      - name: Resolve and verify the latest successful main APK build
         id: source
         if: steps.gate.outputs.allowed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
-            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            candidate_sha="${{ github.event.workflow_run.head_sha }}"
+            candidate_run_id="${{ github.event.workflow_run.id }}"
           else
             release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/android-latest")"
             body="$(jq -r '.body' <<<"$release_json")"
-            sha="$(sed -n 's/^Build commit: //p' <<<"$body" | head -n1)"
-            test -n "$sha"
-            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+            candidate_sha="$(sed -n 's/^Build commit: //p' <<<"$body" | head -n1)"
+            test -n "$candidate_sha"
+            candidate_run_id=""
           fi
 
+          runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/flutter-apk.yml/runs?branch=main&per_page=20")"
+          latest="$(jq '.workflow_runs[0]' <<<"$runs")"
+          latest_status="$(jq -r '.status' <<<"$latest")"
+          latest_conclusion="$(jq -r '.conclusion // empty' <<<"$latest")"
+          latest_sha="$(jq -r '.head_sha' <<<"$latest")"
+          latest_run_id="$(jq -r '.id' <<<"$latest")"
+
+          test "$latest_status" = "completed"
+          test "$latest_conclusion" = "success"
+          test "$latest_sha" = "$candidate_sha"
+          if [ -n "$candidate_run_id" ]; then
+            test "$latest_run_id" = "$candidate_run_id"
+          fi
+
+          echo "run_id=$latest_run_id" >> "$GITHUB_OUTPUT"
+          echo "sha=$latest_sha" >> "$GITHUB_OUTPUT"
       - name: Checkout the exact successful build commit
         if: steps.gate.outputs.allowed == 'true'
         uses: actions/checkout@v4

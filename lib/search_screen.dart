@@ -83,6 +83,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _open(MediaItem it) {
+    if (isAdult(it.name)) return;
     final s = widget.service;
     Widget page;
     if (_type == 'live') {

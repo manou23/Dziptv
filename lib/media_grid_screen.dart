@@ -103,7 +103,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (!mounted || isAdult(it.name)) return;
     await widget.onOpen(context, it);
     if (mounted && _cat?.id == _favCat.id) {
-      setState(() => _items = Store.favs(widget.type).where((item) => !Store.kidsMode || !isAdult(item.name)).toList());
+      setState(() => _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList());
     }
   }
 

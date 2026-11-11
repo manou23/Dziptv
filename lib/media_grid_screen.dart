@@ -71,7 +71,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (c.id == _favCat.id) {
       setState(() {
         _cat = c;
-        _items = Store.favs(widget.type).where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
+        _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList();
         _loading = false;
         _error = null;
       });
@@ -86,7 +86,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       final it = await widget.loadItems(c.id);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
-        _items = it;
+        _items = it.where((item) => !isAdult(item.name)).toList();
         _loading = false;
       });
     } catch (e) {
@@ -100,7 +100,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   }
 
   Future<void> _open(MediaItem it) async {
-    if (!mounted) return;
+    if (!mounted || isAdult(it.name)) return;
     await widget.onOpen(context, it);
     if (mounted && _cat?.id == _favCat.id) {
       setState(() => _items = Store.favs(widget.type).where((item) => !Store.kidsMode || !isAdult(item.name)).toList());
@@ -108,6 +108,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   }
 
   Future<void> _longPress(MediaItem it) async {
+    if (isAdult(it.name)) return;
     final added = await Store.toggleFav(widget.type, it);
     if (!mounted) return;
     if (_cat?.id == _favCat.id) setState(() => _items = Store.favs(widget.type));
@@ -126,9 +127,10 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   @override
   Widget build(BuildContext context) {
     final q = _q.toLowerCase();
+    final safeItems = _items.where((e) => !isAdult(e.name)).toList();
     final shown = q.isEmpty
-        ? _items
-        : _items.where((e) => e.name.toLowerCase().contains(q)).toList();
+        ? safeItems
+        : safeItems.where((e) => e.name.toLowerCase().contains(q)).toList();
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),

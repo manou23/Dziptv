@@ -106,7 +106,45 @@
     .mesut-ad-wrap{width:min(100% - 32px,970px);margin:26px auto 34px;padding:12px 0;display:flex;justify-content:center;align-items:center;overflow:hidden}
     .mesut-ad-wrap ins.adsbygoogle{display:block;width:100%;min-height:90px}
     @media(max-width:680px){.mesut-ad-wrap{width:calc(100% - 24px);margin:18px auto 26px;padding:8px 0}.mesut-ad-wrap ins.adsbygoogle{min-height:100px}}
-</style>
+
+    /* MESUT IPTV — cinematic motion layer */
+    .visual .orb{animation:mesutOrbPulse 7s ease-in-out infinite alternate}
+    .visual .tv{animation:mesutTvFloat 8s ease-in-out infinite;transform-origin:center}
+    .visual .phone{animation:mesutPhoneFloat 6.5s ease-in-out infinite;will-change:transform}
+    .poster{position:relative;overflow:hidden;animation:mesutPosterGlow 5s ease-in-out infinite alternate}
+    .poster:nth-child(2){animation-delay:.8s}
+    .poster:nth-child(3){animation-delay:1.6s}
+    .poster:after{content:"";position:absolute;inset:-45% auto -45% -65%;width:42%;background:linear-gradient(90deg,transparent,#ffffff38,transparent);transform:skewX(-20deg);animation:mesutPosterSweep 5.5s ease-in-out infinite}
+    .poster:nth-child(2):after{animation-delay:1.2s}
+    .poster:nth-child(3):after{animation-delay:2.4s}
+    .hero h1 span{background-size:220% 100%;animation:mesutTitleShine 7s linear infinite}
+    .btn-primary{position:relative;isolation:isolate;overflow:hidden}
+    .btn-primary:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 20%,#ffffff35 48%,transparent 72%);transform:translateX(-130%);animation:mesutButtonShine 5s ease-in-out infinite}
+    .feature,.screen-card,.download-card,.step{transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease}
+    .feature:hover,.screen-card:hover,.download-card:hover,.step:hover{transform:translateY(-7px);border-color:#9b82ff88;box-shadow:0 18px 42px #0005,0 0 24px #7651db20}
+    .feature .ico{display:inline-block;transition:transform .35s ease}
+    .feature:hover .ico{transform:translateY(-4px) rotate(-8deg) scale(1.12)}
+    .screen-card .mock-wrap{transition:background .4s ease}
+    .screen-card:hover .mock-wrap{background:radial-gradient(ellipse,#5550b988,transparent 70%)}
+    @keyframes mesutOrbPulse{from{transform:scale(.92);opacity:.72}to{transform:scale(1.1);opacity:1}}
+    @keyframes mesutTvFloat{0%,100%{translate:0 0}50%{translate:0 -9px}}
+    @keyframes mesutPhoneFloat{0%,100%{transform:rotate(-5deg) translate(-22px,0)}50%{transform:rotate(-3deg) translate(-22px,-13px)}}
+    @keyframes mesutPosterGlow{from{filter:saturate(.9) brightness(.92)}to{filter:saturate(1.25) brightness(1.16)}}
+    @keyframes mesutPosterSweep{0%,22%{left:-65%}58%,100%{left:145%}}
+    @keyframes mesutTitleShine{0%{background-position:100% 50%}100%{background-position:-120% 50%}}
+    @keyframes mesutButtonShine{0%,65%{transform:translateX(-130%)}100%{transform:translateX(240%)}}
+    @media(max-width:680px){
+      .visual .tv{animation-duration:10s}
+      .visual .phone{animation-duration:8s}
+      .feature:hover,.screen-card:hover,.download-card:hover,.step:hover{transform:translateY(-3px)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .visual .orb,.visual .tv,.visual .phone,.poster,.poster:after,.hero h1 span,.btn-primary:after{animation:none!important}
+      .feature,.screen-card,.download-card,.step,.feature .ico{transition:none!important}
+      .feature:hover,.screen-card:hover,.download-card:hover,.step:hover,.feature:hover .ico{transform:none!important}
+    }
+
+  </style>
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",

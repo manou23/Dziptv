@@ -2,17 +2,44 @@ import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
 import 'store.dart';
 
+/// Conservative multilingual classifier for adult-labelled IPTV metadata.
+/// It intentionally favours hiding a questionable title over exposing it.
 bool isAdult(String name) {
-  final n = name.toLowerCase();
-  return n.contains('xxx') ||
-      n.contains('adult') ||
-      n.contains('porn') ||
-      n.contains('+18') ||
-      n.contains('18+') ||
-      n.contains('للكبار');
+  final n = name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670]'), '')
+      .replaceAll(RegExp(r'[_./\\-]+'), ' ')
+      .replaceAll(RegExp(r'\\s+'), ' ')
+      .trim();
+  if (n.isEmpty) return false;
+
+  const exactTerms = <String>[
+    'xxx', 'adult', 'adults', 'porn', 'porno', 'pornography', 'erotic',
+    'erotica', 'hentai', 'hardcore', 'x rated', 'x-rated', 'onlyfans',
+    'playboy', 'penthouse', 'brazzers', 'redtube', 'xvideos', 'pornhub',
+    'youporn', 'tube8', 'rule34', 'camgirl', 'webcam', 'stripper',
+    'nudity', 'nude', 'explicit', 'uncensored',
+  ];
+  for (final term in exactTerms) {
+    if (RegExp('(^|[^a-z0-9])' + RegExp.escape(term) + r'([^a-z0-9]|$)').hasMatch(n)) {
+      return true;
+    }
+  }
+
+  if (RegExp(r'(^|\\D)(18\\s*\\+|\\+\\s*18|21\\s*\\+|\\+\\s*21)(\\D|$)').hasMatch(n)) {
+    return true;
+  }
+
+  const arabicTerms = <String>[
+    'اباحي', 'إباحي', 'اباحية', 'إباحية', 'للكبار', 'للكبار فقط',
+    'محتوى جنسي', 'افلام جنسية', 'أفلام جنسية', 'عري', 'تعري',
+    'بورنو', 'بورن', 'سكس', 'جنس صريح', 'للبالغين فقط',
+  ];
+  return arabicTerms.any(n.contains);
 }
 
-/// إذا كان هناك رمز سري يطلبه، وإلا يسمح مباشرة
+/// إذا كان هناك رمز سري يطلبه، وإلا يسمح مباشرة.
+/// Adult content is blocked before this legacy PIN prompt can be reached.
 Future<bool> askPin(BuildContext context) async {
   final pin = Store.pin;
   if (pin == null) return true;

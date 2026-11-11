@@ -39,7 +39,8 @@ jobs:
             release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v8.0.0" --jq '.id' 2>/dev/null || true)"
             if [ -n "$release_id" ]; then
               gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/$release_id" \
-                -F prerelease=true -F make_latest=false
+                -F prerelease=true -F make_latest=false \
+                -f body="NOVA 8.0.0 launch candidate. This is a PRE-RELEASE, not the official stable release. The official launch is scheduled for 11 November 2026 at 17:30 Africa/Algiers. The stable release will be published after launch-time validation."
               echo "NOVA 8.0.0 is marked as prerelease until launch."
             fi
           fi

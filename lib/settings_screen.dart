@@ -142,12 +142,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
       final body = release['body']?.toString() ?? '';
-      final match = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
-      final remoteCommit = match?.group(1) ?? '';
-      final isCurrent = remoteCommit.isNotEmpty &&
-          kBuildCommit != 'unknown' &&
-          remoteCommit == kBuildCommit;
+      final versionMatch =
+          RegExp(r'App version:\\s*([0-9]+\\.[0-9]+\\.[0-9]+)').firstMatch(body);
+      final remoteVersion = versionMatch?.group(1);
+      final commitMatch = RegExp(r'Build commit: ([0-9a-f]{40})').firstMatch(body);
+      final remoteCommit = commitMatch?.group(1) ?? '';
       if (!mounted) return;
+      if (remoteVersion == null) {
+        _toast(tr('تعذر قراءة رقم الإصدار المنشور. حاول لاحقاً'));
+        return;
+      }
+      final versionOrder = compareAppVersions(remoteVersion, kVersion);
+      if (versionOrder < 0) {
+        _toast(tr('أنت تستخدم إصداراً أحدث من الإصدار المنشور'));
+        return;
+      }
+      final isCurrent = versionOrder == 0 &&
+          (remoteCommit.isEmpty ||
+              (kBuildCommit != 'unknown' && remoteCommit == kBuildCommit));
       if (isCurrent) {
         _toast('أنت تستخدم أحدث إصدار');
         return;

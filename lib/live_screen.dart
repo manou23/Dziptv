@@ -10,6 +10,7 @@ import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
+import 'player/services/player_lifecycle.dart';
 import 'xtream_service.dart';
 
 class LiveScreen extends StatefulWidget {
@@ -45,6 +46,7 @@ class _LiveScreenState extends State<LiveScreen> {
   String _shownQuery = '';
   List<MediaItem> _shownCache = const [];
   Timer? _ovTimer;
+  Timer? _retryTimer;
   int _token = 0, _retries = 0;
   bool _retryScheduled = false;
 
@@ -91,13 +93,14 @@ class _LiveScreenState extends State<LiveScreen> {
   @override
   void dispose() {
     _ovTimer?.cancel();
+    _retryTimer?.cancel();
     WakelockPlus.disable();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _playingSub?.cancel();
     _bufferingSub?.cancel();
     _errorSub?.cancel();
-    _ctrl?.dispose();
+    PlayerLifecycle.dispose(_ctrl);
     _sc.dispose();
     super.dispose();
   }
@@ -233,7 +236,8 @@ class _LiveScreenState extends State<LiveScreen> {
       _loadingVideo = true;
       _error = 'إعادة المحاولة...';
     });
-    Future.delayed(const Duration(seconds: 2), () {
+    _retryTimer?.cancel();
+    _retryTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted || _current?.id != ch.id || token != _token) return;
       _retryScheduled = false;
       _play(ch, auto: true);

@@ -12,6 +12,7 @@ import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'xtream_service.dart';
+import 'player/services/player_lifecycle.dart';
 
 /// مشغل الأفلام والمسلسلات (محرك mpv: يدعم mkv و avi وكل الترميزات)
 class PlayerScreen extends StatefulWidget {
@@ -158,7 +159,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       s.cancel();
     }
     if (_playerInitialized) {
-      unawaited(_p.dispose());
+      PlayerLifecycle.dispose(_p);
     }
     WakelockPlus.disable();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);

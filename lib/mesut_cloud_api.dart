@@ -53,6 +53,7 @@ class MesutCloudApi {
   static bool _syncing = false;
   static bool _syncRequested = false;
   static int _retryAttempt = 0;
+  static Future<void>? _syncInFlight;
 
   static bool get isConfigured => baseUrl.startsWith('https://') || baseUrl.startsWith('http://');
   static Future<String?> get email => _secure.read(key: _emailKey);
@@ -311,8 +312,16 @@ class MesutCloudApi {
     try {
       await syncNow();
       _retryAttempt = 0;
+    } on CloudDeviceLimitException {
+      // A full device quota is a user action, not a transient network error.
+      _retryAttempt = 0;
+      _syncRequested = false;
+    } on CloudProfileLimitException {
+      // A full profile quota is a user action, not a transient network error.
+      _retryAttempt = 0;
+      _syncRequested = false;
     } catch (_) {
-      // Keep local data and retry automatically (15s, 30s, 60s... up to 5m).
+      // Retry only transient failures (15s, 30s, 60s... up to 5m).
       _retryAttempt++;
       _syncRequested = true;
     } finally {
@@ -323,8 +332,17 @@ class MesutCloudApi {
     }
   }
 
-  static Future<void> syncNow() async {
-    await _registerDevice();
+  static Future<void> syncNow() {
+    final active = _syncInFlight;
+    if (active != null) return active;
+    final task = _performSync();
+    _syncInFlight = task;
+    return task.whenComplete(() {
+      if (identical(_syncInFlight, task)) _syncInFlight = null;
+    });
+  }
+
+  static Future<void> _performSync() async {
     final headers = await _authHeaders();
     final remote = await _fetchRecords(headers);
 
@@ -367,6 +385,10 @@ class MesutCloudApi {
             'تعذرت استعادة بروفايلات حساب MESUT: $error');
       }
     }
+
+    // Restore the encrypted profile vault before device registration. A user
+    // at the five-device limit must still be able to retrieve their profiles.
+    await _registerDevice();
 
     final snapshot = Store.cloudSnapshot();
     final profileId = snapshot['profile_id'] as String;

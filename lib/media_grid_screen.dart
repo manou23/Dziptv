@@ -135,6 +135,8 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardExtent = screenWidth >= 1100 ? 220.0 : screenWidth >= 700 ? 185.0 : 150.0;
     final q = ref.watch(mediaGridSearchQueryProvider(_loadRequest)).toLowerCase();
     // _items is filtered once when a category/favourites list is loaded.
     // Re-filtering every title here on every widget rebuild/search keystroke
@@ -205,7 +207,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
                               padding: const EdgeInsets.all(14),
                               gridDelegate:
                                   const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 150,
+                                maxCrossAxisExtent: cardExtent,
                                 childAspectRatio: 0.64,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,

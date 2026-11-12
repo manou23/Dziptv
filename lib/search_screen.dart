@@ -4,6 +4,9 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
+import 'data/datasources/xtream_media_data_source.dart';
+import 'data/repositories/xtream_media_repository.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'live_screen.dart';
@@ -87,7 +90,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final s = widget.service;
     Widget page;
     if (_type == 'live') {
-      page = LiveScreen(service: s, initial: it);
+      page = LiveScreen(repository: XtreamMediaRepository(XtreamMediaDataSource(s)), initial: it);
     } else if (_type == 'vod') {
       page = MovieDetailScreen(service: s, item: it);
     } else {

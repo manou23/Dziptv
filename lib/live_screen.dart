@@ -13,11 +13,12 @@ import 'utils.dart';
 import 'player/services/player_lifecycle.dart';
 import 'core/errors/app_error_mapper.dart';
 import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
 
 class LiveScreen extends StatefulWidget {
-  final XtreamService service;
+  final MediaRepository repository;
   final MediaItem? initial;
-  const LiveScreen({super.key, required this.service, this.initial});
+  const LiveScreen({super.key, required this.repository, this.initial});
   @override
   State<LiveScreen> createState() => _LiveScreenState();
 }
@@ -157,7 +158,7 @@ class _LiveScreenState extends State<LiveScreen> {
   Future<void> _loadCats() async {
     try {
       _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
-      final loadedCats = await widget.service.liveCategories();
+      final loadedCats = await widget.repository.liveCategories();
       final blockedCategoryIds = {
         ...loadedCats.where((cat) => isAdult(cat.name)).map((cat) => cat.id),
         ...Store.hiddenCategories('live'),
@@ -207,7 +208,7 @@ class _LiveScreenState extends State<LiveScreen> {
       _loadingList = true;
     });
     try {
-      final ch = await widget.service.liveStreams(c.id);
+      final ch = await widget.repository.liveStreams(c.id);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
         _channels = ch.where((item) => !isAdult(item.name)).toList(growable: false);
@@ -283,7 +284,7 @@ class _LiveScreenState extends State<LiveScreen> {
       // First retry switches the container; second retries the preferred
       // container with minimal headers; third tries the alternate again.
       final format = (_retries == 1 || _retries == 3) ? alternate : preferred;
-      final streamUrl = widget.service.liveUrl(ch.id, format: format);
+      final streamUrl = widget.repository.liveUrl(ch.id, format: format);
       await player.open(
         Media(streamUrl, httpHeaders: _streamHeaders(streamUrl, minimal: _retries == 2)),
         play: true,
@@ -311,7 +312,7 @@ class _LiveScreenState extends State<LiveScreen> {
 
   Future<void> _loadEpg(MediaItem ch) async {
     try {
-      final l = await widget.service.shortEpg(ch.id);
+      final l = await widget.repository.shortEpg(ch.id);
       if (mounted && _current?.id == ch.id) setState(() => _epg = l);
     } catch (_) {}
   }

@@ -21,4 +21,6 @@ class XtreamMediaDataSource {
 
   Future<List<Epg>> shortEpg(String id, {int limit = 3}) =>
       service.shortEpg(id, limit: limit);
+  String liveUrl(String id, {String? format}) =>
+      service.liveUrl(id, format: format);
 }

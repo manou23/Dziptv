@@ -7,6 +7,9 @@ import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
+import 'data/datasources/xtream_media_data_source.dart';
+import 'data/repositories/xtream_media_repository.dart';
 import 'live_screen.dart';
 import 'media_grid_screen.dart';
 import 'movie_detail_screen.dart';
@@ -82,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   XtreamService get s => widget.service;
+  MediaRepository get _mediaRepository =>
+      XtreamMediaRepository(XtreamMediaDataSource(s));
 
   Widget _activeProfileAvatar({double size = 34}) {
     final account = Store.active;
@@ -141,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return item;
   }
 
-  void _openLive([MediaItem? it]) => _push(LiveScreen(service: s, initial: it));
+  void _openLive([MediaItem? it]) => _push(LiveScreen(repository: _mediaRepository, initial: it));
 
   void _openVod(MediaItem it) => _push(MovieDetailScreen(service: s, item: it));
 

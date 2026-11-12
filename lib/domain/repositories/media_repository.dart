@@ -15,4 +15,5 @@ abstract interface class MediaRepository {
   Future<List<MediaItem>> allSeries();
 
   Future<List<Epg>> shortEpg(String streamId, {int limit = 3});
+  String liveUrl(String streamId, {String? format});
 }

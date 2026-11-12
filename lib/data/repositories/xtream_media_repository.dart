@@ -35,4 +35,8 @@ class XtreamMediaRepository implements MediaRepository {
   @override
   Future<List<Epg>> shortEpg(String streamId, {int limit = 3}) =>
       remote.shortEpg(streamId, limit: limit);
+
+  @override
+  String liveUrl(String streamId, {String? format}) =>
+      remote.liveUrl(streamId, format: format);
 }

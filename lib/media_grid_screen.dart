@@ -71,7 +71,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (c.id == _favCat.id) {
       setState(() {
         _cat = c;
-        _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList();
+        _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList(growable: false);
         _loading = false;
         _error = null;
       });
@@ -86,7 +86,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       final it = await widget.loadItems(c.id);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
-        _items = it.where((item) => !isAdult(item.name)).toList();
+        _items = it.where((item) => !isAdult(item.name)).toList(growable: false);
         _loading = false;
       });
     } catch (e) {
@@ -103,7 +103,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (!mounted || isAdult(it.name)) return;
     await widget.onOpen(context, it);
     if (mounted && _cat?.id == _favCat.id) {
-      setState(() => _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList());
+      setState(() => _items = Store.favs(widget.type).where((item) => !isAdult(item.name)).toList(growable: false));
     }
   }
 
@@ -111,7 +111,10 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     if (isAdult(it.name)) return;
     final added = await Store.toggleFav(widget.type, it);
     if (!mounted) return;
-    if (_cat?.id == _favCat.id) setState(() => _items = Store.favs(widget.type));
+    if (_cat?.id == _favCat.id) {
+      setState(() => _items = Store.favs(widget.type)
+          .where((item) => !isAdult(item.name)).toList(growable: false));
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       duration: const Duration(seconds: 1),
       content: Text(added ? 'أُضيف إلى المفضلة' : 'أُزيل من المفضلة'),
@@ -127,10 +130,12 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   @override
   Widget build(BuildContext context) {
     final q = _q.toLowerCase();
-    final safeItems = _items.where((e) => !isAdult(e.name)).toList();
+    // _items is filtered once when a category/favourites list is loaded.
+    // Re-filtering every title here on every widget rebuild/search keystroke
+    // repeatedly scanned thousands of catalogue entries.
     final shown = q.isEmpty
-        ? safeItems
-        : safeItems.where((e) => e.name.toLowerCase().contains(q)).toList();
+        ? _items
+        : _items.where((e) => e.name.toLowerCase().contains(q)).toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -214,6 +219,8 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
                                           ? _placeholder()
                                           : Image.network(it.image,
                                               fit: BoxFit.cover,
+                                              cacheWidth: 420,
+                                              cacheHeight: 656,
                                               errorBuilder: (_, __, ___) =>
                                                   _placeholder()),
                                       Positioned(

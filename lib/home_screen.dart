@@ -296,12 +296,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return filtered.take(limit).toList();
   }
 
+  List<MediaItem> _featuredItems(AsyncSnapshot<List<MediaItem>> snapshot) {
+    if (_featuredDisplay != null) return _featuredDisplay!;
+    if (!snapshot.hasData) return const <MediaItem>[];
+    _featuredDisplay = _latestMovies(snapshot.data!, limit: 18);
+    return _featuredDisplay!;
+  }
+
+  List<MediaItem> _seriesItems(AsyncSnapshot<List<MediaItem>> snapshot) {
+    if (_seriesDisplay != null) return _seriesDisplay!;
+    if (!snapshot.hasData) return const <MediaItem>[];
+    _seriesDisplay = _latestMovies(snapshot.data!, limit: 18);
+    return _seriesDisplay!;
+  }
+
   Widget _mobileHero() {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) {
-        final movies = (_featuredDisplay ??= _latestMovies(
-            snapshot.data ?? const <MediaItem>[], limit: 18)).take(12).toList(growable: false);
+        final movies = _featuredItems(snapshot).take(12).toList(growable: false);
         _featuredCount = movies.length;
         if (movies.isEmpty) {
           return Padding(
@@ -652,8 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) => _mobilePosterRow(
-        'أحدث الأفلام', _featuredDisplay ??= _latestMovies(
-            snapshot.data ?? const <MediaItem>[], limit: 18),
+        'أحدث الأفلام', _featuredItems(snapshot),
         _openVod, favoriteType: 'vod', onSeeAll: _openMovies,
       ),
     );
@@ -665,8 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: future,
       builder: (context, snapshot) {
-        final items = _seriesDisplay ??= _latestMovies(
-            snapshot.data ?? const <MediaItem>[], limit: 18);
+        final items = _seriesItems(snapshot);
         return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, favoriteType: 'series', onSeeAll: _openSeries);
       },
     );

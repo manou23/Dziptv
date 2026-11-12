@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _featuredFuture = widget.service.allVod();
+    _featuredFuture = _mediaRepository.allVod();
     _mobileScrollController.addListener(_loadSeriesWhenNear);
     _featuredTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       // Avoid needless carousel work while the app is backgrounded or covered.
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() {
-      _seriesFuture = widget.service.allSeries();
+      _seriesFuture = _mediaRepository.allSeries();
     });
   }
 
@@ -137,11 +137,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (item.url.isNotEmpty) return item;
     if (item.key.startsWith('vod_')) {
       final id = item.key.substring(4);
-      return PlayItem(item.key, item.title, s.movieUrl(id, entry.ext), item.image);
+      return PlayItem(item.key, item.title, _mediaRepository.movieUrl(id, entry.ext), item.image);
     }
     if (item.key.startsWith('ep_')) {
       final id = item.key.substring(3);
-      return PlayItem(item.key, item.title, s.episodeUrl(id, entry.ext), item.image);
+      return PlayItem(item.key, item.title, _mediaRepository.episodeUrl(id, entry.ext), item.image);
     }
     return item;
   }
@@ -155,8 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openMovies() => _push(MediaGridScreen(
         title: 'Films',
         type: 'vod',
-        loadCats: s.vodCategories,
-        loadItems: s.vodStreams,
+        loadCats: _mediaRepository.vodCategories,
+        loadItems: _mediaRepository.vodStreams,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
             builder: (_) => MovieDetailScreen(service: s, item: it))),
       ));
@@ -164,8 +164,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openSeries() => _push(MediaGridScreen(
         title: 'Séries',
         type: 'series',
-        loadCats: s.seriesCategories,
-        loadItems: s.seriesList,
+        loadCats: _mediaRepository.seriesCategories,
+        loadItems: _mediaRepository.seriesList,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
             builder: (_) => SeriesDetailScreen(service: s, item: it))),
       ));
@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const Expanded(child: Text('MESUT', style: TextStyle(
           fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5,
         ))),
-        _mobileHeaderAction(Icons.search_rounded, 'بحث', () => _push(SearchScreen(service: s))),
+        _mobileHeaderAction(Icons.search_rounded, 'بحث', () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}'))),
         const SizedBox(width: 3),
         _mobileHeaderAction(Icons.tune_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
         const SizedBox(width: 7),

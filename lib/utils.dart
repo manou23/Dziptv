@@ -12,10 +12,10 @@ final RegExp _adultLabelPattern = RegExp(
   r'webcam|stripper|nudity|nude|explicit|uncensored)(?=$|[^a-z0-9])',
 );
 final RegExp _adultAgePattern =
-    RegExp(r'(^|\\D)(18\\s*\\+|\\+\\s*18|21\\s*\\+|\\+\\s*21)(\\D|$)');
-final RegExp _adultDiacriticsPattern = RegExp(r'[\\u064B-\\u065F\\u0670]');
-final RegExp _adultSeparatorsPattern = RegExp(r'[_./\\-]+');
-final RegExp _adultSpacesPattern = RegExp(r'\\s+');
+    RegExp(r'(^|\D)(18\s*\+|\+\s*18|21\s*\+|\+\s*21)(\D|$)');
+final RegExp _adultDiacriticsPattern = RegExp(r'[\u064B-\u065F\u0670]');
+final RegExp _adultSeparatorsPattern = RegExp(r'[_./\-]+');
+final RegExp _adultSpacesPattern = RegExp(r'\s+');
 const List<String> _adultArabicTerms = <String>[
   'اباحي', 'إباحي', 'اباحية', 'إباحية', 'للكبار', 'للكبار فقط',
   'محتوى جنسي', 'افلام جنسية', 'أفلام جنسية', 'عري', 'تعري',

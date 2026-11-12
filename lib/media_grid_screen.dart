@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'presentation/providers/media_providers.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
 
-class MediaGridScreen extends StatefulWidget {
+class MediaGridScreen extends ConsumerStatefulWidget {
   final String title;
   final String type; // vod | series
   final Future<List<Category>> Function() loadCats;
@@ -21,18 +24,24 @@ class MediaGridScreen extends StatefulWidget {
   });
 
   @override
-  State<MediaGridScreen> createState() => _MediaGridScreenState();
+  ConsumerState<MediaGridScreen> createState() => _MediaGridScreenState();
 }
 
-class _MediaGridScreenState extends State<MediaGridScreen> {
+class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
   static const _favCat = Category('__fav__', '⭐ المفضلة');
 
   List<Category> _cats = [];
   List<MediaItem> _items = [];
   Category? _cat;
   bool _loading = true;
-  String _q = '';
   String? _error;
+  List<MediaItem>? _filteredSource;
+  String _filteredQuery = '';
+  List<MediaItem> _filteredResult = const [];
+  late final MediaGridLoadRequest _loadRequest = MediaGridLoadRequest(
+    loadCategories: widget.loadCats,
+    loadItems: widget.loadItems,
+  );
 
   @override
   void initState() {
@@ -42,7 +51,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
 
   Future<void> _init() async {
     try {
-      final loaded = await widget.loadCats();
+      final loaded = await ref.read(mediaGridCategoriesProvider(_loadRequest).future);
       final c = loaded.where((cat) =>
           (!Store.kidsMode || !isAdult(cat.name)) &&
           !Store.hiddenCategories(widget.type).contains(cat.id)).toList();
@@ -57,7 +66,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر تحميل التصنيفات');
         });
       }
     }
@@ -83,7 +92,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       _error = null;
     });
     try {
-      final it = await widget.loadItems(c.id);
+      final it = await ref.read(mediaGridItemsProvider((loader: _loadRequest, categoryId: c.id)).future);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
         _items = it.where((item) => !isAdult(item.name)).toList(growable: false);
@@ -93,7 +102,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'تعذر تحميل المحتوى';
+          _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر تحميل المحتوى');
         });
       }
     }
@@ -121,6 +130,18 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
     ));
   }
 
+  List<MediaItem> _filterItems(String query) {
+    if (identical(_filteredSource, _items) && _filteredQuery == query) {
+      return _filteredResult;
+    }
+    _filteredSource = _items;
+    _filteredQuery = query;
+    _filteredResult = query.isEmpty
+        ? _items
+        : _items.where((item) => item.name.toLowerCase().contains(query)).toList(growable: false);
+    return _filteredResult;
+  }
+
   Widget _placeholder() => Container(
         color: Colors.white10,
         child: const Center(
@@ -129,13 +150,13 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _q.toLowerCase();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardExtent = screenWidth >= 1100 ? 220.0 : screenWidth >= 700 ? 185.0 : 150.0;
+    final q = ref.watch(mediaGridSearchQueryProvider(_loadRequest)).toLowerCase();
     // _items is filtered once when a category/favourites list is loaded.
     // Re-filtering every title here on every widget rebuild/search keystroke
     // repeatedly scanned thousands of catalogue entries.
-    final shown = q.isEmpty
-        ? _items
-        : _items.where((e) => e.name.toLowerCase().contains(q)).toList(growable: false);
+    final shown = _filterItems(q);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -146,7 +167,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
               child: TextField(
-                onChanged: (v) => setState(() => _q = v),
+                onChanged: (v) => ref.read(mediaGridSearchQueryProvider(_loadRequest).notifier).state = v,
                 decoration: InputDecoration(
                   hintText: tr('بحث...'),
                   prefixIcon: const Icon(Icons.search_rounded),
@@ -198,8 +219,8 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
                           : GridView.builder(
                               padding: const EdgeInsets.all(14),
                               gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 150,
+                                  SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: cardExtent,
                                 childAspectRatio: 0.64,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,

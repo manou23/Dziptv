@@ -7,6 +7,9 @@ import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
+import 'data/datasources/xtream_media_data_source.dart';
+import 'data/repositories/xtream_media_repository.dart';
 import 'live_screen.dart';
 import 'media_grid_screen.dart';
 import 'movie_detail_screen.dart';
@@ -40,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _featuredFuture = widget.service.allVod();
+    _featuredFuture = _mediaRepository.allVod();
     _mobileScrollController.addListener(_loadSeriesWhenNear);
     _featuredTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       // Avoid needless carousel work while the app is backgrounded or covered.
@@ -68,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() {
-      _seriesFuture = widget.service.allSeries();
+      _seriesFuture = _mediaRepository.allSeries();
     });
   }
 
@@ -82,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   XtreamService get s => widget.service;
+  MediaRepository get _mediaRepository =>
+      XtreamMediaRepository(XtreamMediaDataSource(s));
 
   Widget _activeProfileAvatar({double size = 34}) {
     final account = Store.active;
@@ -132,37 +137,37 @@ class _HomeScreenState extends State<HomeScreen> {
     if (item.url.isNotEmpty) return item;
     if (item.key.startsWith('vod_')) {
       final id = item.key.substring(4);
-      return PlayItem(item.key, item.title, s.movieUrl(id, entry.ext), item.image);
+      return PlayItem(item.key, item.title, _mediaRepository.movieUrl(id, entry.ext), item.image);
     }
     if (item.key.startsWith('ep_')) {
       final id = item.key.substring(3);
-      return PlayItem(item.key, item.title, s.episodeUrl(id, entry.ext), item.image);
+      return PlayItem(item.key, item.title, _mediaRepository.episodeUrl(id, entry.ext), item.image);
     }
     return item;
   }
 
-  void _openLive([MediaItem? it]) => _push(LiveScreen(service: s, initial: it));
+  void _openLive([MediaItem? it]) => _push(LiveScreen(repository: _mediaRepository, initial: it));
 
-  void _openVod(MediaItem it) => _push(MovieDetailScreen(service: s, item: it));
+  void _openVod(MediaItem it) => _push(MovieDetailScreen(repository: _mediaRepository, item: it));
 
-  void _openSeriesItem(MediaItem it) => _push(SeriesDetailScreen(service: s, item: it));
+  void _openSeriesItem(MediaItem it) => _push(SeriesDetailScreen(repository: _mediaRepository, item: it));
 
   void _openMovies() => _push(MediaGridScreen(
         title: 'Films',
         type: 'vod',
-        loadCats: s.vodCategories,
-        loadItems: s.vodStreams,
+        loadCats: _mediaRepository.vodCategories,
+        loadItems: _mediaRepository.vodStreams,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
-            builder: (_) => MovieDetailScreen(service: s, item: it))),
+            builder: (_) => MovieDetailScreen(repository: _mediaRepository, item: it))),
       ));
 
   void _openSeries() => _push(MediaGridScreen(
         title: 'Séries',
         type: 'series',
-        loadCats: s.seriesCategories,
-        loadItems: s.seriesList,
+        loadCats: _mediaRepository.seriesCategories,
+        loadItems: _mediaRepository.seriesList,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
-            builder: (_) => SeriesDetailScreen(service: s, item: it))),
+            builder: (_) => SeriesDetailScreen(repository: _mediaRepository, item: it))),
       ));
 
   // ---------------- الرأس ----------------
@@ -193,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: tr('بحث'),
             icon: const Icon(Icons.search_rounded),
-            onPressed: () => _push(SearchScreen(service: s)),
+            onPressed: () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}')),
           ),
           _activeProfileAvatar(size: 34),
           IconButton(
@@ -227,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const Expanded(child: Text('MESUT', style: TextStyle(
           fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5,
         ))),
-        _mobileHeaderAction(Icons.search_rounded, 'بحث', () => _push(SearchScreen(service: s))),
+        _mobileHeaderAction(Icons.search_rounded, 'بحث', () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}'))),
         const SizedBox(width: 3),
         _mobileHeaderAction(Icons.tune_rounded, 'الإعدادات', () => _push(SettingsScreen(service: s))),
         const SizedBox(width: 7),
@@ -742,7 +747,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }, selected: true),
             item(Icons.live_tv_rounded, tr('مباشر'), () => _openLive()),
             item(Icons.search_rounded, tr('بحث'),
-                () => _push(SearchScreen(service: s))),
+                () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}'))),
             item(Icons.bookmark_rounded, tr('قائمتي'), _openFavorites),
           ],
         ),

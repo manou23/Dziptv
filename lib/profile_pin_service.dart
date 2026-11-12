@@ -1,31 +1,35 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+/// Isolate entry point: keep the 100,000-round PBKDF2 work off the UI thread.
+String _deriveProfilePinHash(List<String> input) {
+  final pin = input[0];
+  final salt = input[1];
+  const iterations = 100000;
+  final hmac = Hmac(sha256, utf8.encode(pin));
+  final saltBytes = base64Url.decode(salt);
+  var u = hmac.convert(<int>[...saltBytes, 0, 0, 0, 1]).bytes;
+  final result = List<int>.from(u);
+  for (var round = 1; round < iterations; round++) {
+    u = hmac.convert(u).bytes;
+    for (var i = 0; i < result.length; i++) {
+      result[i] ^= u[i];
+    }
+  }
+  return base64Url.encode(result);
+}
 
 /// PIN hashing for each Xtream profile.
 /// Only a salted PBKDF2-HMAC-SHA256 hash is stored. The hash may be carried
 /// inside the AES-GCM encrypted profile vault; the PIN itself is never synced.
 class ProfilePinService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const int _iterations = 100000;
-
   static String _key(String profileId) =>
       'xtream_profile_pin_' + base64Url.encode(utf8.encode(profileId));
 
-  static String _derive(String pin, String salt) {
-    final hmac = Hmac(sha256, utf8.encode(pin));
-    final saltBytes = base64Url.decode(salt);
-    var u = hmac.convert(<int>[...saltBytes, 0, 0, 0, 1]).bytes;
-    final result = List<int>.from(u);
-    for (var round = 1; round < _iterations; round++) {
-      u = hmac.convert(u).bytes;
-      for (var i = 0; i < result.length; i++) {
-        result[i] ^= u[i];
-      }
-    }
-    return base64Url.encode(result);
-  }
 
   static bool _same(String a, String b) {
     if (a.length != b.length) return false;
@@ -78,7 +82,7 @@ class ProfilePinService {
     final random = Random.secure();
     final saltBytes = List<int>.generate(16, (_) => random.nextInt(256));
     final salt = base64Url.encode(saltBytes);
-    final hash = _derive(pin, salt);
+    final hash = await compute(_deriveProfilePinHash, <String>[pin, salt]);
     await _storage.write(
       key: _key(profileId),
       value: 'v1:' + salt + ':' + hash,
@@ -91,7 +95,8 @@ class ProfilePinService {
     if (stored == null) return true;
     final parts = stored.split(':');
     if (parts.length != 3 || parts[0] != 'v1') return false;
-    return _same(_derive(pin, parts[1]), parts[2]);
+    final actual = await compute(_deriveProfilePinHash, <String>[pin, parts[1]]);
+    return _same(actual, parts[2]);
   }
 
   static Future<void> remove(String profileId) async =>

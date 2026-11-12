@@ -29,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late final Future<Map<String, String>> _acc = widget.service.account();
   late final Future<List<MediaItem>> _featuredFuture;
   Future<List<MediaItem>>? _seriesFuture;
+  List<MediaItem>? _featuredDisplay;
+  List<MediaItem>? _seriesDisplay;
   final PageController _featuredController = PageController();
   final ScrollController _mobileScrollController = ScrollController();
   Timer? _featuredTimer;
@@ -298,7 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) {
-        final movies = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 12);
+        final movies = (_featuredDisplay ??= _latestMovies(
+            snapshot.data ?? const <MediaItem>[], limit: 18)).take(12).toList(growable: false);
         _featuredCount = movies.length;
         if (movies.isEmpty) {
           return Padding(
@@ -649,7 +652,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: _featuredFuture,
       builder: (context, snapshot) => _mobilePosterRow(
-        'أحدث الأفلام', _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18),
+        'أحدث الأفلام', _featuredDisplay ??= _latestMovies(
+            snapshot.data ?? const <MediaItem>[], limit: 18),
         _openVod, favoriteType: 'vod', onSeeAll: _openMovies,
       ),
     );
@@ -661,7 +665,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return FutureBuilder<List<MediaItem>>(
       future: future,
       builder: (context, snapshot) {
-        final items = _latestMovies(snapshot.data ?? const <MediaItem>[], limit: 18);
+        final items = _seriesDisplay ??= _latestMovies(
+            snapshot.data ?? const <MediaItem>[], limit: 18);
         return _mobilePosterRow('مسلسلات قد تعجبك', items, _openSeriesItem, favoriteType: 'series', onSeeAll: _openSeries);
       },
     );

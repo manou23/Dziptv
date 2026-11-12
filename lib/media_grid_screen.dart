@@ -35,6 +35,9 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
   Category? _cat;
   bool _loading = true;
   String? _error;
+  List<MediaItem>? _filteredSource;
+  String _filteredQuery = '';
+  List<MediaItem> _filteredResult = const [];
   late final MediaGridLoadRequest _loadRequest = MediaGridLoadRequest(
     loadCategories: widget.loadCats,
     loadItems: widget.loadItems,
@@ -127,6 +130,18 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
     ));
   }
 
+  List<MediaItem> _filterItems(String query) {
+    if (identical(_filteredSource, _items) && _filteredQuery == query) {
+      return _filteredResult;
+    }
+    _filteredSource = _items;
+    _filteredQuery = query;
+    _filteredResult = query.isEmpty
+        ? _items
+        : _items.where((item) => item.name.toLowerCase().contains(query)).toList(growable: false);
+    return _filteredResult;
+  }
+
   Widget _placeholder() => Container(
         color: Colors.white10,
         child: const Center(
@@ -141,9 +156,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
     // _items is filtered once when a category/favourites list is loaded.
     // Re-filtering every title here on every widget rebuild/search keystroke
     // repeatedly scanned thousands of catalogue entries.
-    final shown = q.isEmpty
-        ? _items
-        : _items.where((e) => e.name.toLowerCase().contains(q)).toList(growable: false);
+    final shown = _filterItems(q);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),

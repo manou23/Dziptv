@@ -39,13 +39,9 @@ Future<void> main() async {
     MesutCloudApi.onSessionExpired = _showMesutAccount;
     final mesutSignedIn = await MesutCloudApi.validateSession();
     if (mesutSignedIn) {
-      // Restore cloud profiles before building the profile picker. A background-only
-      // sync can finish after the empty picker has already been rendered.
-      try {
-        await MesutCloudApi.syncNow();
-      } catch (_) {
-        await MesutCloudApi.scheduleSync();
-      }
+      // Never hold the first frame hostage to cloud/network latency.
+      // The profile picker performs an immediate visible refresh after launch.
+      await MesutCloudApi.scheduleSync();
     }
     if (!mesutSignedIn) {
       start = MesutAccountScreen(

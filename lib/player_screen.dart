@@ -48,6 +48,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final List<String> _logs = [];
   Timer? _watch;
   bool _started = false; // بدأ التشغيل فعلاً (تقدّم الوقت أو حالة play)
+  bool _playerInitialized = false;
 
   void _touch(Object a, Object b) {}
 
@@ -74,6 +75,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     try {
       MediaKit.ensureInitialized();
       _touch(_p, _vc); // إنشاء المشغّل الآن لالتقاط أي خطأ
+      _playerInitialized = true;
     } catch (_) {
       _fatal = 'تعذر تشغيل الفيديو';
     }
@@ -150,11 +152,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _hide?.cancel();
     _watch?.cancel();
     _saveTimer?.cancel();
-    if (_fatal == null) {
-      for (final s in _subs) {
-        s.cancel();
-      }
-      _p.dispose();
+    // Always release every stream subscription. The player is disposed only
+    // when its lazy field initializers completed successfully in initState.
+    for (final s in _subs) {
+      s.cancel();
+    }
+    if (_playerInitialized) {
+      unawaited(_p.dispose());
     }
     WakelockPlus.disable();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);

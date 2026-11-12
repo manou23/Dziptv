@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'core/cache/cache_policy.dart';
 import 'package:flutter/foundation.dart' show compute;
 import 'package:http/http.dart' as http;
 import 'i18n.dart';
@@ -21,10 +24,33 @@ class XtreamService {
 
   // ذاكرة مؤقتة قصيرة (5 دقائق) لمنع إعادة تحميل نفس القوائم
   static final Map<String, _Cached> _mem = {};
+  static Timer? _cacheMaintenance;
 
   XtreamService(String url, this.username, this.password, [String? name])
       : baseUrl = normalize(url),
-        name = (name == null || name.isEmpty) ? username : name;
+        name = (name == null || name.isEmpty) ? username : name {
+    _ensureCacheMaintenance();
+  }
+
+  static void _ensureCacheMaintenance() {
+    _cacheMaintenance ??= Timer.periodic(
+      CachePolicy.maintenanceInterval,
+      (_) => pruneExpiredCache(),
+    );
+  }
+
+  /// Remove expired responses and enforce the process-wide cache bound.
+  static void pruneExpiredCache() {
+    final now = DateTime.now();
+    _mem.removeWhere((_, entry) =>
+        now.difference(entry.at) >= CachePolicy.catalogTtl);
+    while (_mem.length > CachePolicy.maxEntries) {
+      _mem.remove(_mem.keys.first);
+    }
+  }
+
+  /// Clear in-memory catalogue and EPG data (for logout/profile changes).
+  static void clearMemoryCache() => _mem.clear();
 
   factory XtreamService.fromAccount(Account a) =>
       XtreamService(a.url, a.user, a.pass, a.name);
@@ -55,12 +81,17 @@ class XtreamService {
     );
   }
 
-  Future<dynamic> _get(Uri uri, {bool cache = true}) async {
-    final key = uri.toString();
+  Future<dynamic> _get(
+    Uri uri, {
+    bool cache = true,
+    Duration cacheTtl = CachePolicy.catalogTtl,
+  }) async {
+    // Hash the credential-bearing API URI before using it as an in-memory key.
+    final key = sha256.convert(utf8.encode(uri.toString())).toString();
     if (cache) {
       final cached = _mem.remove(key);
       if (cached != null &&
-          DateTime.now().difference(cached.at) < const Duration(minutes: 5)) {
+          DateTime.now().difference(cached.at) < cacheTtl) {
         // Reinsert to mark this entry as most recently used.
         _mem[key] = cached;
         return cached.data;
@@ -76,8 +107,9 @@ class XtreamService {
     // القوائم الكبيرة تُفكّ في خيط منفصل حتى لا تتجمد الواجهة
     final data = text.length > 200000 ? await compute(_decodeJson, text) : jsonDecode(text);
     if (cache) {
+      pruneExpiredCache();
       // Bounded LRU: evict only the least recently used entry.
-      while (_mem.length >= 30) {
+      while (_mem.length >= CachePolicy.maxEntries) {
         _mem.remove(_mem.keys.first);
       }
       _mem[key] = _Cached(DateTime.now(), data);
@@ -204,7 +236,8 @@ class XtreamService {
   Future<List<Epg>> shortEpg(String streamId, {int limit = 3}) async {
     final d = await _get(
         _api('get_short_epg', {'stream_id': streamId, 'limit': '$limit'}),
-        cache: false);
+        cache: true,
+        cacheTtl: CachePolicy.epgTtl);
     final l = d is Map ? _asList(d['epg_listings']) : const [];
     String dec(dynamic s) {
       try {

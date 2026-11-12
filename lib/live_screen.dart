@@ -40,14 +40,27 @@ class _LiveScreenState extends State<LiveScreen> {
   String? _error;
   String _q = '';
   final _sc = TextEditingController();
+  int _channelsRevision = 0;
+  int _shownRevision = -1;
+  String _shownQuery = '';
+  List<MediaItem> _shownCache = const [];
   Timer? _ovTimer;
   int _token = 0, _retries = 0;
   bool _retryScheduled = false;
 
   List<MediaItem> get _shown {
-    if (_q.isEmpty) return _channels;
-    final q = _q.toLowerCase();
-    return _channels.where((c) => c.name.toLowerCase().contains(q)).toList();
+    final query = _q.trim().toLowerCase();
+    if (_shownRevision == _channelsRevision && _shownQuery == query) {
+      return query.isEmpty ? _channels : _shownCache;
+    }
+    _shownQuery = query;
+    _shownRevision = _channelsRevision;
+    _shownCache = query.isEmpty
+        ? const []
+        : _channels
+            .where((channel) => channel.name.toLowerCase().contains(query))
+            .toList(growable: false);
+    return query.isEmpty ? _channels : _shownCache;
   }
 
   @override
@@ -132,7 +145,7 @@ class _LiveScreenState extends State<LiveScreen> {
     if (!mounted) return;
     setState(() {
       _favs = Store.favs('live').where((item) => !Store.kidsMode || !isAdult(item.name)).toList();
-      if (_cat?.id == _favCat.id) _channels = List.of(_favs);
+      if (_cat?.id == _favCat.id) { _channels = List.of(_favs); _channelsRevision++; }
     });
   }
 
@@ -180,6 +193,7 @@ class _LiveScreenState extends State<LiveScreen> {
       setState(() {
         _cat = c;
         _channels = List.of(_favs);
+        _channelsRevision++;
         _loadingList = false;
       });
       return;
@@ -192,7 +206,8 @@ class _LiveScreenState extends State<LiveScreen> {
       final ch = await widget.service.liveStreams(c.id);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
-        _channels = ch.where((item) => !isAdult(item.name)).toList();
+        _channels = ch.where((item) => !isAdult(item.name)).toList(growable: false);
+        _channelsRevision++;
         _loadingList = false;
       });
     } catch (e) {

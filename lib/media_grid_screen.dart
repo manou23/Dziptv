@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'presentation/providers/media_providers.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
@@ -62,7 +63,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر تحميل التصنيفات');
         });
       }
     }
@@ -98,7 +99,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'تعذر تحميل المحتوى';
+          _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر تحميل المحتوى');
         });
       }
     }

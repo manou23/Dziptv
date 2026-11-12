@@ -55,7 +55,7 @@ class MesutCloudApi {
   static int _retryAttempt = 0;
   static Future<void>? _syncInFlight;
 
-  static bool get isConfigured => baseUrl.startsWith('https://') || baseUrl.startsWith('http://');
+  static bool get isConfigured => baseUrl.startsWith('https://');
   static Future<String?> get email => _secure.read(key: _emailKey);
   static Future<bool> get isSignedIn async => (await _secure.read(key: _tokenKey))?.isNotEmpty == true;
 

@@ -11,6 +11,7 @@ import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'player/services/player_lifecycle.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'xtream_service.dart';
 
 class LiveScreen extends StatefulWidget {
@@ -181,7 +182,7 @@ class _LiveScreenState extends State<LiveScreen> {
       if (mounted) {
         setState(() {
           _loadingList = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر الاتصال بمزود الخدمة');
         });
       }
     }
@@ -214,7 +215,7 @@ class _LiveScreenState extends State<LiveScreen> {
         _loadingList = false;
       });
     } catch (e) {
-      if (mounted) setState(() => _loadingList = false);
+      if (mounted) setState(() { _loadingList = false; _error = AppErrorMapper.toUserMessage(e, fallback: 'تعذر تحميل القنوات'); });
     }
   }
 

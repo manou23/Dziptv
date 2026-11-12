@@ -27,8 +27,6 @@ String _deriveProfilePinHash(List<String> input) {
 /// inside the AES-GCM encrypted profile vault; the PIN itself is never synced.
 class ProfilePinService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const int _iterations = 100000;
-
   static String _key(String profileId) =>
       'xtream_profile_pin_' + base64Url.encode(utf8.encode(profileId));
 

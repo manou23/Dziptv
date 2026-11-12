@@ -146,7 +146,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    _saveProgress();
+    _saveProgress(syncCloud: true);
     _hide?.cancel();
     _watch?.cancel();
     _saveTimer?.cancel();
@@ -253,9 +253,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  void _saveProgress() {
+  void _saveProgress({bool syncCloud = false}) {
     if (_dur <= Duration.zero) return;
-    Store.saveProgress(_item, _pos.inMilliseconds, _dur.inMilliseconds);
+    unawaited(Store.saveProgress(
+      _item,
+      _pos.inMilliseconds,
+      _dur.inMilliseconds,
+      syncCloud: syncCloud,
+    ));
   }
 
   void _next() {
@@ -269,7 +274,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _prev() {
     if (_i > 0) {
-      _saveProgress();
+      _saveProgress(syncCloud: true);
       _i--;
       _open();
     }

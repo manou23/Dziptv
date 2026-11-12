@@ -217,22 +217,34 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
   bool _edit = false;
   bool _syncingCloud = false;
 
-  Future<void> _refreshCloudProfiles() async {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshCloudProfiles(showMessage: false);
+    });
+  }
+
+  Future<void> _refreshCloudProfiles({bool showMessage = true}) async {
     if (_syncingCloud) return;
     setState(() => _syncingCloud = true);
     try {
       await MesutCloudApi.syncNow();
       if (!mounted) return;
       setState(() => _syncingCloud = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تحديث البروفايلات من حساب MESUT السحابي')),
-      );
+      if (showMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث البروفايلات من حساب MESUT السحابي')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _syncingCloud = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      if (showMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
     }
   }
 
@@ -742,15 +754,30 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
                             style: const TextStyle(
                                 fontSize: kIsTvBuild ? 34 : 26, fontWeight: FontWeight.w800)),
                         SizedBox(height: kIsTvBuild ? 42 : 26),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: kIsTvBuild ? 32 : 16,
-                          runSpacing: kIsTvBuild ? 34 : 22,
-                          children: [
-                            for (var i = 0; i < accs.length; i++) _tile(i, accs[i]),
-                            if (!_edit) _addTile(autofocus: kIsTvBuild && accs.isEmpty),
-                          ],
-                        ),
+                        if (accs.isEmpty && _syncingCloud)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 36),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 16),
+                                Text('جارٍ استعادة بروفايلات حساب MESUT...',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white70)),
+                              ],
+                            ),
+                          )
+                        else
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: kIsTvBuild ? 32 : 16,
+                            runSpacing: kIsTvBuild ? 34 : 22,
+                            children: [
+                              for (var i = 0; i < accs.length; i++) _tile(i, accs[i]),
+                              if (!_edit) _addTile(autofocus: kIsTvBuild && accs.isEmpty),
+                            ],
+                          ),
                       ],
                     ),
                   ),

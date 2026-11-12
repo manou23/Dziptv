@@ -4,6 +4,7 @@ import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'domain/repositories/media_repository.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'player_screen.dart';
 import 'utils.dart';
 
@@ -37,7 +38,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         if (keys.isNotEmpty) _season = keys.first;
       });
     }).catchError((_) {
-      if (mounted) setState(() => _error = 'تعذر تحميل الحلقات');
+      if (mounted) setState(() => _error = AppErrorMapper.toUserMessage(_, fallback: 'تعذر تحميل الحلقات'));
     });
   }
 

@@ -5,6 +5,7 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'domain/repositories/media_repository.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'live_screen.dart';
@@ -80,11 +81,11 @@ class _SearchScreenState extends State<SearchScreen> {
         _all = list;
         _loading = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (mounted && _type == type) {
         setState(() {
           _loading = false;
-          _error = 'تعذر تحميل المحتوى';
+          _error = AppErrorMapper.toUserMessage(error, fallback: 'تعذر تحميل المحتوى');
         });
       }
     }

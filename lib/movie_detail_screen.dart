@@ -5,6 +5,7 @@ import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'domain/repositories/media_repository.dart';
+import 'core/errors/app_error_mapper.dart';
 import 'player_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   Map<String, String>? _info;
+  String? _infoError;
   late bool _fav = Store.isFav('vod', widget.item.id);
 
   String get _key => 'vod_${widget.item.id}';
@@ -27,7 +29,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     super.initState();
     widget.repository.vodInfo(widget.item.id).then((m) {
       if (mounted) setState(() => _info = m);
-    }).catchError((_) {});
+    }).catchError((error) {
+      if (mounted) setState(() => _infoError = AppErrorMapper.toUserMessage(error, fallback: 'تعذر تحميل تفاصيل الفيلم'));
+    });
   }
 
   Future<void> _play() async {
@@ -121,6 +125,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                         _line(Icons.category_rounded, i?['genre']),
                         _line(Icons.schedule_rounded, i?['duration']),
                         _line(Icons.calendar_month_rounded, i?['year']),
+                        _line(Icons.info_outline_rounded, _infoError),
                       ],
                     ),
                   ),

@@ -3,14 +3,14 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
-import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
 import 'player_screen.dart';
 import 'utils.dart';
 
 class SeriesDetailScreen extends StatefulWidget {
-  final XtreamService service;
+  final MediaRepository repository;
   final MediaItem item;
-  const SeriesDetailScreen({super.key, required this.service, required this.item});
+  const SeriesDetailScreen({super.key, required this.repository, required this.item});
 
   @override
   State<SeriesDetailScreen> createState() => _SeriesDetailScreenState();
@@ -29,7 +29,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
       _error = 'تم حظر هذا المحتوى ضمن الحماية الدائمة';
       return;
     }
-    widget.service.seriesEpisodes(widget.item.id).then((m) {
+    widget.repository.seriesEpisodes(widget.item.id).then((m) {
       if (!mounted) return;
       final keys = m.keys.toList()..sort();
       setState(() {
@@ -52,7 +52,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
     final items = list.map((e) {
       final t = e.title.isEmpty ? '${tr('الحلقة')} ${e.number}' : e.title;
       return PlayItem('ep_${e.id}', '${it.name} - $t',
-          widget.service.episodeUrl(e.id, e.ext), it.image);
+          widget.repository.episodeUrl(e.id, e.ext), it.image);
     }).toList();
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(
         builder: (_) => PlayerScreen(items: items, index: index)));

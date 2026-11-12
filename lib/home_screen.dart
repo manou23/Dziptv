@@ -148,9 +148,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openLive([MediaItem? it]) => _push(LiveScreen(repository: _mediaRepository, initial: it));
 
-  void _openVod(MediaItem it) => _push(MovieDetailScreen(service: s, item: it));
+  void _openVod(MediaItem it) => _push(MovieDetailScreen(repository: _mediaRepository, item: it));
 
-  void _openSeriesItem(MediaItem it) => _push(SeriesDetailScreen(service: s, item: it));
+  void _openSeriesItem(MediaItem it) => _push(SeriesDetailScreen(repository: _mediaRepository, item: it));
 
   void _openMovies() => _push(MediaGridScreen(
         title: 'Films',
@@ -198,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: tr('بحث'),
             icon: const Icon(Icons.search_rounded),
-            onPressed: () => _push(SearchScreen(service: s)),
+            onPressed: () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}')),
           ),
           _activeProfileAvatar(size: 34),
           IconButton(

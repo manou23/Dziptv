@@ -3,10 +3,8 @@ import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
-import 'xtream_service.dart';
 import 'domain/repositories/media_repository.dart';
-import 'data/datasources/xtream_media_data_source.dart';
-import 'data/repositories/xtream_media_repository.dart';
+import 'domain/repositories/media_repository.dart';
 import 'store.dart';
 import 'utils.dart';
 import 'live_screen.dart';
@@ -15,8 +13,9 @@ import 'series_detail_screen.dart';
 
 /// بحث ذكي في كل القنوات والأفلام والمسلسلات
 class SearchScreen extends StatefulWidget {
-  final XtreamService service;
-  const SearchScreen({super.key, required this.service});
+  final MediaRepository repository;
+  final String accountKey;
+  const SearchScreen({super.key, required this.repository, required this.accountKey});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -32,7 +31,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _error;
   Timer? _debounce;
 
-  String get _key => '${widget.service.baseUrl}|${widget.service.username}|$_type';
+  String get _key => '${widget.accountKey}|$_type';
 
   @override
   void initState() {
@@ -63,13 +62,12 @@ class _SearchScreenState extends State<SearchScreen> {
       _all = [];
     });
     try {
-      final s = widget.service;
       final list = type == 'live'
-          ? await s.allLive()
+          ? await widget.repository.allLive()
           : type == 'vod'
-              ? await s.allVod()
-              : await s.allSeries();
-      _cache['${s.baseUrl}|${s.username}|$type'] = list;
+              ? await widget.repository.allVod()
+              : await widget.repository.allSeries();
+      _cache['${widget.accountKey}|$type'] = list;
       if (!mounted || _type != type) return;
       setState(() {
         _all = list;
@@ -87,14 +85,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _open(MediaItem it) {
     if (isAdult(it.name)) return;
-    final s = widget.service;
     Widget page;
     if (_type == 'live') {
-      page = LiveScreen(repository: XtreamMediaRepository(XtreamMediaDataSource(s)), initial: it);
+      page = LiveScreen(repository: widget.repository, initial: it);
     } else if (_type == 'vod') {
-      page = MovieDetailScreen(service: s, item: it);
+      page = MovieDetailScreen(repository: widget.repository, item: it);
     } else {
-      page = SeriesDetailScreen(service: s, item: it);
+      page = SeriesDetailScreen(repository: widget.repository, item: it);
     }
     Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => page));
   }

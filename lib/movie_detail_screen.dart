@@ -4,13 +4,13 @@ import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
-import 'xtream_service.dart';
+import 'domain/repositories/media_repository.dart';
 import 'player_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
-  final XtreamService service;
+  final MediaRepository repository;
   final MediaItem item;
-  const MovieDetailScreen({super.key, required this.service, required this.item});
+  const MovieDetailScreen({super.key, required this.repository, required this.item});
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -25,7 +25,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   void initState() {
     super.initState();
-    widget.service.vodInfo(widget.item.id).then((m) {
+    widget.repository.vodInfo(widget.item.id).then((m) {
       if (mounted) setState(() => _info = m);
     }).catchError((_) {});
   }
@@ -35,7 +35,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     final it = widget.item;
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(
       builder: (_) => PlayerScreen(items: [
-        PlayItem(_key, it.name, widget.service.movieUrl(it.id, it.extra), it.image),
+        PlayItem(_key, it.name, widget.repository.movieUrl(it.id, it.extra), it.image),
       ]),
     ));
     if (mounted) setState(() {});

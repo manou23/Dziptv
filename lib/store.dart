@@ -373,7 +373,8 @@ class Store {
     return 0;
   }
 
-  static Future<void> saveProgress(PlayItem item, int pos, int dur) async {
+  static Future<void> saveProgress(
+      PlayItem item, int pos, int dur, {bool syncCloud = false}) async {
     final list = _histRaw().where((e) => e['key'] != item.key).toList();
     final finished = dur > 0 && pos > dur * 0.95;
     if (!finished && pos > 3000) {
@@ -393,7 +394,9 @@ class Store {
     }
     await _p.setStringList('${_pre}hist',
         list.take(30).map((e) => jsonEncode(e)).toList());
-    await _markCloudCollectionChanged('history');
+    // Playback position is saved locally every 10 seconds. Cloud sync is
+    // requested only at meaningful boundaries (leaving/completing playback).
+    if (syncCloud) await _markCloudCollectionChanged('history');
   }
 
   // ---------------- الصفحة الرئيسية ----------------

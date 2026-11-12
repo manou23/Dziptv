@@ -153,11 +153,11 @@ class XtreamService {
 
   // كل المحتوى (للبحث الذكي)
   Future<List<MediaItem>> allLive() async =>
-      _asList(await _get(_api('get_live_streams'), cache: false)).map(_live).toList();
+      _asList(await _get(_api('get_live_streams'))).map(_live).toList();
   Future<List<MediaItem>> allVod() async =>
-      _asList(await _get(_api('get_vod_streams'), cache: false)).map(_vod).toList();
+      _asList(await _get(_api('get_vod_streams'))).map(_vod).toList();
   Future<List<MediaItem>> allSeries() async =>
-      _asList(await _get(_api('get_series'), cache: false)).map(_series).toList();
+      _asList(await _get(_api('get_series'))).map(_series).toList();
 
   Future<Map<String, String>> vodInfo(String id) async {
     final d = await _get(_api('get_vod_info', {'vod_id': id}));

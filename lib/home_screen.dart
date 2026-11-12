@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
         loadCats: _mediaRepository.vodCategories,
         loadItems: _mediaRepository.vodStreams,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
-            builder: (_) => MovieDetailScreen(service: s, item: it))),
+            builder: (_) => MovieDetailScreen(repository: _mediaRepository, item: it))),
       ));
 
   void _openSeries() => _push(MediaGridScreen(
@@ -167,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
         loadCats: _mediaRepository.seriesCategories,
         loadItems: _mediaRepository.seriesList,
         onOpen: (c, it) => Navigator.of(c).push<void>(MaterialPageRoute<void>(
-            builder: (_) => SeriesDetailScreen(service: s, item: it))),
+            builder: (_) => SeriesDetailScreen(repository: _mediaRepository, item: it))),
       ));
 
   // ---------------- الرأس ----------------
@@ -747,7 +747,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }, selected: true),
             item(Icons.live_tv_rounded, tr('مباشر'), () => _openLive()),
             item(Icons.search_rounded, tr('بحث'),
-                () => _push(SearchScreen(service: s))),
+                () => _push(SearchScreen(repository: _mediaRepository, accountKey: '${s.baseUrl}|${s.username}'))),
             item(Icons.bookmark_rounded, tr('قائمتي'), _openFavorites),
           ],
         ),

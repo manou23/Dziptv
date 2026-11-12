@@ -23,4 +23,8 @@ class XtreamMediaDataSource {
       service.shortEpg(id, limit: limit);
   String liveUrl(String id, {String? format}) =>
       service.liveUrl(id, format: format);
+  Future<Map<String, String>> vodInfo(String id) => service.vodInfo(id);
+  Future<Map<int, List<Episode>>> seriesEpisodes(String id) => service.seriesEpisodes(id);
+  String movieUrl(String id, String extension) => service.movieUrl(id, extension);
+  String episodeUrl(String id, String extension) => service.episodeUrl(id, extension);
 }

@@ -16,4 +16,8 @@ abstract interface class MediaRepository {
 
   Future<List<Epg>> shortEpg(String streamId, {int limit = 3});
   String liveUrl(String streamId, {String? format});
+  Future<Map<String, String>> vodInfo(String vodId);
+  Future<Map<int, List<Episode>>> seriesEpisodes(String seriesId);
+  String movieUrl(String vodId, String extension);
+  String episodeUrl(String episodeId, String extension);
 }

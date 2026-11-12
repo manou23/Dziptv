@@ -37,6 +37,17 @@ class XtreamMediaRepository implements MediaRepository {
       remote.shortEpg(streamId, limit: limit);
 
   @override
-  String liveUrl(String streamId, {String? format}) =>
-      remote.liveUrl(streamId, format: format);
+  String liveUrl(String streamId, {String? format}) => remote.liveUrl(streamId, format: format);
+
+  @override
+  Future<Map<String, String>> vodInfo(String vodId) => remote.vodInfo(vodId);
+
+  @override
+  Future<Map<int, List<Episode>>> seriesEpisodes(String seriesId) => remote.seriesEpisodes(seriesId);
+
+  @override
+  String movieUrl(String vodId, String extension) => remote.movieUrl(vodId, extension);
+
+  @override
+  String episodeUrl(String episodeId, String extension) => remote.episodeUrl(episodeId, extension);
 }

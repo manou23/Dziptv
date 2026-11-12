@@ -219,7 +219,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
                           : GridView.builder(
                               padding: const EdgeInsets.all(14),
                               gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  SliverGridDelegateWithMaxCrossAxisExtent(
                                 maxCrossAxisExtent: cardExtent,
                                 childAspectRatio: 0.64,
                                 crossAxisSpacing: 10,

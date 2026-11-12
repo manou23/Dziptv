@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'presentation/providers/media_providers.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'models.dart';
 import 'store.dart';
 import 'utils.dart';
 
-class MediaGridScreen extends StatefulWidget {
+class MediaGridScreen extends ConsumerStatefulWidget {
   final String title;
   final String type; // vod | series
   final Future<List<Category>> Function() loadCats;
@@ -21,10 +23,10 @@ class MediaGridScreen extends StatefulWidget {
   });
 
   @override
-  State<MediaGridScreen> createState() => _MediaGridScreenState();
+  ConsumerState<MediaGridScreen> createState() => _MediaGridScreenState();
 }
 
-class _MediaGridScreenState extends State<MediaGridScreen> {
+class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
   static const _favCat = Category('__fav__', '⭐ المفضلة');
 
   List<Category> _cats = [];
@@ -33,6 +35,10 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
   bool _loading = true;
   String _q = '';
   String? _error;
+  late final MediaGridLoadRequest _loadRequest = MediaGridLoadRequest(
+    loadCategories: widget.loadCats,
+    loadItems: widget.loadItems,
+  );
 
   @override
   void initState() {
@@ -42,7 +48,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
 
   Future<void> _init() async {
     try {
-      final loaded = await widget.loadCats();
+      final loaded = await ref.read(mediaGridCategoriesProvider(_loadRequest).future);
       final c = loaded.where((cat) =>
           (!Store.kidsMode || !isAdult(cat.name)) &&
           !Store.hiddenCategories(widget.type).contains(cat.id)).toList();
@@ -83,7 +89,7 @@ class _MediaGridScreenState extends State<MediaGridScreen> {
       _error = null;
     });
     try {
-      final it = await widget.loadItems(c.id);
+      final it = await ref.read(mediaGridItemsProvider((loader: _loadRequest, categoryId: c.id)).future);
       if (!mounted || _cat?.id != c.id) return;
       setState(() {
         _items = it.where((item) => !isAdult(item.name)).toList(growable: false);

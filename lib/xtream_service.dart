@@ -15,7 +15,8 @@ dynamic _decodeJson(String s) => jsonDecode(s);
 class _Cached {
   final DateTime at;
   final dynamic data;
-  _Cached(this.at, this.data);
+  final Duration ttl;
+  _Cached(this.at, this.data, this.ttl);
 }
 
 class XtreamService {
@@ -43,7 +44,7 @@ class XtreamService {
   static void pruneExpiredCache() {
     final now = DateTime.now();
     _mem.removeWhere((_, entry) =>
-        now.difference(entry.at) >= CachePolicy.catalogTtl);
+        now.difference(entry.at) >= entry.ttl);
     while (_mem.length > CachePolicy.maxEntries) {
       _mem.remove(_mem.keys.first);
     }
@@ -112,7 +113,7 @@ class XtreamService {
       while (_mem.length >= CachePolicy.maxEntries) {
         _mem.remove(_mem.keys.first);
       }
-      _mem[key] = _Cached(DateTime.now(), data);
+      _mem[key] = _Cached(DateTime.now(), data, cacheTtl);
     }
     return data;
   }

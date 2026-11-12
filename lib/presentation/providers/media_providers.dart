@@ -34,3 +34,31 @@ final seriesCategoriesProvider =
     FutureProvider.family<List<Category>, Account>((ref, account) {
   return ref.watch(mediaRepositoryProvider(account)).seriesCategories();
 });
+
+/// Stable request object for legacy grid screens while they migrate to
+/// repository-backed providers. Identity semantics keep unrelated screens
+/// and subscriptions isolated.
+class MediaGridLoadRequest {
+  final Future<List<Category>> Function() loadCategories;
+  final Future<List<MediaItem>> Function(String categoryId) loadItems;
+
+  const MediaGridLoadRequest({
+    required this.loadCategories,
+    required this.loadItems,
+  });
+}
+
+typedef MediaGridItemsKey = ({
+  MediaGridLoadRequest loader,
+  String categoryId,
+});
+
+final mediaGridCategoriesProvider =
+    FutureProvider.family<List<Category>, MediaGridLoadRequest>(
+  (ref, request) => request.loadCategories(),
+);
+
+final mediaGridItemsProvider =
+    FutureProvider.family<List<MediaItem>, MediaGridItemsKey>(
+  (ref, key) => key.loader.loadItems(key.categoryId),
+);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
 import 'theme.dart';
@@ -21,7 +22,8 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  static final Map<String, List<MediaItem>> _cache = {};
+  static final LinkedHashMap<String, List<MediaItem>> _cache = LinkedHashMap<String, List<MediaItem>>();
+  static const int _maxCachedCatalogues = 6;
 
   String _type = 'live'; // live | vod | series
   String _q = '';
@@ -46,7 +48,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _load() async {
     final type = _type;
-    final cached = _cache[_key];
+    final cached = _cache.remove(_key);
+    if (cached != null) _cache[_key] = cached;
     if (cached != null) {
       setState(() {
         _all = cached;
@@ -66,7 +69,12 @@ class _SearchScreenState extends State<SearchScreen> {
           : type == 'vod'
               ? await widget.repository.allVod()
               : await widget.repository.allSeries();
-      _cache['${widget.accountKey}|$type'] = list;
+      final cacheKey = '${widget.accountKey}|$type';
+      _cache.remove(cacheKey);
+      while (_cache.length >= _maxCachedCatalogues) {
+        _cache.remove(_cache.keys.first);
+      }
+      _cache[cacheKey] = list;
       if (!mounted || _type != type) return;
       setState(() {
         _all = list;

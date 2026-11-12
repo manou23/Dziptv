@@ -54,11 +54,17 @@ typedef MediaGridItemsKey = ({
 });
 
 final mediaGridCategoriesProvider =
-    FutureProvider.family<List<Category>, MediaGridLoadRequest>(
+    FutureProvider.autoDispose.family<List<Category>, MediaGridLoadRequest>(
   (ref, request) => request.loadCategories(),
 );
 
 final mediaGridItemsProvider =
-    FutureProvider.family<List<MediaItem>, MediaGridItemsKey>(
+    FutureProvider.autoDispose.family<List<MediaItem>, MediaGridItemsKey>(
   (ref, key) => key.loader.loadItems(key.categoryId),
+);
+
+/// Ephemeral UI search state; it is released when the grid screen leaves.
+final mediaGridSearchQueryProvider =
+    StateProvider.autoDispose.family<String, MediaGridLoadRequest>(
+  (ref, request) => '',
 );

@@ -33,7 +33,6 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
   List<MediaItem> _items = [];
   Category? _cat;
   bool _loading = true;
-  String _q = '';
   String? _error;
   late final MediaGridLoadRequest _loadRequest = MediaGridLoadRequest(
     loadCategories: widget.loadCats,
@@ -135,7 +134,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _q.toLowerCase();
+    final q = ref.watch(mediaGridSearchQueryProvider(_loadRequest)).toLowerCase();
     // _items is filtered once when a category/favourites list is loaded.
     // Re-filtering every title here on every widget rebuild/search keystroke
     // repeatedly scanned thousands of catalogue entries.
@@ -152,7 +151,7 @@ class _MediaGridScreenState extends ConsumerState<MediaGridScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
               child: TextField(
-                onChanged: (v) => setState(() => _q = v),
+                onChanged: (v) => ref.read(mediaGridSearchQueryProvider(_loadRequest).notifier).state = v,
                 decoration: InputDecoration(
                   hintText: tr('بحث...'),
                   prefixIcon: const Icon(Icons.search_rounded),

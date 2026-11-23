@@ -26,8 +26,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate and publish
         env:
-          # One-week evaluation: generate previews only; no YouTube uploads.
-          DRY_RUN: '1'
+          # Production mode: generate and upload approved videos to YouTube.
+          DRY_RUN: '0'
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -39,13 +39,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vibecritic-video-output-${{ github.run_number }}
+          name: vibecritic-published-video-files-${{ github.run_number }}
           path: |
             output/*.mp4
             output/metadata.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Save preview state
+      - name: Save publishing state
         if: success() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           git config user.name "github-actions[bot]"

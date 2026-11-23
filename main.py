@@ -168,9 +168,10 @@ def candidate_ids(kind: str) -> list[int]:
 
 
 def pick_work(state: dict) -> dict:
-    done = set(state.get("articles", {}).keys())
     for article in list_published_articles():
-        if article["uid"] not in done:
+        record = state.get("articles", {}).get(article["uid"], {})
+        videos = record.get("videos", {})
+        if not videos.get("short") or not videos.get("long"):
             return article
     raise SystemExit("No eligible new VibeCritic article is available.")
 
@@ -381,7 +382,9 @@ def wrap(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> list[str]:
     return lines
 
 
-def draw_block(img: Image.Image, text: str, font, center_y: int, max_w: int = 940) -> None:
+def draw_block(img: Image.Image, text: str, font, center_y: int, max_w: int | None = None) -> None:
+    if max_w is None:
+        max_w = int(W * 0.86)
     d = ImageDraw.Draw(img)
     lines = wrap(text, font, max_w)
     lh = int(font.size * 1.5)
@@ -444,7 +447,11 @@ def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
         if download_image(url, p):
             originals.append(p)
     if not originals:
-        raise RuntimeError("Could not download any official image.")
+        fallback = tmp / "generated_fallback.jpg"
+        if ai_image(f"Cinematic symbolic atmosphere for {work[\"title_en\"]}, no logos or text", fallback):
+            originals.append(fallback)
+        else:
+            raise RuntimeError("No article image or generated fallback could be downloaded.")
     bgs = []
     for i, s in enumerate(scenes):
         p = tmp / f"bg_{i}.jpg"
@@ -496,12 +503,12 @@ def build_description(work: dict, plan: dict) -> str:
     credit = (
         "This product uses the TMDB API but is not endorsed or certified by TMDB. https://www.themoviedb.org"
         if work["source"] == "TMDb"
-        else "Game data: RAWG https://rawg.io"
+        else ("Game data: RAWG https://rawg.io" if work["source"] == "RAWG" else "Source: VibeCritic published review https://vibecritic.pages.dev")
     )
     return (
         f"{plan.get('description', '')}\n\n"
-        + " ".join(f"#{t}" for t in tags + ["Shorts"])
-        + f"\n\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
+        + " ".join(f"#{t}" for t in tags + (["Shorts"] if plan.get("format") == "short" else ["VibeCritic"]))
+        + f"\n\nالمراجعة الكاملة: {work.get(\"article_url\", \"\")}\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
     )[:4800], tags
 
 
@@ -556,6 +563,7 @@ def upload(video: Path, work: dict, plan: dict) -> str:
 
 # --------------------------------------------------------------------------- #
 def main() -> None:
+    global W, H
     if not GEMINI_KEY:
         raise SystemExit("GEMINI_API_KEY is missing.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
@@ -564,33 +572,70 @@ def main() -> None:
     state = load_state()
     work = pick_work(state)
     log(f"Selected published VibeCritic article: {work['title_ar']} | {work['article_url']}")
-    short_plan = write_script(work)
-    short_video = render(work, short_plan, "short.mp4")
-    long_plan = write_long_script(work)
-    long_video = render(work, long_plan, "long.mp4") if long_plan else None
-    if long_video:
-        seconds = media_duration(long_video)
-        if not 270 <= seconds <= 480:
-            log(f"Long video skipped: rendered duration {seconds:.1f}s is outside 270-480s.")
-            long_video.unlink(missing_ok=True)
-            long_video = None
-            long_plan = None
-    (OUT / "metadata.json").write_text(json.dumps({"work": work["uid"], "article_url": work["article_url"], "short": short_plan, "long": long_plan}, ensure_ascii=False, indent=2), encoding="utf-8")
+    record = state.setdefault("articles", {}).setdefault(work["uid"], {
+        "article_url": work["article_url"], "title": work["title_ar"], "videos": {}
+    })
+    videos = record.setdefault("videos", {})
+
     if DRY_RUN:
+        W, H = 1080, 1920
+        short_plan = write_script(work)
+        short_plan["format"] = "short"
+        short_video = render(work, short_plan, "short.mp4")
+        long_plan = write_long_script(work)
+        long_video = None
+        if long_plan:
+            long_plan["format"] = "long"
+            W, H = 1920, 1080
+            long_video = render(work, long_plan, "long.mp4")
+            seconds = media_duration(long_video)
+            if not 270 <= seconds <= 480:
+                log(f"Long video rejected by duration gate: {seconds:.1f}s.")
+                long_video.unlink(missing_ok=True)
+                long_video = None
+        (OUT / "metadata.json").write_text(json.dumps({
+            "work": work["uid"], "article_url": work["article_url"],
+            "short": short_plan, "long": long_plan
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
         log("DRY_RUN=1: upload skipped.")
         return
-    record = {"article_url": work["article_url"], "title": work["title_ar"], "videos": {}}
-    short_id = upload(short_video, work, short_plan)
-    record["videos"]["short"] = short_id
-    log(f"Short uploaded: https://youtu.be/{short_id} ({PRIVACY})")
-    if long_video and long_plan:
-        long_id = upload(long_video, work, long_plan)
-        record["videos"]["long"] = long_id
-        log(f"Long video uploaded: https://youtu.be/{long_id} ({PRIVACY})")
-    else:
-        record["videos"]["long"] = "skipped-insufficient-article-material"
-    state.setdefault("articles", {})[work["uid"]] = record
-    state.setdefault("log", []).append({"uid": work["uid"], **record, "date": dt.date.today().isoformat()})
+
+    if not videos.get("short"):
+        W, H = 1080, 1920
+        short_plan = write_script(work)
+        short_plan["format"] = "short"
+        short_video = render(work, short_plan, "short.mp4")
+        short_id = upload(short_video, work, short_plan)
+        videos["short"] = short_id
+        save_state(state)
+        log(f"Short uploaded: https://youtu.be/{short_id} ({PRIVACY})")
+
+    if not videos.get("long"):
+        long_plan = write_long_script(work)
+        if long_plan:
+            long_plan["format"] = "long"
+            W, H = 1920, 1080
+            long_video = render(work, long_plan, "long.mp4")
+            seconds = media_duration(long_video)
+            if 270 <= seconds <= 480:
+                long_id = upload(long_video, work, long_plan)
+                videos["long"] = long_id
+                log(f"Long video uploaded: https://youtu.be/{long_id} ({PRIVACY})")
+            else:
+                log(f"Long video rejected by duration gate: {seconds:.1f}s.")
+                videos["long"] = "skipped-duration-quality-gate"
+                long_video.unlink(missing_ok=True)
+        else:
+            videos["long"] = "skipped-insufficient-article-material"
+        save_state(state)
+
+    record["article_url"] = work["article_url"]
+    record["title"] = work["title_ar"]
+    state.setdefault("log", []).append({
+        "uid": work["uid"], "article_url": work["article_url"],
+        "title": work["title_ar"], "videos": videos,
+        "date": dt.date.today().isoformat()
+    })
     save_state(state)
 
 

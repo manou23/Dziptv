@@ -1,7 +1,7 @@
 """Read only publicly published VibeCritic review pages."""
 from __future__ import annotations
 import re, time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
@@ -45,11 +45,23 @@ def meta(soup, *names):
             return node["content"].strip()
     return ""
 
+def is_review_article_url(url):
+    parsed = urlparse(url)
+    if parsed.netloc.lower() != "vibecritic.pages.dev":
+        return False
+    match = re.fullmatch(r"/reviews/([^/]+)/?", parsed.path)
+    if not match:
+        return False
+    slug = match.group(1).lower()
+    return slug not in {"index", "page", "category", "tag", "archive", "all"}
+
 def extract(url):
+    if not is_review_article_url(url):
+        return None
     soup = BeautifulSoup(get(url), "html.parser")
     canonical = soup.find("link", rel="canonical")
-    url = canonical.get("href", url) if canonical else url
-    if "/reviews/" not in url:
+    url = urljoin(url, canonical.get("href", url)) if canonical else url
+    if not is_review_article_url(url):
         return None
     title = meta(soup, "og:title") or (soup.title.get_text(" ", strip=True) if soup.title else "")
     description = meta(soup, "og:description", "description")
@@ -89,7 +101,7 @@ def list_published_articles():
                     article_urls.extend(locs(get(url)))
                 except requests.RequestException:
                     continue
-            elif "/reviews/" in url:
+            elif is_review_article_url(url):
                 article_urls.append(url)
     results = []
     for url in dict.fromkeys(article_urls):

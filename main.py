@@ -441,26 +441,15 @@ def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
     durations = [media_duration(p) for p in voices]
     log(f"Voice done: {sum(durations):.1f}s total")
 
-    # Background per scene: official image first and last, AI images in between.
-    originals = []
-    for i, url in enumerate(work["images"]):
-        p = tmp / f"orig_{i}.jpg"
-        if download_image(url, p):
-            originals.append(p)
-    if not originals:
-        fallback = tmp / "generated_fallback.jpg"
-        if ai_image(f"Cinematic symbolic atmosphere for {work['title_en']}, no logos or text", fallback):
-            originals.append(fallback)
-        else:
-            raise RuntimeError("No article image or generated fallback could be downloaded.")
+    # Use generated illustrative scenes only; do not republish copyrighted article artwork.
     bgs = []
-    for i, s in enumerate(scenes):
+    for i, scene in enumerate(scenes):
         p = tmp / f"bg_{i}.jpg"
-        if 0 < i < len(scenes) - 1 and ai_image(str(s.get("image_prompt", "")), p):
-            bgs.append(p)
-        else:
-            bgs.append(originals[i % len(originals)])
-        time.sleep(1)
+        prompt = str(scene.get("image_prompt") or f"Cinematic symbolic atmosphere for {work['title_en']}")
+        if not ai_image(prompt, p):
+            raise RuntimeError(f"Generated scene image {i + 1} is unavailable; refusing to reuse unlicensed artwork.")
+        bgs.append(p)
+        time.sleep(0.5)
 
     font_path = find_font()
     cap_font, title_font = load_font(font_path, 80), load_font(font_path, 58)

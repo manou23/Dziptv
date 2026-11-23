@@ -8,7 +8,7 @@ on:
         default: true
         type: boolean
   schedule:
-    - cron: "30 18 * * *"
+    - cron: "30 10,18 * * *"
 permissions:
   contents: write
 concurrency:
@@ -40,6 +40,16 @@ jobs:
           YT_PRIVACY: public
           TTS_VOICE: ar-SA-HamedNeural
         run: python main.py
+      - name: Upload generated preview files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibecritic-video-output-${{ github.run_number }}
+          path: |
+            output/*.mp4
+            output/metadata.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save publishing state
         if: success() && github.event_name == 'schedule'
         run: |

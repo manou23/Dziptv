@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Daily Arabic YouTube Short, automatic, free tiers only. See README.md.
+"""Automated VibeCritic article-to-YouTube video pipeline. See README.md.
 
 Pipeline:
-  TMDb / RAWG trending work -> Gemini script (grounded in that data)
+  Published VibeCritic review -> Gemini short/long scripts (source-grounded)
   -> Edge TTS voice -> Pollinations / TMDb images -> Pillow caption frames
   -> FFmpeg -> YouTube upload -> state file (so a work is never repeated)
 """
@@ -328,7 +328,8 @@ def download_image(url: str, path: Path, tries: int = 3) -> bool:
 
 
 def ai_image(prompt: str, path: Path) -> bool:
-    full = f"{prompt}, cinematic, dramatic lighting, vertical composition, no text"
+    orientation = "portrait" if H > W else "landscape"
+    full = f"{prompt}, cinematic, dramatic lighting, {orientation} composition, no text"
     url = (
         f"https://image.pollinations.ai/prompt/{quote(full)}"
         f"?width={W}&height={H}&nologo=true&seed={random.randint(1, 999999)}"

@@ -1,0 +1,602 @@
+#!/usr/bin/env python3
+"""Daily Arabic YouTube Short, automatic, free tiers only. See README.md.
+
+Pipeline:
+  TMDb / RAWG trending work -> Gemini script (grounded in that data)
+  -> Edge TTS voice -> Pollinations / TMDb images -> Pillow caption frames
+  -> FFmpeg -> YouTube upload -> state file (so a work is never repeated)
+"""
+from __future__ import annotations
+
+import asyncio
+import datetime as dt
+import json
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.parse import quote
+
+import arabic_reshaper
+import requests
+from bs4 import BeautifulSoup
+from PIL import Image, ImageDraw, ImageFont
+from src.article_source import list_published_articles
+
+try:
+    from bidi import get_display
+except ImportError:  # older python-bidi releases
+    from bidi.algorithm import get_display
+
+ROOT = Path(__file__).resolve().parent
+OUT = ROOT / "output"
+STATE_FILE = ROOT / "state" / "videos.json"
+W, H = 1080, 1920
+
+TMDB_KEY = os.getenv("TMDB_API_KEY", "")
+RAWG_KEY = os.getenv("RAWG_API_KEY", "")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODELS = [
+    m.strip()
+    for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash,gemini-2.0-flash").split(",")
+    if m.strip()
+]
+VOICE = os.getenv("TTS_VOICE", "ar-SA-HamedNeural")
+TTS_RATE = os.getenv("TTS_RATE", "+0%")
+KINDS = [k.strip() for k in os.getenv("KINDS", "movie,tv,game").split(",") if k.strip()]
+PRIVACY = os.getenv("YT_PRIVACY", "public")
+DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
+KIND_LABEL = {"movie": "فيلم", "tv": "مسلسل", "game": "لعبة"}
+
+
+def log(msg: str) -> None:
+    print(msg, flush=True)
+
+
+# --------------------------------------------------------------------------- #
+# HTTP helper (never logs query strings, so API keys stay out of the logs)
+# --------------------------------------------------------------------------- #
+def http_get(url: str, params: dict | None = None, tries: int = 3, timeout: int = 60):
+    last: Exception | None = None
+    for i in range(tries):
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            if r.status_code == 200:
+                return r
+            last = RuntimeError(f"HTTP {r.status_code} from {url.split('?')[0]}")
+        except requests.RequestException as e:
+            last = RuntimeError(f"{type(e).__name__} from {url.split('?')[0]}")
+        time.sleep(2 * (i + 1))
+    raise last  # type: ignore[misc]
+
+
+# --------------------------------------------------------------------------- #
+# State (which works were already published)
+# --------------------------------------------------------------------------- #
+def load_state() -> dict:
+    if STATE_FILE.exists():
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    return {"articles": {}, "log": []}
+
+
+def save_state(state: dict) -> None:
+    state["articles"] = dict(list(state.get("articles", {}).items())[-500:])
+    state["log"] = state.get("log", [])[-100:]
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+# --------------------------------------------------------------------------- #
+# 1. Pick a trending work (TMDb for movies/series, RAWG for games)
+# --------------------------------------------------------------------------- #
+def tmdb_work(kind: str, tmdb_id: int) -> dict:
+    base = f"https://api.themoviedb.org/3/{kind}/{tmdb_id}"
+    en = http_get(base, {"api_key": TMDB_KEY, "language": "en-US"}).json()
+    ar = http_get(base, {"api_key": TMDB_KEY, "language": "ar"}).json()
+    title_en = en.get("title") or en.get("name") or ""
+    facts = []
+    if (en.get("vote_count") or 0) >= 50:
+        facts.append(f"TMDb user rating: {en['vote_average']:.1f}/10 from {en['vote_count']} votes")
+    if kind == "movie" and en.get("runtime"):
+        facts.append(f"Runtime: {en['runtime']} minutes")
+    if kind == "tv":
+        facts.append(f"Seasons: {en.get('number_of_seasons')}, episodes: {en.get('number_of_episodes')}")
+    if en.get("tagline"):
+        facts.append(f"Tagline: {en['tagline']}")
+    images = []
+    if en.get("backdrop_path"):
+        images.append("https://image.tmdb.org/t/p/w1280" + en["backdrop_path"])
+    if en.get("poster_path"):
+        images.append("https://image.tmdb.org/t/p/w780" + en["poster_path"])
+    return {
+        "uid": f"{kind}:{tmdb_id}",
+        "kind": kind,
+        "title_en": title_en,
+        "title_ar": ar.get("title") or ar.get("name") or title_en,
+        "release": en.get("release_date") or en.get("first_air_date") or "",
+        "genres": [g["name"] for g in en.get("genres", [])],
+        "overview": (en.get("overview") or "").strip(),
+        "facts": facts,
+        "images": images,
+        "source": "TMDb",
+    }
+
+
+def rawg_work(game_id: int) -> dict | None:
+    d = http_get(f"https://api.rawg.io/api/games/{game_id}", {"key": RAWG_KEY}).json()
+    if (d.get("esrb_rating") or {}).get("slug") == "adults-only":
+        return None
+    facts = []
+    if d.get("metacritic"):
+        facts.append(f"Metacritic score: {d['metacritic']}")
+    if d.get("rating") and (d.get("ratings_count") or 0) >= 20:
+        facts.append(f"RAWG user rating: {d['rating']}/5 from {d['ratings_count']} ratings")
+    if d.get("platforms"):
+        facts.append("Platforms: " + ", ".join(p["platform"]["name"] for p in d["platforms"][:6]))
+    if d.get("developers"):
+        facts.append("Developer: " + ", ".join(x["name"] for x in d["developers"][:2]))
+    images = [u for u in (d.get("background_image"), d.get("background_image_additional")) if u]
+    return {
+        "uid": f"game:{game_id}",
+        "kind": "game",
+        "title_en": d.get("name", ""),
+        "title_ar": d.get("name", ""),
+        "release": d.get("released") or "",
+        "genres": [g["name"] for g in d.get("genres", [])],
+        "overview": re.sub(r"\s+", " ", d.get("description_raw") or "").strip()[:900],
+        "facts": facts,
+        "images": images,
+        "source": "RAWG",
+    }
+
+
+def candidate_ids(kind: str) -> list[int]:
+    if kind in ("movie", "tv"):
+        r = http_get(f"https://api.themoviedb.org/3/trending/{kind}/week", {"api_key": TMDB_KEY})
+        return [x["id"] for x in r.json().get("results", [])]
+    today = dt.date.today()
+    window = f"{today - dt.timedelta(days=120)},{today + dt.timedelta(days=60)}"
+    r = http_get(
+        "https://api.rawg.io/api/games",
+        {"key": RAWG_KEY, "dates": window, "ordering": "-added", "page_size": 20},
+    )
+    return [x["id"] for x in r.json().get("results", [])]
+
+
+def pick_work(state: dict) -> dict:
+    done = set(state.get("articles", {}).keys())
+    for article in list_published_articles():
+        if article["uid"] not in done:
+            return article
+    raise SystemExit("No eligible new VibeCritic article is available.")
+
+
+# --------------------------------------------------------------------------- #
+# 2. Script with Gemini (grounded in the retrieved data only)
+# --------------------------------------------------------------------------- #
+PROMPT = """أنت كاتب سيناريو لقناة يوتيوب عربية متخصصة في الأفلام والمسلسلات والألعاب.
+اكتب سيناريو فيديو قصير (Short) مدته 45 إلى 55 ثانية بالعربية الفصحى المبسطة عن العمل الموصوف في البيانات أدناه.
+
+قواعد صارمة:
+- استخدم فقط المعلومات الواردة في البيانات، ولا تخترع تفاصيل أو أسماء أو أرقامًا أو أحداثًا.
+- لا تكشف مفاجآت الحبكة.
+- الجملة الأولى خطّاف يثير الفضول ولا تزيد عن 12 كلمة.
+- 6 مشاهد بهذا الترتيب: خطّاف، فكرة العمل، ما يميّزه، التقييم والأرقام إن وُجدت، لمن يناسب، دعوة للاشتراك مع سؤال للتعليقات.
+- مجموع كلمات السرد بين 110 و140 كلمة، وكل مشهد من جملة إلى ثلاث جمل قصيرة سهلة النطق.
+- اكتب اسم العمل بالحروف العربية في السرد.
+- image_prompt: وصف بالإنجليزية لصورة سينمائية عمودية تناسب المشهد، بلا نصوص ولا شعارات ولا وجوه أشخاص حقيقيين ولا شخصيات محمية بحقوق؛ فضّل الأجواء والمناظر والأشياء الرمزية.
+- title: عنوان عربي جذاب لا يتجاوز 70 حرفًا، صادق لا يعد بما لا يقدمه الفيديو.
+- description: سطران عن الفيديو.
+- hashtags: من 4 إلى 6 وسوم عربية أو إنجليزية بدون علامة #.
+
+أعد JSON فقط وبدون أي نص آخر بهذا الشكل:
+{"title": "...", "description": "...", "hashtags": ["..."], "scenes": [{"narration": "...", "image_prompt": "..."}]}
+
+البيانات:
+@@WORK@@
+"""
+
+
+def gemini_json(prompt: str) -> dict:
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.8, "responseMimeType": "application/json"},
+    }
+    last = "no attempt"
+    for model in GEMINI_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        for attempt in range(3):
+            r = requests.post(
+                url, json=body, timeout=120,
+                headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
+            )
+            if r.status_code == 200:
+                try:
+                    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    return json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip()).strip())
+                except (KeyError, IndexError, json.JSONDecodeError) as e:
+                    last = f"{model}: bad response ({type(e).__name__})"
+                    continue
+            last = f"{model}: HTTP {r.status_code}"
+            if r.status_code in (429, 500, 503):
+                time.sleep(15 * (attempt + 1))
+                continue
+            break  # 400/403/404: try the next model
+    raise RuntimeError(f"Gemini failed: {last}")
+
+
+def write_script(work: dict) -> dict:
+    data = {
+        "type": KIND_LABEL[work["kind"]],
+        "title_english": work["title_en"],
+        "title_arabic": work["title_ar"],
+        "release_date": work["release"],
+        "genres": work["genres"],
+        "overview": work["overview"],
+        "facts": work["facts"],
+        "article_excerpt": work.get("article_text", "")[:9000],
+    }
+    prompt = PROMPT.replace("@@WORK@@", json.dumps(data, ensure_ascii=False, indent=2))
+    for attempt in range(3):
+        plan = gemini_json(prompt)
+        scenes = plan.get("scenes") or []
+        words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
+        if 4 <= len(scenes) <= 8 and all(str(s.get("narration", "")).strip() for s in scenes) and 60 <= words <= 190:
+            plan["title"] = str(plan.get("title") or work["title_ar"])[:95]
+            return plan
+        log(f"Script rejected (scenes={len(scenes)}, words={words}), retrying ({attempt + 1}/3)")
+    raise RuntimeError("Gemini returned an unusable script 3 times.")
+
+
+LONG_PROMPT = """اكتب سيناريو فيديو تحليلي عربي لقناة VibeCritic مدته 5 إلى 8 دقائق.
+استخدم معلومات المقال فقط ولا تخترع حقائق أو مشاهد أو تجارب. لا حشو ولا تكرار. أنشئ 8 إلى 12 مشهداً متماسكاً بمجموع 650 إلى 900 كلمة منطوقة: مقدمة، سياق، نقاط القوة، نقاط الضعف، تحليل، لمن يناسب، حكم نهائي وخاتمة.
+أعد JSON فقط: {"title":"عنوان","description":"وصف","hashtags":["..."],"scenes":[{"narration":"...","image_prompt":"cinematic atmosphere, no text, no logos"}]}
+المقال المنشور:
+@@ARTICLE@@
+"""
+
+def write_long_script(work: dict) -> dict | None:
+    source = work.get("article_text", "")
+    if len(source) < 1800:
+        log("Long video skipped: insufficient article material.")
+        return None
+    prompt = LONG_PROMPT.replace("@@ARTICLE@@", source[:14000])
+    for attempt in range(3):
+        plan = gemini_json(prompt)
+        scenes = plan.get("scenes") or []
+        words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
+        if 8 <= len(scenes) <= 12 and 650 <= words <= 900 and all(str(s.get("narration", "")).strip() for s in scenes):
+            plan["title"] = str(plan.get("title") or work["title_ar"])[:95]
+            log(f"Long script accepted: {words} words.")
+            return plan
+        log(f"Long script rejected: scenes={len(scenes)}, words={words}.")
+    log("Long video skipped: quality gate rejected the source-based script.")
+    return None
+
+
+# --------------------------------------------------------------------------- #
+# 3. Voice (Edge TTS, free)
+# --------------------------------------------------------------------------- #
+async def synth_all(texts: list[str], folder: Path) -> list[Path]:
+    import edge_tts
+
+    paths = []
+    for i, text in enumerate(texts):
+        p = folder / f"voice_{i}.mp3"
+        for attempt in range(4):
+            try:
+                await edge_tts.Communicate(text, VOICE, rate=TTS_RATE).save(str(p))
+                if p.exists() and p.stat().st_size > 1000:
+                    break
+            except Exception as e:  # network / service hiccups
+                log(f"TTS retry scene {i}: {type(e).__name__}")
+            await asyncio.sleep(3 * (attempt + 1))
+        else:
+            raise RuntimeError(f"TTS failed for scene {i}. Try updating edge-tts.")
+        paths.append(p)
+    return paths
+
+
+def media_duration(path: Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(path)],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return float(out.strip())
+
+
+# --------------------------------------------------------------------------- #
+# 4. Images + caption frames (Pillow does the Arabic shaping, not FFmpeg)
+# --------------------------------------------------------------------------- #
+def download_image(url: str, path: Path, tries: int = 3) -> bool:
+    for i in range(tries):
+        try:
+            r = requests.get(url, timeout=120)
+            if r.status_code == 200 and len(r.content) > 5000:
+                path.write_bytes(r.content)
+                Image.open(path).verify()
+                return True
+        except Exception:
+            pass
+        time.sleep(3 * (i + 1))
+    return False
+
+
+def ai_image(prompt: str, path: Path) -> bool:
+    full = f"{prompt}, cinematic, dramatic lighting, vertical composition, no text"
+    url = (
+        f"https://image.pollinations.ai/prompt/{quote(full)}"
+        f"?width={W}&height={H}&nologo=true&seed={random.randint(1, 999999)}"
+    )
+    return download_image(url, path, tries=2)
+
+
+def find_font() -> str:
+    env = os.getenv("FONT_PATH")
+    if env and Path(env).exists():
+        return env
+    try:
+        out = subprocess.run(
+            ["fc-match", "-f", "%{file}", "sans-serif:lang=ar:bold"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        if out and Path(out).exists():
+            return out
+    except Exception:
+        pass
+    for c in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf",
+    ):
+        if Path(c).exists():
+            return c
+    raise RuntimeError("No Arabic-capable font found. Install fonts-noto-core or set FONT_PATH.")
+
+
+def shape(text: str) -> str:
+    return get_display(arabic_reshaper.reshape(text))
+
+
+def load_font(path: str, size: int) -> ImageFont.FreeTypeFont:
+    # BASIC layout: we already shaped and reordered the text ourselves.
+    return ImageFont.truetype(path, size, layout_engine=ImageFont.Layout.BASIC)
+
+
+def wrap(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> list[str]:
+    lines: list[str] = []
+    cur: list[str] = []
+    for word in text.split():
+        trial = " ".join(cur + [word])
+        if not cur or font.getlength(shape(trial)) <= max_w:
+            cur.append(word)
+        else:
+            lines.append(" ".join(cur))
+            cur = [word]
+    if cur:
+        lines.append(" ".join(cur))
+    return lines
+
+
+def draw_block(img: Image.Image, text: str, font, center_y: int, max_w: int = 940) -> None:
+    d = ImageDraw.Draw(img)
+    lines = wrap(text, font, max_w)
+    lh = int(font.size * 1.5)
+    y = center_y - (len(lines) * lh) // 2
+    for line in lines:
+        s = shape(line)
+        x = (W - font.getlength(s)) / 2
+        d.text((x, y), s, font=font, fill="white", stroke_width=6, stroke_fill="black")
+        y += lh
+
+
+def background(path: Path) -> Image.Image:
+    img = Image.open(path).convert("RGB")
+    scale = max(W / img.width, H / img.height)
+    img = img.resize((int(img.width * scale) + 1, int(img.height * scale) + 1), Image.LANCZOS)
+    left, top = (img.width - W) // 2, (img.height - H) // 2
+    img = img.crop((left, top, left + W, top + H)).convert("RGBA")
+    grad = Image.linear_gradient("L").resize((W, H))
+    shade = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+    shade.putalpha(grad.point(lambda p: int(50 + p * 0.55)))
+    return Image.alpha_composite(img, shade).convert("RGB")
+
+
+def chunk_words(text: str, max_words: int = 6) -> list[str]:
+    chunks: list[str] = []
+    cur: list[str] = []
+    for w in text.split():
+        cur.append(w)
+        if len(cur) >= max_words or (len(cur) >= 3 and re.search(r"[.،؛؟!?:]$", w)):
+            chunks.append(" ".join(cur))
+            cur = []
+    if cur:
+        if chunks and len(cur) == 1:
+            chunks[-1] += " " + cur[0]
+        else:
+            chunks.append(" ".join(cur))
+    return [re.sub(r"[.،؛]+$", "", c) for c in chunks]
+
+
+def run_ffmpeg(args: list[str]) -> None:
+    p = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], capture_output=True, text=True)
+    if p.returncode:
+        raise RuntimeError("ffmpeg failed: " + p.stderr[-800:])
+
+
+def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
+    tmp = OUT / "work"
+    shutil.rmtree(tmp, ignore_errors=True)
+    (tmp / "frames").mkdir(parents=True)
+    scenes = plan["scenes"]
+
+    voices = asyncio.run(synth_all([s["narration"] for s in scenes], tmp))
+    durations = [media_duration(p) for p in voices]
+    log(f"Voice done: {sum(durations):.1f}s total")
+
+    # Background per scene: official image first and last, AI images in between.
+    originals = []
+    for i, url in enumerate(work["images"]):
+        p = tmp / f"orig_{i}.jpg"
+        if download_image(url, p):
+            originals.append(p)
+    if not originals:
+        raise RuntimeError("Could not download any official image.")
+    bgs = []
+    for i, s in enumerate(scenes):
+        p = tmp / f"bg_{i}.jpg"
+        if 0 < i < len(scenes) - 1 and ai_image(str(s.get("image_prompt", "")), p):
+            bgs.append(p)
+        else:
+            bgs.append(originals[i % len(originals)])
+        time.sleep(1)
+
+    font_path = find_font()
+    cap_font, title_font = load_font(font_path, 80), load_font(font_path, 58)
+    entries: list[tuple[Path, float]] = []
+    for i, (s, dur, bg_path) in enumerate(zip(scenes, durations, bgs)):
+        base = background(bg_path)
+        draw_block(base, work["title_ar"], title_font, center_y=230)
+        chunks = chunk_words(str(s["narration"]))
+        total = sum(len(c) for c in chunks) or 1
+        for j, chunk in enumerate(chunks):
+            frame = base.copy()
+            draw_block(frame, chunk, cap_font, center_y=int(H * 0.64))
+            fp = tmp / "frames" / f"s{i}_{j:02d}.png"
+            frame.save(fp)
+            entries.append((fp, max(0.6, dur * len(chunk) / total)))
+
+    lst = tmp / "frames.txt"
+    lst.write_text(
+        "".join(f"file '{p}'\nduration {d:.3f}\n" for p, d in entries) + f"file '{entries[-1][0]}'\n",
+        encoding="utf-8",
+    )
+    alst = tmp / "audio.txt"
+    alst.write_text("".join(f"file '{p}'\n" for p in voices), encoding="utf-8")
+    run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(alst), "-c:a", "aac", "-b:a", "160k", str(tmp / "voice.m4a")])
+
+    video = OUT / output_name
+    run_ffmpeg([
+        "-f", "concat", "-safe", "0", "-i", str(lst), "-i", str(tmp / "voice.m4a"),
+        "-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", str(video),
+    ])
+    log(f"Video ready: {video} ({media_duration(video):.1f}s)")
+    return video
+
+
+# --------------------------------------------------------------------------- #
+# 5. Upload to YouTube (Data API v3, free quota)
+# --------------------------------------------------------------------------- #
+def build_description(work: dict, plan: dict) -> str:
+    tags = [str(t).strip().lstrip("#").replace(" ", "_") for t in plan.get("hashtags", [])][:6]
+    credit = (
+        "This product uses the TMDB API but is not endorsed or certified by TMDB. https://www.themoviedb.org"
+        if work["source"] == "TMDb"
+        else "Game data: RAWG https://rawg.io"
+    )
+    return (
+        f"{plan.get('description', '')}\n\n"
+        + " ".join(f"#{t}" for t in tags + ["Shorts"])
+        + f"\n\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
+    )[:4800], tags
+
+
+def upload(video: Path, work: dict, plan: dict) -> str:
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaFileUpload
+
+    creds = Credentials(
+        None,
+        refresh_token=os.environ["YT_REFRESH_TOKEN"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.environ["YT_CLIENT_ID"],
+        client_secret=os.environ["YT_CLIENT_SECRET"],
+        scopes=["https://www.googleapis.com/auth/youtube.upload"],
+    )
+    yt = build("youtube", "v3", credentials=creds, cache_discovery=False)
+    description, tags = build_description(work, plan)
+    body = {
+        "snippet": {
+            "title": plan["title"],
+            "description": description,
+            "tags": tags,
+            "categoryId": "24",  # Entertainment
+            "defaultLanguage": "ar",
+            "defaultAudioLanguage": "ar",
+        },
+        "status": {
+            "privacyStatus": PRIVACY,
+            "selfDeclaredMadeForKids": False,
+            "containsSyntheticMedia": True,  # AI-content disclosure
+        },
+    }
+    for attempt in range(2):
+        try:
+            req = yt.videos().insert(
+                part="snippet,status", body=body,
+                media_body=MediaFileUpload(str(video), mimetype="video/mp4", chunksize=8 * 1024 * 1024, resumable=True),
+            )
+            resp = None
+            while resp is None:
+                _, resp = req.next_chunk()
+            return resp["id"]
+        except HttpError as e:
+            if attempt == 0 and e.resp.status == 400 and "ynthetic" in str(e):
+                body["status"].pop("containsSyntheticMedia", None)  # older API surface: retry without it
+                continue
+            raise
+    raise RuntimeError("upload failed")
+
+
+# --------------------------------------------------------------------------- #
+def main() -> None:
+    if not GEMINI_KEY:
+        raise SystemExit("GEMINI_API_KEY is missing.")
+    if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
+        raise SystemExit("YouTube secrets are missing.")
+    OUT.mkdir(exist_ok=True)
+    state = load_state()
+    work = pick_work(state)
+    log(f"Selected published VibeCritic article: {work['title_ar']} | {work['article_url']}")
+    short_plan = write_script(work)
+    short_video = render(work, short_plan, "short.mp4")
+    long_plan = write_long_script(work)
+    long_video = render(work, long_plan, "long.mp4") if long_plan else None
+    if long_video:
+        seconds = media_duration(long_video)
+        if not 270 <= seconds <= 480:
+            log(f"Long video skipped: rendered duration {seconds:.1f}s is outside 270-480s.")
+            long_video.unlink(missing_ok=True)
+            long_video = None
+            long_plan = None
+    (OUT / "metadata.json").write_text(json.dumps({"work": work["uid"], "article_url": work["article_url"], "short": short_plan, "long": long_plan}, ensure_ascii=False, indent=2), encoding="utf-8")
+    if DRY_RUN:
+        log("DRY_RUN=1: upload skipped.")
+        return
+    record = {"article_url": work["article_url"], "title": work["title_ar"], "videos": {}}
+    short_id = upload(short_video, work, short_plan)
+    record["videos"]["short"] = short_id
+    log(f"Short uploaded: https://youtu.be/{short_id} ({PRIVACY})")
+    if long_video and long_plan:
+        long_id = upload(long_video, work, long_plan)
+        record["videos"]["long"] = long_id
+        log(f"Long video uploaded: https://youtu.be/{long_id} ({PRIVACY})")
+    else:
+        record["videos"]["long"] = "skipped-insufficient-article-material"
+    state.setdefault("articles", {})[work["uid"]] = record
+    state.setdefault("log", []).append({"uid": work["uid"], **record, "date": dt.date.today().isoformat()})
+    save_state(state)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:  # fail loudly so the Action turns red and notifies you
+        log(f"ERROR: {type(exc).__name__}: {exc}")
+        sys.exit(1)

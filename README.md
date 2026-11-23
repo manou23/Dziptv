@@ -1,64 +1,27 @@
-<!-- Copyright © 2026 Mesut. All rights reserved. -->
-<div align="center">
+# VibeCritic Video
 
-# 👑 MESUT IPTV
+نظام مستقل لقناة VibeCritic. يقرأ المقالات المنشورة فقط من https://vibecritic.pages.dev/reviews/ ولا يعدّل موقع VibeCritic أو نظام Publishing V3.
 
-### NOVA 8.0.0 — تجربة جديدة، عالم بلا حدود.
+- Short عربي 45–60 ثانية لكل مقال مؤهل.
+- فيديو طويل 5–8 دقائق فقط إذا كانت مادة المقال كافية (650–900 كلمة بعد التوليد والتحقق).
+- لا اختلاق ولا حشو؛ يتخطى الفيديو الطويل إذا فشل شرط الجودة.
+- رابط المقال في وصف يوتيوب.
+- سجل مستقل لمنع التكرار في state/videos.json.
+- نشر تلقائي عام بعد إضافة أسرار YouTube واجتياز التحقق.
 
-**الإصدار 8.0.0 · Build 16 · Stable**
+## التشغيل المحلي
+يتطلب Python 3.11+ وFFmpeg وخط Noto Arabic.
 
-مشغّل IPTV عصري للهاتف وAndroid TV، لتنظيم القنوات المباشرة والأفلام والمسلسلات عبر اشتراكك الخاص.
+    pip install -r requirements.txt
+    DRY_RUN=1 python main.py
 
-[🌐 الموقع الرسمي](https://mesutiptv.pages.dev/) · [📦 الإصدار الرسمي على GitHub](https://github.com/manou23/Dziptv/releases/tag/v8.0.0)
+## GitHub Actions Secrets
+GEMINI_API_KEY
+YT_CLIENT_ID
+YT_CLIENT_SECRET
+YT_REFRESH_TOKEN
 
-</div>
+لا تحفظ مفاتيح API أو رموز OAuth داخل المستودع. التشغيل اليدوي الافتراضي DRY_RUN، والجدولة اليومية تستخدم الرفع العام عند اكتمال الأسرار.
 
----
-
-## ⬇️ التحميل الرسمي
-
-| الجهاز | ملف التثبيت | التحقق من الملف |
-|---|---|---|
-| **Android Phone** | [تحميل MESUT IPTV للهاتف](https://github.com/manou23/Dziptv/releases/download/v8.0.0/mesut-iptv-phone.apk) | [SHA-256 للهاتف](https://github.com/manou23/Dziptv/releases/download/v8.0.0/mesut-iptv-phone.apk.sha256) |
-| **Android TV** | [تحميل MESUT IPTV للتلفاز](https://github.com/manou23/Dziptv/releases/download/v8.0.0/mesut-iptv-tv.apk) | [SHA-256 للتلفاز](https://github.com/manou23/Dziptv/releases/download/v8.0.0/mesut-iptv-tv.apk.sha256) |
-
-## ✨ أبرز المزايا
-
-- واجهة عصرية مهيأة للهاتف والشاشات الكبيرة.
-- نسختان منفصلتان للهاتف وAndroid TV.
-- تنظيم القنوات المباشرة والأفلام والمسلسلات.
-- حسابات وبروفايلات متعددة مع حماية PIN.
-- المفضلة وسجل المشاهدة ومتابعة المحتوى.
-- دعم التحكم بالريموت في نسخة التلفاز.
-- مزامنة البيانات المدعومة عبر حساب MESUT.
-
-## 📲 التثبيت والبدء
-
-1. حمّل ملف APK المناسب لجهازك من الروابط الرسمية أعلاه.
-2. افتح الملف وأكمل التثبيت. إذا طلب Android الإذن، اسمح بالتثبيت من هذا المصدر.
-3. افتح MESUT IPTV وأنشئ حساب MESUT أو سجّل الدخول.
-4. أضف بيانات Xtream التي حصلت عليها من مزوّد IPTV الخاص بك.
-5. اختر بروفايلك وابدأ باستخدام التطبيق.
-
-## ℹ️ ملاحظات مهمة
-
-- MESUT IPTV مشغّل وسائط فقط؛ لا يوفّر قنوات أو اشتراكاً أو مكتبة محتوى جاهزة.
-- تحتاج إلى اشتراك IPTV/Xtream صالح من مزوّدك.
-- استخدم التطبيق مع المحتوى الذي تملك حق الوصول إليه.
-- نسخة الهاتف ونسخة Android TV منفصلتان، فاختر الملف المطابق لجهازك.
-
-## 🛟 الدعم
-
-- [الموقع الرسمي](https://mesutiptv.pages.dev/)
-- [صفحة الإصدارات](https://github.com/manou23/Dziptv/releases)
-- [الإبلاغ عن مشكلة أو طلب مساعدة](https://github.com/manou23/Dziptv/issues)
-
----
-
-<div align="center">
-
-**MESUT IPTV — NOVA 8.0.0**
-
-© 2026 Mesut. جميع الحقوق محفوظة.
-
-</div>
+## المصادر والحقوق
+المقالات المنشورة هي مصدر النص والتحليل. الصور الموجودة في صفحات المقالات قد تكون محمية بحقوق؛ تأكد من وجود إذن لإعادة استخدامها أو استخدم صوراً مولدة لا تنتحل لقطات رسمية.

@@ -1,0 +1,50 @@
+name: VibeCritic Video Publishing
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Generate without uploading
+        required: true
+        default: true
+        type: boolean
+  schedule:
+    - cron: "30 18 * * *"
+permissions:
+  contents: write
+concurrency:
+  group: vibecritic-video-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Generate and publish
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: public
+          TTS_VOICE: ar-SA-HamedNeural
+        run: python main.py
+      - name: Save publishing state
+        if: success() && github.event_name == 'schedule'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state
+          git diff --cached --quiet || git commit -m "chore(video): update publishing state"
+          git push

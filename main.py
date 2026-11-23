@@ -448,7 +448,7 @@ def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
             originals.append(p)
     if not originals:
         fallback = tmp / "generated_fallback.jpg"
-        if ai_image(f"Cinematic symbolic atmosphere for {work[\"title_en\"]}, no logos or text", fallback):
+        if ai_image(f"Cinematic symbolic atmosphere for {work['title_en']}, no logos or text", fallback):
             originals.append(fallback)
         else:
             raise RuntimeError("No article image or generated fallback could be downloaded.")
@@ -508,7 +508,7 @@ def build_description(work: dict, plan: dict) -> str:
     return (
         f"{plan.get('description', '')}\n\n"
         + " ".join(f"#{t}" for t in tags + (["Shorts"] if plan.get("format") == "short" else ["VibeCritic"]))
-        + f"\n\nالمراجعة الكاملة: {work.get(\"article_url\", \"\")}\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
+        + f"\n\nالمراجعة الكاملة: {work.get('article_url', '')}\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
     )[:4800], tags
 
 

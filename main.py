@@ -35,6 +35,7 @@ except ImportError:  # older python-bidi releases
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "output"
 STATE_FILE = ROOT / "state" / "videos.json"
+PREVIEW_STATE_FILE = ROOT / "state" / "previews.json"
 W, H = 1080, 1920
 
 TMDB_KEY = os.getenv("TMDB_API_KEY", "")
@@ -88,6 +89,18 @@ def save_state(state: dict) -> None:
     state["log"] = state.get("log", [])[-100:]
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_preview_state() -> dict:
+    if PREVIEW_STATE_FILE.exists():
+        return json.loads(PREVIEW_STATE_FILE.read_text(encoding="utf-8"))
+    return {"articles": {}}
+
+
+def save_preview_state(state: dict) -> None:
+    state["articles"] = dict(list(state.get("articles", {}).items())[-500:])
+    PREVIEW_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PREVIEW_STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- #
@@ -167,8 +180,18 @@ def candidate_ids(kind: str) -> list[int]:
     return [x["id"] for x in r.json().get("results", [])]
 
 
-def pick_work(state: dict) -> dict:
-    for article in list_published_articles():
+def pick_work(state: dict, preview_state: dict | None = None) -> dict:
+    articles = list_published_articles()
+    if DRY_RUN and preview_state is not None:
+        previewed = preview_state.setdefault("articles", {})
+        remaining = [a for a in articles if a["uid"] not in previewed]
+        if not remaining:
+            # Start a fresh preview cycle only after every eligible article was sampled.
+            preview_state["articles"] = {}
+            remaining = articles
+        articles = remaining
+
+    for article in articles:
         record = state.get("articles", {}).get(article["uid"], {})
         videos = record.get("videos", {})
         if not videos.get("short") or not videos.get("long"):
@@ -581,7 +604,8 @@ def main() -> None:
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)
     state = load_state()
-    work = pick_work(state)
+    preview_state = load_preview_state() if DRY_RUN else None
+    work = pick_work(state, preview_state)
     log(f"Selected published VibeCritic article: {work['title_ar']} | {work['article_url']}")
     record = state.setdefault("articles", {}).setdefault(work["uid"], {
         "article_url": work["article_url"], "title": work["title_ar"], "videos": {}
@@ -609,7 +633,15 @@ def main() -> None:
             "work": work["uid"], "article_url": work["article_url"],
             "short": short_plan, "long": long_plan
         }, ensure_ascii=False, indent=2), encoding="utf-8")
-        log("DRY_RUN=1: upload skipped.")
+        preview_state.setdefault("articles", {})[work["uid"]] = {
+            "article_url": work["article_url"],
+            "title": work["title_ar"],
+            "previewed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "short_generated": short_video.exists(),
+            "long_generated": bool(long_video and long_video.exists()),
+        }
+        save_preview_state(preview_state)
+        log("DRY_RUN=1: upload skipped; preview state saved separately from publishing state.")
         return
 
     if not videos.get("short"):

@@ -42,7 +42,7 @@ RAWG_KEY = os.getenv("RAWG_API_KEY", "")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODELS = [
     m.strip()
-    for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash,gemini-2.0-flash").split(",")
+    for m in os.getenv("GEMINI_MODELS", "gemini-3.8-flash,gemini-3.5-flash-lite").split(",")
     if m.strip()
 ]
 VOICE = os.getenv("TTS_VOICE", "ar-SA-HamedNeural")
@@ -211,22 +211,34 @@ def gemini_json(prompt: str) -> dict:
     for model in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         for attempt in range(3):
-            r = requests.post(
-                url, json=body, timeout=120,
-                headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
-            )
+            try:
+                r = requests.post(
+                    url, json=body, timeout=120,
+                    headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
+                )
+            except requests.RequestException as exc:
+                last = f"{model}: network error ({type(exc).__name__})"
+                if attempt < 2:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                break
             if r.status_code == 200:
                 try:
                     text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
                     return json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip()).strip())
-                except (KeyError, IndexError, json.JSONDecodeError) as e:
-                    last = f"{model}: bad response ({type(e).__name__})"
-                    continue
-            last = f"{model}: HTTP {r.status_code}"
+                except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+                    last = f"{model}: invalid JSON response ({type(exc).__name__})"
+                    break
+            try:
+                error = r.json().get("error", {})
+                detail = str(error.get("message") or error.get("status") or "").replace("\\n", " ")[:240]
+            except (ValueError, AttributeError):
+                detail = ""
+            last = f"{model}: HTTP {r.status_code}" + (f" - {detail}" if detail else "")
             if r.status_code in (429, 500, 503):
                 time.sleep(15 * (attempt + 1))
                 continue
-            break  # 400/403/404: try the next model
+            break  # Try the next configured model for model/access errors
     raise RuntimeError(f"Gemini failed: {last}")
 
 

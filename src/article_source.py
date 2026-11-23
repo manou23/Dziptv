@@ -100,4 +100,4 @@ def list_published_articles():
         except (requests.RequestException, ValueError) as exc:
             print(f"[article-source] skipped {url}: {type(exc).__name__}", flush=True)
         time.sleep(0.15)
-    return sorted(results, key=lambda item: item["uid"])
+    return results  # Preserve sitemap order; publishers commonly list newest reviews first.

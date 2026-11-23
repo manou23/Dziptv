@@ -246,7 +246,7 @@ def write_script(work: dict) -> dict:
         plan = gemini_json(prompt)
         scenes = plan.get("scenes") or []
         words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
-        if 4 <= len(scenes) <= 8 and all(str(s.get("narration", "")).strip() for s in scenes) and 60 <= words <= 190:
+        if len(scenes) == 6 and all(str(s.get("narration", "")).strip() for s in scenes) and 110 <= words <= 140:
             plan["title"] = str(plan.get("title") or work["title_ar"])[:95]
             return plan
         log(f"Script rejected (scenes={len(scenes)}, words={words}), retrying ({attempt + 1}/3)")
@@ -308,6 +308,15 @@ def media_duration(path: Path) -> float:
         capture_output=True, text=True, check=True,
     ).stdout
     return float(out.strip())
+
+
+def validate_short_duration(path: Path) -> float:
+    seconds = media_duration(path)
+    if not 45 <= seconds <= 60:
+        path.unlink(missing_ok=True)
+        raise RuntimeError(f"Short video rejected: duration {seconds:.1f}s is outside the 45–60s target.")
+    log(f"Short duration accepted: {seconds:.1f}s.")
+    return seconds
 
 
 # --------------------------------------------------------------------------- #
@@ -523,7 +532,7 @@ def upload(video: Path, work: dict, plan: dict) -> str:
             "title": plan["title"],
             "description": description,
             "tags": tags,
-            "categoryId": "24",  # Entertainment
+            "categoryId": "20" if work["kind"] == "game" else "24",  # Gaming or Entertainment
             "defaultLanguage": "ar",
             "defaultAudioLanguage": "ar",
         },
@@ -572,6 +581,7 @@ def main() -> None:
         short_plan = write_script(work)
         short_plan["format"] = "short"
         short_video = render(work, short_plan, "short.mp4")
+        validate_short_duration(short_video)
         long_plan = write_long_script(work)
         long_video = None
         if long_plan:
@@ -595,6 +605,7 @@ def main() -> None:
         short_plan = write_script(work)
         short_plan["format"] = "short"
         short_video = render(work, short_plan, "short.mp4")
+        validate_short_duration(short_video)
         short_id = upload(short_video, work, short_plan)
         videos["short"] = short_id
         save_state(state)

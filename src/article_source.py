@@ -4,55 +4,100 @@ import re, time
 from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
+
 SITE = "https://vibecritic.pages.dev"
 HEADERS = {"User-Agent": "VibeCriticVideoBot/1.0"}
+
 def get(url):
-    r=requests.get(url,headers=HEADERS,timeout=35); r.raise_for_status(); return r.text
+    r = requests.get(url, headers=HEADERS, timeout=35)
+    r.raise_for_status()
+    return r.text
+
 def locs(xml):
-    s=BeautifulSoup(xml,"xml")
-    return [x.get_text(strip=True) for x in s.find_all("loc")]
-def meta(s,*names):
-    for n in names:
-        x=s.find("meta",attrs={"property":n}) or s.find("meta",attrs={"name":n})
-        if x and x.get("content"): return x["content"].strip()
-    return ""
-def extract(url):
-    s=BeautifulSoup(get(url),"html.parser")
-    canonical=s.find("link",rel="canonical")
-    url=canonical.get("href",url) if canonical else url
-    if "/reviews/" not in url: return None
-    title=meta(s,"og:title") or (s.title.get_text(" ",strip=True) if s.title else "")
-    desc=meta(s,"og:description","description")
-    poster=meta(s,"og:image")
-    art=s.find("article") or s.find("main")
-    if not art: return None
-    for n in art.select("script,style,nav,footer,header,button,form"): n.decompose()
-    body=re.sub(r"\s+"," ",art.get_text(" ",strip=True)).strip()
-    if len(body)<900 or not title: return None
-    h=art.find(["h1","h2"])
-    ar=h.get_text(" ",strip=True) if h else title.split("|")[0].strip()
-    imgs=[urljoin(url,poster)] if poster else []
-    for im in art.find_all("img"):
-        src=im.get("src") or im.get("data-src")
-        if src:
-            v=urljoin(url,src)
-            if v not in imgs: imgs.append(v)
-    kind="game" if re.search(r"game|لعبة",url+" "+title,re.I) else ("tv" if re.search(r"series|مسلسل",url+" "+title,re.I) else "movie")
-    return {"uid":url.rstrip("/").split("/")[-1],"kind":kind,"title_en":title,"title_ar":ar,"release":"","genres":[],"overview":desc or body[:1200],"facts":[],"images":imgs[:8],"source":"VibeCritic","article_url":url,"article_text":body[:16000]}
-def list_published_articles():
-    root=locs(get(SITE+"/sitemap.xml"))
-    urls=[]
-    for u in root:
-        if u.endswith(".xml"):
-            try: urls.extend(locs(get(u)))
-            except requests.RequestException: continue
-        elif "/reviews/" in u: urls.append(u)
-    out=[]
-    for u in dict.fromkeys(urls):
+    soup = BeautifulSoup(xml, "xml")
+    return [x.get_text(strip=True) for x in soup.find_all("loc")]
+
+def discover_sitemaps():
+    found = []
+    try:
+        robots = get(SITE + "/robots.txt")
+        found.extend(re.findall(r"(?im)^sitemap:\s*(\S+)", robots))
+    except requests.RequestException:
+        pass
+    for path in ("/sitemap.xml", "/sitemap_index.xml", "/sitemap-index.xml"):
+        candidate = SITE + path
+        if candidate not in found:
+            found.append(candidate)
+    valid = []
+    for url in dict.fromkeys(found):
         try:
-            x=extract(u)
-            if x: out.append(x)
-        except (requests.RequestException,ValueError) as e:
-            print(f"[article-source] skipped {u}: {type(e).__name__}",flush=True)
-        time.sleep(.15)
-    return sorted(out,key=lambda x:x["uid"])
+            xml = get(url)
+            if "<urlset" in xml or "<sitemapindex" in xml:
+                valid.append((url, xml))
+        except requests.RequestException:
+            continue
+    return valid
+
+def meta(soup, *names):
+    for name in names:
+        node = soup.find("meta", attrs={"property": name}) or soup.find("meta", attrs={"name": name})
+        if node and node.get("content"):
+            return node["content"].strip()
+    return ""
+
+def extract(url):
+    soup = BeautifulSoup(get(url), "html.parser")
+    canonical = soup.find("link", rel="canonical")
+    url = canonical.get("href", url) if canonical else url
+    if "/reviews/" not in url:
+        return None
+    title = meta(soup, "og:title") or (soup.title.get_text(" ", strip=True) if soup.title else "")
+    description = meta(soup, "og:description", "description")
+    poster = meta(soup, "og:image")
+    article = soup.find("article") or soup.find("main")
+    if not article:
+        return None
+    for node in article.select("script,style,nav,footer,header,button,form"):
+        node.decompose()
+    body = re.sub(r"\s+", " ", article.get_text(" ", strip=True)).strip()
+    if len(body) < 900 or not title:
+        return None
+    heading = article.find(["h1", "h2"])
+    title_ar = heading.get_text(" ", strip=True) if heading else title.split("|")[0].strip()
+    images = [urljoin(url, poster)] if poster else []
+    for image in article.find_all("img"):
+        source = image.get("src") or image.get("data-src")
+        if source:
+            candidate = urljoin(url, source)
+            if candidate not in images:
+                images.append(candidate)
+    kind = "game" if re.search(r"game|لعبة", url + " " + title, re.I) else ("tv" if re.search(r"series|مسلسل", url + " " + title, re.I) else "movie")
+    return {
+        "uid": url.rstrip("/").split("/")[-1], "kind": kind,
+        "title_en": title, "title_ar": title_ar, "release": "",
+        "genres": [], "overview": description or body[:1200], "facts": [],
+        "images": images[:8], "source": "VibeCritic",
+        "article_url": url, "article_text": body[:16000],
+    }
+
+def list_published_articles():
+    article_urls = []
+    for _, xml in discover_sitemaps():
+        for url in locs(xml):
+            if url.endswith(".xml"):
+                try:
+                    article_urls.extend(locs(get(url)))
+                except requests.RequestException:
+                    continue
+            elif "/reviews/" in url:
+                article_urls.append(url)
+    results = []
+    for url in dict.fromkeys(article_urls):
+        try:
+            article = extract(url)
+            if article:
+                results.append(article)
+        except (requests.RequestException, ValueError) as exc:
+            print(f"[article-source] skipped {url}: {type(exc).__name__}", flush=True)
+        time.sleep(0.15)
+    return sorted(results, key=lambda item: item["uid"])

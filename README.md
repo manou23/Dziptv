@@ -19,6 +19,8 @@
 
 ## GitHub Actions Secrets
 GEMINI_API_KEY
+OPENAI_API_KEY (اختياري، احتياطي عند فشل جميع نماذج Gemini)
+OPENAI_MODEL (اختياري؛ الافتراضي gpt-6-luna)
 YT_CLIENT_ID
 YT_CLIENT_SECRET
 YT_REFRESH_TOKEN

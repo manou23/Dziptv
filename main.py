@@ -1059,11 +1059,102 @@ def upload(video: Path, work: dict, plan: dict) -> str:
     raise RuntimeError("upload failed")
 
 
+
+# --------------------------------------------------------------------------- #
+# 4b. Pre-rendered video queue (publishing does not depend on AI APIs)
+# --------------------------------------------------------------------------- #
+QUEUE_MANIFEST = ROOT / "queue" / "manifest.json"
+QUEUE_STATE = ROOT / "state" / "queue.json"
+
+
+def publish_from_queue() -> bool:
+    """Publish one pre-rendered MP4 per scheduled run; never regenerate or repeat it."""
+    if not QUEUE_MANIFEST.exists():
+        return False
+    manifest = json.loads(QUEUE_MANIFEST.read_text(encoding="utf-8"))
+    items = manifest.get("items", [])
+    if not isinstance(items, list):
+        raise RuntimeError("queue/manifest.json: 'items' must be a list.")
+
+    queue_state = {"published": {}}
+    if QUEUE_STATE.exists():
+        queue_state = json.loads(QUEUE_STATE.read_text(encoding="utf-8"))
+    published = queue_state.setdefault("published", {})
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        video_id = str(item.get("id") or "").strip()
+        relpath = str(item.get("file") or "").strip()
+        if not video_id or not relpath or video_id in published:
+            continue
+        video_path = (ROOT / relpath).resolve()
+        if ROOT.resolve() not in video_path.parents:
+            raise RuntimeError(f"Queue item {video_id}: file path escapes repository.")
+        if not video_path.is_file() or video_path.suffix.lower() != ".mp4":
+            log(f"Queue item skipped (missing/non-MP4): {video_id}")
+            continue
+        if video_path.stat().st_size < 100_000:
+            log(f"Queue item skipped (file too small to be a finished video): {video_id}")
+            continue
+
+        kind = str(item.get("kind") or "movie")
+        if kind not in {"movie", "tv", "game"}:
+            raise RuntimeError(f"Queue item {video_id}: unsupported kind {kind}.")
+        work = {
+            "uid": video_id,
+            "kind": kind,
+            "title_ar": str(item.get("title_ar") or item.get("title") or "").strip(),
+            "title_en": str(item.get("title_en") or "").strip(),
+            "release": str(item.get("release") or ""),
+            "genres": item.get("genres") or [],
+            "facts": item.get("facts") or [],
+            "article_url": str(item.get("article_url") or ""),
+            "source": str(item.get("source") or "VibeCritic"),
+        }
+        if not work["title_ar"] and not work["title_en"]:
+            raise RuntimeError(f"Queue item {video_id}: title is required.")
+        plan = {
+            "format": str(item.get("format") or ("short" if "short" in video_path.name.lower() else "long")),
+            "title": str(item.get("youtube_title") or work["title_ar"] or work["title_en"]),
+            "description": str(item.get("description") or "محتوى من قناة VibeCritic."),
+            "hashtags": item.get("hashtags") or ["VibeCritic", "مراجعات"],
+        }
+
+        if DRY_RUN:
+            OUT.mkdir(exist_ok=True)
+            preview = OUT / video_path.name
+            shutil.copy2(video_path, preview)
+            (OUT / "metadata.json").write_text(
+                json.dumps({"queue_id": video_id, "work": work, "plan": plan}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            log(f"Queue dry-run preview ready: {preview}")
+            return True
+
+        youtube_id = upload(video_path, work, plan)
+        published[video_id] = {
+            "youtube_id": youtube_id,
+            "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "file": relpath,
+        }
+        QUEUE_STATE.parent.mkdir(parents=True, exist_ok=True)
+        QUEUE_STATE.write_text(json.dumps(queue_state, ensure_ascii=False, indent=2), encoding="utf-8")
+        log(f"Queued video published: https://youtu.be/{youtube_id} | queue_id={video_id}")
+        return True
+
+    log("Pre-rendered queue is empty; no queued video is ready.")
+    return False
+
+
 # --------------------------------------------------------------------------- #
 def main() -> None:
     global W, H
+    # Prefer a finished video from the repository queue. This path needs no text/image AI API.
+    if publish_from_queue():
+        return
     if not any((GEMINI_KEY, BAZAARLINK_KEY)) and not (ALLOW_PAID_DEEPSEEK and DEEPSEEK_KEY) and not (ALLOW_PAID_OPENAI and OPENAI_KEY):
-        raise SystemExit("No free text-generation API key is configured. Set GEMINI_API_KEY or BAZAARLINK_API_KEY; paid DeepSeek/OpenAI fallbacks are disabled by default.")
+        raise SystemExit("No queued MP4 is ready and no free text-generation API key is configured. Paid fallbacks remain disabled.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)

@@ -235,10 +235,10 @@ def gemini_json(prompt: str) -> dict:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.8, "responseMimeType": "application/json"},
     }
-    last = "no attempt"
+    last = "GEMINI_API_KEY is not configured"
     transient_statuses = {408, 429, 500, 502, 503, 504}
 
-    for model in GEMINI_MODELS:
+    for model in (GEMINI_MODELS if GEMINI_KEY else []):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         # Retry temporary service overloads, then move to the next model.
         for attempt in range(3):
@@ -967,8 +967,8 @@ def upload(video: Path, work: dict, plan: dict) -> str:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     global W, H
-    if not GEMINI_KEY:
-        raise SystemExit("GEMINI_API_KEY is missing.")
+    if not any((GEMINI_KEY, DEEPSEEK_KEY, OPENAI_KEY)):
+        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)

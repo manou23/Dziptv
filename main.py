@@ -302,18 +302,102 @@ def gemini_json(prompt: str) -> dict:
                 log(f"Gemini request failed on {model} with HTTP {r.status_code}; switching model.")
             break
 
-    log(f"All Gemini models failed ({last}); trying the optional OpenAI fallback.")
+    log(f"All Gemini models failed ({last}); checking the optional DeepSeek fallback.")
+    deepseek_error = "not configured"
+    if DEEPSEEK_KEY:
+        try:
+            return deepseek_json(prompt)
+        except Exception as exc:
+            deepseek_error = f"{type(exc).__name__}: {exc}"
+            log(f"DeepSeek fallback failed ({deepseek_error}); trying OpenAI if configured.")
+    else:
+        log("DeepSeek fallback skipped: DEEPSEEK_API_KEY is not configured.")
+
     try:
         return openai_json(prompt)
     except Exception as exc:
         raise RuntimeError(
-            f"Both providers failed. Gemini: {last}. OpenAI: {type(exc).__name__}: {exc}"
+            f"All configured providers failed. Gemini: {last}. "
+            f"DeepSeek: {deepseek_error}. OpenAI: {type(exc).__name__}: {exc}"
         ) from exc
 
 
 
 # --------------------------------------------------------------------------- #
-# 2b. OpenAI fallback (called only after every Gemini model has failed)
+# 2b. Optional DeepSeek fallback (after all Gemini models, before OpenAI)
+# --------------------------------------------------------------------------- #
+DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip()
+
+
+def deepseek_json(prompt: str) -> dict:
+    """Generate a JSON script through DeepSeek's OpenAI-compatible API."""
+    if not DEEPSEEK_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY is not configured.")
+
+    url = "https://api.deepseek.com/chat/completions"
+    body = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.8,
+        "max_tokens": 8192,
+    }
+    last = "unknown error"
+    for attempt in range(2):
+        try:
+            r = requests.post(
+                url,
+                json=body,
+                timeout=180,
+                headers={
+                    "Authorization": f"Bearer {DEEPSEEK_KEY}",
+                    "Content-Type": "application/json",
+                },
+            )
+        except requests.RequestException as exc:
+            last = f"network error ({type(exc).__name__})"
+            if attempt == 0:
+                log("DeepSeek fallback: temporary network error; retrying once.")
+                time.sleep(5)
+                continue
+            break
+
+        if r.status_code == 200:
+            try:
+                response_text = r.json()["choices"][0]["message"]["content"]
+                cleaned = re.sub(
+                    r"^\\s*\x60{3}(?:json)?\\s*|\\s*\x60{3}\\s*$",
+                    "",
+                    str(response_text).strip(),
+                    flags=re.IGNORECASE,
+                ).strip()
+                parsed = json.loads(cleaned)
+                if not isinstance(parsed, dict):
+                    raise TypeError("DeepSeek response must be a JSON object")
+                log(f"DeepSeek fallback generated script successfully with {DEEPSEEK_MODEL}.")
+                return parsed
+            except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                last = f"invalid JSON response ({type(exc).__name__})"
+                break
+
+        try:
+            error = r.json().get("error", {})
+            detail = str(error.get("message") or error.get("code") or "").replace("\\n", " ")[:240]
+        except (ValueError, AttributeError):
+            detail = ""
+        last = f"HTTP {r.status_code}" + (f" - {detail}" if detail else "")
+        if r.status_code in {408, 429, 500, 502, 503, 504} and attempt == 0:
+            log(f"DeepSeek fallback returned HTTP {r.status_code}; retrying once.")
+            time.sleep(5)
+            continue
+        break
+
+    raise RuntimeError(f"DeepSeek fallback failed ({DEEPSEEK_MODEL}): {last}")
+
+
+# --------------------------------------------------------------------------- #
+# 2c. OpenAI fallback (called only after Gemini and optional DeepSeek fail)
 # --------------------------------------------------------------------------- #
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-6-luna").strip()

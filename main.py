@@ -556,18 +556,97 @@ def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
 # --------------------------------------------------------------------------- #
 # 5. Upload to YouTube (Data API v3, free quota)
 # --------------------------------------------------------------------------- #
-def build_description(work: dict, plan: dict) -> str:
-    tags = [str(t).strip().lstrip("#").replace(" ", "_") for t in plan.get("hashtags", [])][:6]
+def youtube_seo(work: dict, plan: dict) -> tuple[str, str, list[str]]:
+    """Build accurate bilingual YouTube metadata from verified work/article fields."""
+    kind_ar = KIND_LABEL.get(work.get("kind"), "عمل")
+    kind_en = {"movie": "movie", "tv": "TV series", "game": "video game"}.get(work.get("kind"), "")
+    title_ar = re.sub(r"\\s+", " ", str(work.get("title_ar") or "")).strip()
+    title_en = re.sub(r"\\s+", " ", str(work.get("title_en") or "")).strip()
+    release = str(work.get("release") or "")[:4]
+    base_title = re.sub(r"\\s+", " ", str(plan.get("title") or title_ar or title_en)).strip()
+    # Ensure the actual work name appears in the title without keyword stuffing.
+    if title_ar and title_ar.casefold() not in base_title.casefold() and title_en.casefold() not in base_title.casefold():
+        base_title = f"{title_ar}: {base_title}"
+    optimized_title = base_title[:100].rstrip(" |:-")
+
+    # Tags are built only from the work's real names, year, type, genres,
+    # platform facts and the script's relevant topic hashtags.
+    candidates: list[str] = []
+    def add_tag(value: object) -> None:
+        tag = re.sub(r"\\s+", " ", str(value or "")).strip().lstrip("#")
+        if not tag or len(tag) > 100:
+            return
+        if tag.casefold() not in {x.casefold() for x in candidates}:
+            candidates.append(tag)
+
+    add_tag(title_en)
+    add_tag(title_ar)
+    if title_en and release:
+        add_tag(f"{title_en} {release}")
+    if title_ar and release:
+        add_tag(f"{title_ar} {release}")
+    add_tag(kind_ar)
+    add_tag(kind_en)
+    if work.get("kind") == "game":
+        add_tag("ألعاب")
+        add_tag("gaming")
+    elif work.get("kind") == "movie":
+        add_tag("أفلام")
+        add_tag("movies")
+    elif work.get("kind") == "tv":
+        add_tag("مسلسلات")
+        add_tag("TV series")
+    for genre in (work.get("genres") or [])[:8]:
+        add_tag(genre)
+    for fact in (work.get("facts") or []):
+        match = re.search(r"^Platforms:\\s*(.+)$", str(fact), re.I)
+        if match:
+            for platform in match.group(1).split(",")[:6]:
+                add_tag(platform.strip())
+    for tag in (plan.get("hashtags") or [])[:6]:
+        add_tag(tag)
+
+    # YouTube allows up to 500 characters across all tags; stay comfortably below it.
+    final_tags: list[str] = []
+    used = 0
+    for tag in candidates:
+        extra = len(tag) + (1 if final_tags else 0)
+        if used + extra > 480 or len(final_tags) >= 25:
+            continue
+        final_tags.append(tag)
+        used += extra
+
+    genre_text = "، ".join(str(g) for g in (work.get("genres") or [])[:3])
+    context = f"{kind_ar}"
+    if release:
+        context += f" من {release}"
+    if genre_text:
+        context += f" من نوع {genre_text}"
+    search_intro = f"{title_ar or title_en} ({title_en or title_ar}) — فيديو عن {context}."
+    base_description = str(plan.get("description") or "").strip()
+    hashtags = []
+    for tag in (plan.get("hashtags") or [])[:5]:
+        clean = re.sub(r"[^\\w\\u0600-\\u06FF-]", "", str(tag).strip().lstrip("#").replace(" ", ""))
+        if clean and clean.casefold() not in {x.casefold() for x in hashtags}:
+            hashtags.append(clean)
+    hashtags = hashtags[:4]
+    hashtags.append("Shorts" if plan.get("format") == "short" else "VibeCritic")
     credit = (
         "This product uses the TMDB API but is not endorsed or certified by TMDB. https://www.themoviedb.org"
-        if work["source"] == "TMDb"
-        else ("Game data: RAWG https://rawg.io" if work["source"] == "RAWG" else "Source: VibeCritic published review https://vibecritic.pages.dev")
+        if work.get("source") == "TMDb"
+        else ("Game data: RAWG https://rawg.io" if work.get("source") == "RAWG" else "Source: VibeCritic published review https://vibecritic.pages.dev")
     )
-    return (
-        f"{plan.get('description', '')}\n\n"
-        + " ".join(f"#{t}" for t in tags + (["Shorts"] if plan.get("format") == "short" else ["VibeCritic"]))
-        + f"\n\nالمراجعة الكاملة: {work.get('article_url', '')}\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\n{credit}"
-    )[:4800], tags
+    description = (
+        f"{search_intro}\\n{base_description}\\n\\n"
+        + " ".join(f"#{tag}" for tag in hashtags)
+        + f"\\n\\nالمراجعة الكاملة: {work.get('article_url', '')}\\nتم إنتاج هذا الفيديو بمساعدة الذكاء الاصطناعي.\\n{credit}"
+    )[:4800]
+    return optimized_title, description, final_tags
+
+
+def build_description(work: dict, plan: dict) -> tuple[str, list[str]]:
+    _, description, tags = youtube_seo(work, plan)
+    return description, tags
 
 
 def upload(video: Path, work: dict, plan: dict) -> str:
@@ -585,10 +664,11 @@ def upload(video: Path, work: dict, plan: dict) -> str:
         scopes=["https://www.googleapis.com/auth/youtube.upload"],
     )
     yt = build("youtube", "v3", credentials=creds, cache_discovery=False)
-    description, tags = build_description(work, plan)
+    optimized_title, description, tags = youtube_seo(work, plan)
+    log(f"YouTube SEO: title ready; {len(tags)} relevant tags ({sum(len(t) for t in tags) + max(0, len(tags) - 1)}/500 tag characters).")
     body = {
         "snippet": {
-            "title": plan["title"],
+            "title": optimized_title,
             "description": description,
             "tags": tags,
             "categoryId": "20" if work["kind"] == "game" else "24",  # Gaming or Entertainment

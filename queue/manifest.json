@@ -32,6 +32,37 @@
       "source": "VibeCritic",
       "duration_seconds": 54.14,
       "visual_credit": "Creative Bloq review screenshots, credited to Rockstar Games"
+    },
+    {
+      "id": "game:gta-vi-review-long-2026",
+      "file": "queue/gta6-review-long.mp4",
+      "title_ar": "جراند ثفت أوتو 6",
+      "title_en": "Grand Theft Auto VI",
+      "release": "2026-11-19",
+      "genres": [
+        "Action-adventure",
+        "Open world"
+      ],
+      "facts": [
+        "Platforms: PlayStation 5, Xbox Series X|S",
+        "Release date: 19 November 2026",
+        "Creative Bloq review verdict: 5/5",
+        "Creative Bloq PS5 review notes 30fps and occasional pop-in"
+      ],
+      "kind": "game",
+      "format": "long",
+      "youtube_title": "مراجعة GTA 6 الكاملة: القصة والعالم المفتوح والأداء",
+      "description": "مراجعة عربية مطولة للعبة Grand Theft Auto VI بعد إطلاقها في 19 نوفمبر 2026. نناقش القصة وجيسون ولوسيا والعالم المفتوح والأنشطة والقتال والقيادة والجوانب التقنية، مع عرض نقاط القوة والملاحظات دون حرق أحداث القصة. اعتمدنا على مراجعات منشورة، ومنها Creative Bloq وTechRadar، وعلى معلومات Rockstar الرسمية. المصادر: https://www.creativebloq.com/reviews/gta-6-review-holy-sh-t-its-good | https://www.techradar.com/gaming/gta-6-review | https://www.rockstargames.com/newswire/article/39akk424a9oo53/grand-theft-auto-vi-now-available",
+      "hashtags": [
+        "GTA6",
+        "GTAVI",
+        "جراند_ثفت_أوتو",
+        "مراجعة_كاملة",
+        "Gaming"
+      ],
+      "article_url": "https://www.creativebloq.com/reviews/gta-6-review-holy-sh-t-its-good",
+      "source": "VibeCritic",
+      "visual_credit": "Creative Bloq review screenshots, credited to Rockstar Games"
     }
   ]
 }

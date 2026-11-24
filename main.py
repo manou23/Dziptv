@@ -247,7 +247,10 @@ def gemini_json(prompt: str) -> dict:
                     url, json=body, timeout=120,
                     headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
                 )
-            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")                if attempt < 2:
+            except requests.RequestException as exc:
+                last = f"{model}: network error ({type(exc).__name__})"
+                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
+                if attempt < 2:
                     delay = min(90, 20 * (2 ** attempt)) + random.uniform(0, 5)
                     log(f"Gemini retrying {model} in {delay:.0f}s.")
                     time.sleep(delay)
@@ -374,7 +377,7 @@ def deepseek_json(prompt: str) -> dict:
         if r.status_code == 200:
             try:
                 response_text = r.json()["choices"][0]["message"]["content"]
-                    r"^\s*```(?:json)?\s*|\s*```\s*$",
+                cleaned = re.sub(
                     r"^\s*```(?:json)?\s*|\s*```\s*$",
                     "",
                     str(response_text).strip(),
@@ -417,7 +420,6 @@ def bazaarlink_json(prompt: str) -> dict:
 
     url = "https://api.bazaarlink.ai/v1/chat/completions"
     body = {
-        # auto:free always selects a model with an active free quota.
         "model": "auto:free",
         "messages": [{"role": "user", "content": prompt}],
         "response_format": {"type": "json_object"},
@@ -434,7 +436,6 @@ def bazaarlink_json(prompt: str) -> dict:
                 headers={
                     "Authorization": f"Bearer {BAZAARLINK_KEY}",
                     "Content-Type": "application/json",
-                    # Never allow a free-quota request to continue as paid usage.
                     "X-Free-Fallback": "false",
                 },
             )
@@ -449,12 +450,9 @@ def bazaarlink_json(prompt: str) -> dict:
         if r.status_code == 200:
             try:
                 response_text = r.json()["choices"][0]["message"]["content"]
-                cleaned = re.sub(
-                    r"^\\s*\\`\\`\\`(?:json)?\\s*|\\s*\\`\\`\\`\\s*$",
-                    "",
-                    str(response_text).strip(),
-                    flags=re.IGNORECASE,
-                ).strip()
+                cleaned = str(response_text).strip()
+                if cleaned.startswith(chr(96) * 3):
+                    cleaned = cleaned.split("\n", 1)[-1].rsplit(chr(96) * 3, 1)[0].strip()
                 parsed = json.loads(cleaned)
                 if not isinstance(parsed, dict):
                     raise TypeError("BazaarLink response must be a JSON object")
@@ -466,7 +464,7 @@ def bazaarlink_json(prompt: str) -> dict:
 
         try:
             error = r.json().get("error", {})
-            detail = str(error.get("message") or error.get("code") or "").replace("\\n", " ")[:240]
+            detail = str(error.get("message") or error.get("code") or "").replace("\n", " ")[:240]
         except (ValueError, AttributeError):
             detail = ""
         last = f"HTTP {r.status_code}" + (f" - {detail}" if detail else "")
@@ -495,8 +493,10 @@ def openai_json(prompt: str) -> dict:
 
     url = "https://api.openai.com/v1/responses"
     body = {
-        "model": OPENAI_MODEL,        "input": prompt,
-        "text": {"format": {"type": "json_object"}},        "max_output_tokens": 9000,
+        "model": OPENAI_MODEL,
+        "input": prompt,
+        "text": {"format": {"type": "json_object"}},
+        "max_output_tokens": 9000,
     }
     last = "unknown error"
     for attempt in range(2):
@@ -578,7 +578,8 @@ def write_script(work: dict) -> dict:
             previous_json = json.dumps(previous_plan, ensure_ascii=False)
             active_prompt = (
                 prompt
-                + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "                + "احتفظ بالمعلومات الصحيحة، واضبط السرد ليصبح بين 90 و102 كلمة. "
+                + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "
+                + "احتفظ بالمعلومات الصحيحة، واضبط السرد ليصبح بين 90 و102 كلمة. "
                 + "اجعل كل واحد من المشاهد الستة يحتوي 15 إلى 17 كلمة منطوقة. "
                 + "لا تضف حقائق غير موجودة، وأعد JSON كاملاً فقط. "
                 + f"عدد الكلمات الحالي {previous_words}، وهذا النص يحتاج إلى توسعة واضحة:\n{previous_json}"
@@ -743,9 +744,11 @@ def create_fallback_scene_image(path: Path, scene_index: int) -> None:
         )
     for _ in range(18):
         x = rng.randint(0, W)
-        y = rng.randint(0, H)        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
+        y = rng.randint(0, H)
+        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
         draw.ellipse((x-size, y-size, x+size, y+size), outline=(235, 242, 255, 55), width=2)
     img.convert("RGB").save(path, quality=92, optimize=True)
+
 
 def find_font() -> str:
     env = os.getenv("FONT_PATH")
@@ -825,7 +828,8 @@ def chunk_words(text: str, max_words: int = 6) -> list[str]:
     for w in text.split():
         cur.append(w)
         if len(cur) >= max_words or (len(cur) >= 3 and re.search(r"[.،؛؟!?:]$", w)):
-            chunks.append(" ".join(cur))            cur = []
+            chunks.append(" ".join(cur))
+            cur = []
     if cur:
         if chunks and len(cur) == 1:
             chunks[-1] += " " + cur[0]

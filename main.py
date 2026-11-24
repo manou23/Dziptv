@@ -304,12 +304,14 @@ def gemini_json(prompt: str) -> dict:
 
     log(f"All Gemini models failed ({last}); checking the optional DeepSeek fallback.")
     deepseek_error = "not configured"
-    if DEEPSEEK_KEY:
+    if DEEPSEEK_KEY and ALLOW_PAID_DEEPSEEK:
         try:
             return deepseek_json(prompt)
         except Exception as exc:
             deepseek_error = f"{type(exc).__name__}: {exc}"
             log(f"DeepSeek fallback failed ({deepseek_error}); trying BazaarLink free tier next.")
+    elif DEEPSEEK_KEY:
+        log("DeepSeek fallback skipped: paid DeepSeek API is disabled.")
     else:
         log("DeepSeek fallback skipped: DEEPSEEK_API_KEY is not configured.")
 
@@ -345,12 +347,16 @@ def gemini_json(prompt: str) -> dict:
 # --------------------------------------------------------------------------- #
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash").strip()
+# Direct DeepSeek API is pay-as-you-go; never use it unless explicitly enabled.
+ALLOW_PAID_DEEPSEEK = os.getenv("ALLOW_PAID_DEEPSEEK", "0").strip() == "1"
 
 
 def deepseek_json(prompt: str) -> dict:
     """Generate a JSON script through DeepSeek's OpenAI-compatible API."""
     if not DEEPSEEK_KEY:
         raise RuntimeError("DEEPSEEK_API_KEY is not configured.")
+    if not ALLOW_PAID_DEEPSEEK:
+        raise RuntimeError("Direct DeepSeek API is pay-as-you-go and is disabled by default.")
 
     url = "https://api.deepseek.com/chat/completions"
     body = {
@@ -1056,8 +1062,8 @@ def upload(video: Path, work: dict, plan: dict) -> str:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     global W, H
-    if not any((GEMINI_KEY, DEEPSEEK_KEY, BAZAARLINK_KEY)) and not (ALLOW_PAID_OPENAI and OPENAI_KEY):
-        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or BAZAARLINK_API_KEY (paid OpenAI is disabled by default).")
+    if not any((GEMINI_KEY, BAZAARLINK_KEY)) and not (ALLOW_PAID_DEEPSEEK and DEEPSEEK_KEY) and not (ALLOW_PAID_OPENAI and OPENAI_KEY):
+        raise SystemExit("No free text-generation API key is configured. Set GEMINI_API_KEY or BAZAARLINK_API_KEY; paid DeepSeek/OpenAI fallbacks are disabled by default.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)

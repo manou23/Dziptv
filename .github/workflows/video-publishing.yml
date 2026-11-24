@@ -41,7 +41,8 @@ jobs:
       - name: Generate and publish
         env:
           # Production mode: generate and upload approved videos to YouTube.
-          DRY_RUN: '0'
+          # Manual runs create downloadable previews; scheduled runs remain public publishing.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
           MANUAL_ARTICLE_URL: ${{ inputs.article_url }}
           VIDEO_FORMAT: ${{ inputs.video_format || 'both' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

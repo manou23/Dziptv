@@ -1,6 +1,20 @@
 name: VibeCritic Video Publishing
 on:
   workflow_dispatch:
+    inputs:
+      article_url:
+        description: "رابط مقال منشور في VibeCritic (اتركه فارغاً للاختيار الآلي)"
+        required: false
+        type: string
+      video_format:
+        description: "نوع الفيديو المطلوب"
+        required: true
+        type: choice
+        options:
+          - both
+          - short
+          - long
+        default: both
   schedule:
     - cron: "30 10,18 * * *"
 permissions:
@@ -28,6 +42,8 @@ jobs:
         env:
           # Production mode: generate and upload approved videos to YouTube.
           DRY_RUN: '0'
+          MANUAL_ARTICLE_URL: ${{ inputs.article_url }}
+          VIDEO_FORMAT: ${{ inputs.video_format || 'both' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}

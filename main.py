@@ -261,7 +261,7 @@ def gemini_json(prompt: str) -> dict:
                 try:
                     response_text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
                     parsed = json.loads(
-                        re.sub(r"^\\`\\`\\`(?:json)?|\\`\\`\\`$", "", response_text.strip()).strip()
+                        re.sub(r"^```(?:json)?|```$", "", response_text.strip()).strip()
                     )
                     if not isinstance(parsed, dict):
                         raise TypeError(

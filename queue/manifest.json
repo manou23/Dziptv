@@ -1,4 +1,37 @@
 {
   "version": 1,
-  "items": []
+  "items": [
+    {
+      "id": "game:gta-vi-review-short-2026",
+      "file": "queue/gta6-review-short.mp4",
+      "title_ar": "جراند ثفت أوتو 6",
+      "title_en": "Grand Theft Auto VI",
+      "release": "2026-11-19",
+      "genres": [
+        "Action-adventure",
+        "Open world"
+      ],
+      "facts": [
+        "Platforms: PlayStation 5, Xbox Series X|S",
+        "Release date: 19 November 2026",
+        "Creative Bloq review verdict: 5/5",
+        "Performance note: 30fps on PS5 review build"
+      ],
+      "kind": "game",
+      "format": "short",
+      "youtube_title": "مراجعة GTA 6: هل تستحق كل هذا الانتظار؟",
+      "description": "مراجعة سريعة للعبة Grand Theft Auto VI بعد إطلاقها في 19 نوفمبر 2026. نستعرض العالم المفتوح وجيسون ولوسيا وأبرز نقاط القوة والملاحظات، استناداً إلى مراجعة Creative Bloq ومعلومات Rockstar الرسمية. الصور من لقطات اللعبة المنشورة في مراجعة Creative Bloq والمنسوبة إلى Rockstar Games. المصادر: https://www.creativebloq.com/reviews/gta-6-review-holy-sh-t-its-good | https://www.rockstargames.com/newswire/article/39akk424a9oo53/grand-theft-auto-vi-now-available",
+      "hashtags": [
+        "GTA6",
+        "GTAVI",
+        "جراند_ثفت_أوتو",
+        "مراجعة_ألعاب",
+        "Gaming"
+      ],
+      "article_url": "https://www.creativebloq.com/reviews/gta-6-review-holy-sh-t-its-good",
+      "source": "VibeCritic",
+      "duration_seconds": 54.14,
+      "visual_credit": "Creative Bloq review screenshots, credited to Rockstar Games"
+    }
+  ]
 }

@@ -247,8 +247,7 @@ def gemini_json(prompt: str) -> dict:
                     url, json=body, timeout=120,
                     headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
                 )
-            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
-                if attempt < 2:
+            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")                if attempt < 2:
                     delay = min(90, 20 * (2 ** attempt)) + random.uniform(0, 5)
                     log(f"Gemini retrying {model} in {delay:.0f}s.")
                     time.sleep(delay)
@@ -307,7 +306,7 @@ def gemini_json(prompt: str) -> dict:
             return deepseek_json(prompt)
         except Exception as exc:
             deepseek_error = f"{type(exc).__name__}: {exc}"
-            log(f"DeepSeek fallback failed ({deepseek_error}); trying OpenAI if configured.")
+            log(f"DeepSeek fallback failed ({deepseek_error}); trying BazaarLink free tier next.")
     else:
         log("DeepSeek fallback skipped: DEEPSEEK_API_KEY is not configured.")
 
@@ -497,8 +496,7 @@ def openai_json(prompt: str) -> dict:
     url = "https://api.openai.com/v1/responses"
     body = {
         "model": OPENAI_MODEL,        "input": prompt,
-        "text": {"format": {"type": "json_object"}},
-        "max_output_tokens": 9000,
+        "text": {"format": {"type": "json_object"}},        "max_output_tokens": 9000,
     }
     last = "unknown error"
     for attempt in range(2):
@@ -748,7 +746,6 @@ def create_fallback_scene_image(path: Path, scene_index: int) -> None:
         y = rng.randint(0, H)        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
         draw.ellipse((x-size, y-size, x+size, y+size), outline=(235, 242, 255, 55), width=2)
     img.convert("RGB").save(path, quality=92, optimize=True)
-
 
 def find_font() -> str:
     env = os.getenv("FONT_PATH")

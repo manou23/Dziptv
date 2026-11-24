@@ -363,9 +363,9 @@ def openai_json(prompt: str) -> dict:
                         for part in item.get("content", []):
                             if part.get("type") == "output_text":
                                 chunks.append(part.get("text", ""))
-                    response_text = "\\n".join(chunks)
+                    response_text = "\n".join(chunks)
                 cleaned = re.sub(
-                    r"^\\s*```(?:json)?\\s*|\\s*```\\s*$",
+                    r"^\s*```(?:json)?\s*|\s*```\s*$",
                     "",
                     response_text.strip(),
                     flags=re.IGNORECASE,
@@ -381,7 +381,7 @@ def openai_json(prompt: str) -> dict:
 
         try:
             error = r.json().get("error", {})
-            detail = str(error.get("message") or error.get("code") or "").replace("\\n", " ")[:240]
+            detail = str(error.get("message") or error.get("code") or "").replace("\n", " ")[:240]
         except (ValueError, AttributeError):
             detail = ""
         last = f"HTTP {r.status_code}" + (f" - {detail}" if detail else "")

@@ -1,0 +1,52 @@
+name: Build GTA VI Long Review Video
+on:
+  push:
+    branches: [work/free-ai-video-pipeline]
+    paths:
+      - "tools/render_gta6_long.py"
+      - ".github/workflows/build-gta6-long-queue.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gta6-long-video-build
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/free-ai-video-pipeline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Render Arabic GTA VI long review and register queue item
+        env:
+          TTS_VOICE: ar-SA-HamedNeural
+          TTS_RATE: "+0%"
+        run: python tools/render_gta6_long.py
+      - name: Upload MP4 preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: gta6-review-long
+          path: |
+            queue/gta6-review-long.mp4
+            queue/manifest.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Commit rendered video to queue
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add queue/gta6-review-long.mp4 queue/manifest.json
+          git diff --cached --quiet || git commit -m "video: add GTA VI Arabic long review to queue"
+          git push origin HEAD:work/free-ai-video-pipeline

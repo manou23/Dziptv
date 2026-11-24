@@ -1153,6 +1153,11 @@ def main() -> None:
     # Prefer a finished video from the repository queue. This path needs no text/image AI API.
     if publish_from_queue():
         return
+    # Scheduled production is queue-only: never bypass the reviewed MP4 backlog
+    # and generate/upload a fresh video directly when the queue is empty.
+    if not DRY_RUN and QUEUE_MANIFEST.exists():
+        log("Scheduled run stopped: no unprocessed pre-rendered MP4 is ready in the queue.")
+        return
     if not any((GEMINI_KEY, BAZAARLINK_KEY)) and not (ALLOW_PAID_DEEPSEEK and DEEPSEEK_KEY) and not (ALLOW_PAID_OPENAI and OPENAI_KEY):
         raise SystemExit("No queued MP4 is ready and no free text-generation API key is configured. Paid fallbacks remain disabled.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):

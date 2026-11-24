@@ -25,7 +25,7 @@ import arabic_reshaper
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
-from src.article_source import list_published_articles
+from src.article_source import extract, list_published_articles
 
 try:
     from bidi import get_display
@@ -619,8 +619,18 @@ def main() -> None:
     OUT.mkdir(exist_ok=True)
     state = load_state()
     preview_state = load_preview_state() if DRY_RUN else None
-    work = pick_work(state, preview_state)
-    log(f"Selected published VibeCritic article: {work['title_ar']} | {work['article_url']}")
+    manual_url = os.getenv("MANUAL_ARTICLE_URL", "").strip()
+    video_format = os.getenv("VIDEO_FORMAT", "both").strip().lower()
+    if video_format not in {"short", "long", "both"}:
+        raise SystemExit("VIDEO_FORMAT must be short, long, or both.")
+    if manual_url:
+        work = extract(manual_url)
+        if not work:
+            raise SystemExit("The supplied URL is not a valid, publicly published VibeCritic review article.")
+        log(f"Manual selection: {work['title_ar']} | {work['article_url']} | format={video_format}")
+    else:
+        work = pick_work(state, preview_state)
+        log(f"Automatic selection: {work['title_ar']} | {work['article_url']} | format={video_format}")
     record = state.setdefault("articles", {}).setdefault(work["uid"], {
         "article_url": work["article_url"], "title": work["title_ar"], "videos": {}
     })
@@ -658,7 +668,7 @@ def main() -> None:
         log("DRY_RUN=1: upload skipped; preview state saved separately from publishing state.")
         return
 
-    if not videos.get("short"):
+    if video_format in {"short", "both"} and not videos.get("short"):
         W, H = 1080, 1920
         short_plan = write_script(work)
         short_plan["format"] = "short"
@@ -669,7 +679,7 @@ def main() -> None:
         save_state(state)
         log(f"Short uploaded: https://youtu.be/{short_id} ({PRIVACY})")
 
-    if not videos.get("long"):
+    if video_format in {"long", "both"} and not videos.get("long"):
         long_plan = write_long_script(work)
         if long_plan:
             long_plan["format"] = "long"

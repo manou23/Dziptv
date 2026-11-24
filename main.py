@@ -24,7 +24,7 @@ from urllib.parse import quote
 import arabic_reshaper
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from src.article_source import extract, list_published_articles
 
 try:
@@ -531,6 +531,61 @@ def ai_image(prompt: str, path: Path) -> bool:
     return download_image(url, path, tries=2)
 
 
+def create_fallback_scene_image(path: Path, scene_index: int) -> None:
+    """Create original abstract artwork locally when the image provider is unavailable."""
+    rng = random.Random(f"{scene_index}:{W}:{H}")
+    palettes = [
+        ((8, 18, 38), (20, 78, 105), (8, 12, 28)),
+        ((28, 12, 42), (102, 42, 91), (13, 10, 29)),
+        ((9, 35, 30), (24, 105, 83), (7, 17, 24)),
+        ((38, 24, 10), (142, 82, 29), (18, 13, 10)),
+        ((15, 20, 48), (64, 75, 143), (8, 10, 25)),
+        ((36, 13, 17), (128, 48, 52), (15, 9, 18)),
+    ]
+    top, middle, bottom = palettes[scene_index % len(palettes)]
+    img = Image.new("RGB", (W, H))
+    pixels = img.load()
+    for y in range(H):
+        t = y / max(1, H - 1)
+        if t < 0.58:
+            q = t / 0.58
+            a, b = top, middle
+        else:
+            q = (t - 0.58) / 0.42
+            a, b = middle, bottom
+        color = tuple(int(a[k] * (1 - q) + b[k] * q) for k in range(3))
+        for x in range(W):
+            pixels[x, y] = color
+
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    cx = rng.randint(int(W * 0.25), int(W * 0.75))
+    cy = rng.randint(int(H * 0.25), int(H * 0.62))
+    radius = int(min(W, H) * rng.uniform(0.24, 0.38))
+    accent = tuple(min(255, v + 75) for v in middle)
+    gd.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), fill=(*accent, 105))
+    glow = glow.filter(ImageFilter.GaussianBlur(max(18, int(min(W, H) * 0.07))))
+    img = Image.alpha_composite(img.convert("RGBA"), glow)
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    # Original geometric layers: deliberately abstract, with no borrowed artwork.
+    for n in range(9):
+        margin = int(min(W, H) * (0.04 + n * 0.025))
+        offset = rng.randint(-int(W * 0.2), int(W * 0.2))
+        draw.arc(
+            (margin + offset, margin, W - margin + offset, H - margin),
+            start=rng.randint(0, 90), end=rng.randint(180, 360),
+            fill=(220, 235, 255, rng.randint(18, 48)),
+            width=max(2, int(min(W, H) * 0.003)),
+        )
+    for _ in range(18):
+        x = rng.randint(0, W)
+        y = rng.randint(0, H)
+        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
+        draw.ellipse((x-size, y-size, x+size, y+size), outline=(235, 242, 255, 55), width=2)
+    img.convert("RGB").save(path, quality=92, optimize=True)
+
+
 def find_font() -> str:
     env = os.getenv("FONT_PATH")
     if env and Path(env).exists():
@@ -641,7 +696,8 @@ def render(work: dict, plan: dict, output_name: str = "short.mp4") -> Path:
         p = tmp / f"bg_{i}.jpg"
         prompt = str(scene.get("image_prompt") or f"Cinematic symbolic atmosphere for {work['title_en']}")
         if not ai_image(prompt, p):
-            raise RuntimeError(f"Generated scene image {i + 1} is unavailable; refusing to reuse unlicensed artwork.")
+            log(f"WARNING: generated image for scene {i + 1} unavailable; using original local abstract artwork.")
+            create_fallback_scene_image(p, i)
         bgs.append(p)
         time.sleep(0.5)
 

@@ -1,0 +1,60 @@
+name: Test DeepSeek API
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify DeepSeek API without publishing
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import requests
+
+          key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+          if not key:
+              raise SystemExit("FAIL: DEEPSEEK_API_KEY secret is missing.")
+
+          response = requests.post(
+              "https://api.deepseek.com/chat/completions",
+              headers={
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+              },
+              json={
+                  "model": "deepseek-flash",
+                  "messages": [{
+                      "role": "user",
+                      "content": 'Return JSON only: {"status":"ok"}',
+                  }],
+                  "response_format": {"type": "json_object"},
+                  "max_tokens": 100,
+              },
+              timeout=90,
+          )
+
+          if response.status_code != 200:
+              print(f"DeepSeek API returned HTTP {response.status_code}.")
+              print(response.text[:1000])
+              raise SystemExit(1)
+
+          payload = response.json()
+          content = payload["choices"][0]["message"]["content"]
+          parsed = json.loads(content)
+          if parsed.get("status") != "ok":
+              raise SystemExit("FAIL: API responded, but JSON validation did not pass.")
+
+          usage = payload.get("usage", {})
+          print("PASS: DeepSeek API key works and JSON output is valid.")
+          print(f"Model: {payload.get('model', 'unknown')}")
+          print(f"Tokens used: {usage.get('total_tokens', 'not reported')}")
+          PY

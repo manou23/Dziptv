@@ -254,7 +254,7 @@ def gemini_json(prompt: str) -> dict:
                     break
             try:
                 error = r.json().get("error", {})
-                detail = str(error.get("message") or error.get("status") or "").replace("\\n", " ")[:240]
+                detail = str(error.get("message") or error.get("status") or "").replace("\n", " ")[:240]
             except (ValueError, AttributeError):
                 detail = ""
             last = f"{model}: HTTP {r.status_code}" + (f" - {detail}" if detail else "")
@@ -284,11 +284,11 @@ def write_script(work: dict) -> dict:
             previous_json = json.dumps(previous_plan, ensure_ascii=False)
             active_prompt = (
                 prompt
-                + "\\n\\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "
+                + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "
                 + "احتفظ بالمعلومات الصحيحة، ووسّع السرد ليصبح بين 110 و140 كلمة بالضبط تقريباً. "
                 + "اجعل كل واحد من المشاهد الستة يحتوي 18 إلى 23 كلمة منطوقة. "
                 + "لا تضف حقائق غير موجودة، وأعد JSON كاملاً فقط. "
-                + f"عدد الكلمات الحالي {previous_words}، وهذا النص يحتاج إلى توسعة واضحة:\\n{previous_json}"
+                + f"عدد الكلمات الحالي {previous_words}، وهذا النص يحتاج إلى توسعة واضحة:\n{previous_json}"
             )
         plan = gemini_json(active_prompt)
         scenes = plan.get("scenes") or []

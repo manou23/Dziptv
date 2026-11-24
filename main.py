@@ -247,8 +247,7 @@ def gemini_json(prompt: str) -> dict:
                     url, json=body, timeout=120,
                     headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
                 )
-            except requests.RequestException as exc:
-                last = f"{model}: network error ({type(exc).__name__})"
+            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"
                 log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
                 if attempt < 2:
                     delay = min(90, 20 * (2 ** attempt)) + random.uniform(0, 5)
@@ -313,12 +312,23 @@ def gemini_json(prompt: str) -> dict:
     else:
         log("DeepSeek fallback skipped: DEEPSEEK_API_KEY is not configured.")
 
+    bazaarlink_error = "not configured"
+    if BAZAARLINK_KEY:
+        try:
+            return bazaarlink_json(prompt)
+        except Exception as exc:
+            bazaarlink_error = f"{type(exc).__name__}: {exc}"
+            log(f"BazaarLink free fallback failed ({bazaarlink_error}); trying OpenAI if configured.")
+    else:
+        log("BazaarLink fallback skipped: BAZAARLINK_API_KEY is not configured.")
+
     try:
         return openai_json(prompt)
     except Exception as exc:
         raise RuntimeError(
             f"All configured providers failed. Gemini: {last}. "
-            f"DeepSeek: {deepseek_error}. OpenAI: {type(exc).__name__}: {exc}"
+            f"DeepSeek: {deepseek_error}. BazaarLink: {bazaarlink_error}. "
+            f"OpenAI: {type(exc).__name__}: {exc}"
         ) from exc
 
 
@@ -397,7 +407,82 @@ def deepseek_json(prompt: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# 2c. OpenAI fallback (called only after Gemini and optional DeepSeek fail)
+# 2c. BazaarLink free-tier fallback (after Gemini and DeepSeek, before OpenAI)
+# --------------------------------------------------------------------------- #
+BAZAARLINK_KEY = os.getenv("BAZAARLINK_API_KEY", "").strip()
+
+
+def bazaarlink_json(prompt: str) -> dict:
+    """Generate a script through BazaarLink's free-only OpenAI-compatible route."""
+    if not BAZAARLINK_KEY:
+        raise RuntimeError("BAZAARLINK_API_KEY is not configured.")
+
+    url = "https://api.bazaarlink.ai/v1/chat/completions"
+    body = {
+        # auto:free always selects a model with an active free quota.
+        "model": "auto:free",
+        "messages": [{"role": "user", "content": prompt}],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.8,
+        "max_tokens": 8192,
+    }
+    last = "unknown error"
+    for attempt in range(2):
+        try:
+            r = requests.post(
+                url,
+                json=body,
+                timeout=180,
+                headers={
+                    "Authorization": f"Bearer {BAZAARLINK_KEY}",
+                    "Content-Type": "application/json",
+                    # Never allow a free-quota request to continue as paid usage.
+                    "X-Free-Fallback": "false",
+                },
+            )
+        except requests.RequestException as exc:
+            last = f"network error ({type(exc).__name__})"
+            if attempt == 0:
+                log("BazaarLink free fallback: temporary network error; retrying once.")
+                time.sleep(5)
+                continue
+            break
+
+        if r.status_code == 200:
+            try:
+                response_text = r.json()["choices"][0]["message"]["content"]
+                cleaned = re.sub(
+                    r"^\\s*\\`\\`\\`(?:json)?\\s*|\\s*\\`\\`\\`\\s*$",
+                    "",
+                    str(response_text).strip(),
+                    flags=re.IGNORECASE,
+                ).strip()
+                parsed = json.loads(cleaned)
+                if not isinstance(parsed, dict):
+                    raise TypeError("BazaarLink response must be a JSON object")
+                log("BazaarLink free-tier fallback generated script successfully.")
+                return parsed
+            except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                last = f"invalid JSON response ({type(exc).__name__})"
+                break
+
+        try:
+            error = r.json().get("error", {})
+            detail = str(error.get("message") or error.get("code") or "").replace("\\n", " ")[:240]
+        except (ValueError, AttributeError):
+            detail = ""
+        last = f"HTTP {r.status_code}" + (f" - {detail}" if detail else "")
+        if r.status_code in {408, 429, 500, 502, 503, 504} and attempt == 0:
+            log(f"BazaarLink free fallback returned HTTP {r.status_code}; retrying once.")
+            time.sleep(5)
+            continue
+        break
+
+    raise RuntimeError(f"BazaarLink free-tier fallback failed: {last}")
+
+
+# --------------------------------------------------------------------------- #
+# 2d. OpenAI fallback (called only after Gemini, DeepSeek, and BazaarLink fail)
 # --------------------------------------------------------------------------- #
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-6-luna").strip()
@@ -497,8 +582,7 @@ def write_script(work: dict) -> dict:
             previous_json = json.dumps(previous_plan, ensure_ascii=False)
             active_prompt = (
                 prompt
-                + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "
-                + "احتفظ بالمعلومات الصحيحة، واضبط السرد ليصبح بين 90 و102 كلمة. "
+                + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "                + "احتفظ بالمعلومات الصحيحة، واضبط السرد ليصبح بين 90 و102 كلمة. "
                 + "اجعل كل واحد من المشاهد الستة يحتوي 15 إلى 17 كلمة منطوقة. "
                 + "لا تضف حقائق غير موجودة، وأعد JSON كاملاً فقط. "
                 + f"عدد الكلمات الحالي {previous_words}، وهذا النص يحتاج إلى توسعة واضحة:\n{previous_json}"
@@ -747,8 +831,7 @@ def chunk_words(text: str, max_words: int = 6) -> list[str]:
     for w in text.split():
         cur.append(w)
         if len(cur) >= max_words or (len(cur) >= 3 and re.search(r"[.،؛؟!?:]$", w)):
-            chunks.append(" ".join(cur))
-            cur = []
+            chunks.append(" ".join(cur))            cur = []
     if cur:
         if chunks and len(cur) == 1:
             chunks[-1] += " " + cur[0]
@@ -967,8 +1050,8 @@ def upload(video: Path, work: dict, plan: dict) -> str:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     global W, H
-    if not any((GEMINI_KEY, DEEPSEEK_KEY, OPENAI_KEY)):
-        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY.")
+    if not any((GEMINI_KEY, DEEPSEEK_KEY, BAZAARLINK_KEY, OPENAI_KEY)):
+        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, BAZAARLINK_API_KEY, or OPENAI_API_KEY.")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)

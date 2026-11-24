@@ -1,0 +1,63 @@
+name: Publish Selected Queue Videos
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_ids:
+        description: "Comma-separated exact queue IDs; defaults to the two GTA VI videos"
+        required: true
+        type: string
+        default: "game:gta-vi-review-short-2026,game:gta-vi-review-long-2026"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-selected-video-queue
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/free-ai-video-pipeline
+
+      - name: Install FFmpeg and Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate and publish selected videos
+        env:
+          QUEUE_VIDEO_IDS: ${{ inputs.video_ids }}
+          DRY_RUN: "0"
+          YT_PRIVACY: public
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python tools/publish_queue_batch.py
+
+      # Persist even after a later upload fails, so already-published IDs
+      # are not lost and accidentally uploaded again on the next run.
+      - name: Persist upload IDs to development branch
+        if: always()
+        run: |
+          if [ ! -f state/queue.json ]; then
+            echo "No upload state was created; nothing to persist."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f state/queue.json
+          if git diff --cached --quiet; then
+            echo "No state changes to persist."
+            exit 0
+          fi
+          git commit -m "chore(video): record queued YouTube uploads"
+          git push origin HEAD:work/free-ai-video-pipeline

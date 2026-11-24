@@ -367,7 +367,7 @@ def deepseek_json(prompt: str) -> dict:
             try:
                 response_text = r.json()["choices"][0]["message"]["content"]
                 cleaned = re.sub(
-                    r"^\\s*\x60{3}(?:json)?\\s*|\\s*\x60{3}\\s*$",
+                    r"^\s*```(?:json)?\s*|\s*```\s*$",
                     "",
                     str(response_text).strip(),
                     flags=re.IGNORECASE,
@@ -383,7 +383,7 @@ def deepseek_json(prompt: str) -> dict:
 
         try:
             error = r.json().get("error", {})
-            detail = str(error.get("message") or error.get("code") or "").replace("\\n", " ")[:240]
+            detail = str(error.get("message") or error.get("code") or "").replace("\n", " ")[:240]
         except (ValueError, AttributeError):
             detail = ""
         last = f"HTTP {r.status_code}" + (f" - {detail}" if detail else "")

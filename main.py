@@ -248,7 +248,10 @@ def gemini_json(prompt: str) -> dict:
             if r.status_code == 200:
                 try:
                     text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    return json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip()).strip())
+                    parsed = json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip()).strip())
+                    if not isinstance(parsed, dict):
+                        raise TypeError("Gemini response must be a JSON object, not " + type(parsed).__name__)
+                    return parsed
                 except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
                     last = f"{model}: invalid JSON response ({type(exc).__name__})"
                     break
@@ -292,6 +295,10 @@ def write_script(work: dict) -> dict:
             )
         plan = gemini_json(active_prompt)
         scenes = plan.get("scenes") or []
+        if not isinstance(scenes, list) or any(not isinstance(scene, dict) for scene in scenes):
+            log("Script rejected: Gemini scenes must be a list of scene objects; requesting repair.")
+            previous_plan = None
+            continue
         words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
         if len(scenes) == 6 and all(str(s.get("narration", "")).strip() for s in scenes) and 110 <= words <= 140:
             plan["title"] = str(plan.get("title") or work["title_ar"])[:95]
@@ -318,6 +325,9 @@ def write_long_script(work: dict) -> dict | None:
     for attempt in range(3):
         plan = gemini_json(prompt)
         scenes = plan.get("scenes") or []
+        if not isinstance(scenes, list) or any(not isinstance(scene, dict) for scene in scenes):
+            log("Long script rejected: Gemini scenes must be a list of scene objects.")
+            continue
         words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
         if 8 <= len(scenes) <= 12 and 650 <= words <= 900 and all(str(s.get("narration", "")).strip() for s in scenes):
             plan["title"] = str(plan.get("title") or work["title_ar"])[:95]

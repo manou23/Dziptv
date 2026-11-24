@@ -1,0 +1,66 @@
+name: Test OpenAI Fallback
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-openai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify OpenAI API key and model access
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6-luna
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          key = os.getenv("OPENAI_API_KEY", "").strip()
+          model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+          if not key:
+              raise SystemExit("FAIL: OPENAI_API_KEY secret is missing.")
+
+          response = requests.post(
+              "https://api.openai.com/v1/responses",
+              headers={
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+              },
+              json={
+                  "model": model,
+                  "input": 'Return exactly this JSON object: {"status":"ok"}',
+                  "text": {"format": {"type": "json_object"}},
+                  "max_output_tokens": 100,
+              },
+              timeout=90,
+          )
+          if response.status_code != 200:
+              try:
+                  err = response.json().get("error", {})
+                  detail = err.get("message") or err.get("code") or "No error detail"
+              except Exception:
+                  detail = response.text[:300]
+              raise SystemExit(f"FAIL: OpenAI HTTP {response.status_code}: {detail}")
+
+          data = response.json()
+          output = data.get("output_text", "")
+          if not output:
+              output = "\n".join(
+                  part.get("text", "")
+                  for item in data.get("output", [])
+                  for part in item.get("content", [])
+                  if part.get("type") == "output_text"
+              )
+          try:
+              parsed = json.loads(output)
+          except Exception as exc:
+              raise SystemExit(f"FAIL: response was not valid JSON ({type(exc).__name__}).")
+          if parsed.get("status") != "ok":
+              raise SystemExit("FAIL: model returned an unexpected JSON result.")
+
+          print(f"PASS: {model} is reachable, the API key is accepted, and JSON output works.")
+          PY

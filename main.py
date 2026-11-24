@@ -323,14 +323,20 @@ def gemini_json(prompt: str) -> dict:
     else:
         log("BazaarLink fallback skipped: BAZAARLINK_API_KEY is not configured.")
 
-    try:
-        return openai_json(prompt)
-    except Exception as exc:
-        raise RuntimeError(
-            f"All configured providers failed. Gemini: {last}. "
-            f"DeepSeek: {deepseek_error}. BazaarLink: {bazaarlink_error}. "
-            f"OpenAI: {type(exc).__name__}: {exc}"
-        ) from exc
+    if ALLOW_PAID_OPENAI and OPENAI_KEY:
+        try:
+            return openai_json(prompt)
+        except Exception as exc:
+            openai_error = f"{type(exc).__name__}: {exc}"
+    else:
+        openai_error = "skipped (paid OpenAI fallback is disabled)"
+        log("OpenAI fallback skipped: paid usage is disabled by default.")
+
+    raise RuntimeError(
+        f"All configured providers failed. Gemini: {last}. "
+        f"DeepSeek: {deepseek_error}. BazaarLink: {bazaarlink_error}. "
+        f"OpenAI: {openai_error}"
+    )
 
 
 
@@ -481,6 +487,8 @@ def bazaarlink_json(prompt: str) -> dict:
 # 2d. OpenAI fallback (called only after Gemini, DeepSeek, and BazaarLink fail)
 # --------------------------------------------------------------------------- #
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+# Paid OpenAI calls stay disabled unless explicitly enabled by the repository owner.
+ALLOW_PAID_OPENAI = os.getenv("ALLOW_PAID_OPENAI", "0").strip() == "1"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-6-luna").strip()
 
 
@@ -1048,8 +1056,8 @@ def upload(video: Path, work: dict, plan: dict) -> str:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     global W, H
-    if not any((GEMINI_KEY, DEEPSEEK_KEY, BAZAARLINK_KEY, OPENAI_KEY)):
-        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, BAZAARLINK_API_KEY, or OPENAI_API_KEY.")
+    if not any((GEMINI_KEY, DEEPSEEK_KEY, BAZAARLINK_KEY)) and not (ALLOW_PAID_OPENAI and OPENAI_KEY):
+        raise SystemExit("No text-generation API key is configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or BAZAARLINK_API_KEY (paid OpenAI is disabled by default).")
     if not DRY_RUN and not all(os.getenv(k) for k in ("YT_CLIENT_ID", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN")):
         raise SystemExit("YouTube secrets are missing.")
     OUT.mkdir(exist_ok=True)

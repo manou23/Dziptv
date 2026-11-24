@@ -327,7 +327,7 @@ def gemini_json(prompt: str) -> dict:
 # 2b. Optional DeepSeek fallback (after all Gemini models, before OpenAI)
 # --------------------------------------------------------------------------- #
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip()
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash").strip()
 
 
 def deepseek_json(prompt: str) -> dict:

@@ -544,7 +544,7 @@ def create_fallback_scene_image(path: Path, scene_index: int) -> None:
     ]
     top, middle, bottom = palettes[scene_index % len(palettes)]
     img = Image.new("RGB", (W, H))
-    pixels = img.load()
+    gradient_draw = ImageDraw.Draw(img)
     for y in range(H):
         t = y / max(1, H - 1)
         if t < 0.58:
@@ -554,8 +554,7 @@ def create_fallback_scene_image(path: Path, scene_index: int) -> None:
             q = (t - 0.58) / 0.42
             a, b = middle, bottom
         color = tuple(int(a[k] * (1 - q) + b[k] * q) for k in range(3))
-        for x in range(W):
-            pixels[x, y] = color
+        gradient_draw.line((0, y, W, y), fill=color)
 
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)

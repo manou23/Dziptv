@@ -247,8 +247,7 @@ def gemini_json(prompt: str) -> dict:
                     url, json=body, timeout=120,
                     headers={"x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json"},
                 )
-            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"
-                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
+            except requests.RequestException as exc:                last = f"{model}: network error ({type(exc).__name__})"                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
                 if attempt < 2:
                     delay = min(90, 20 * (2 ** attempt)) + random.uniform(0, 5)
                     log(f"Gemini retrying {model} in {delay:.0f}s.")
@@ -376,7 +375,7 @@ def deepseek_json(prompt: str) -> dict:
         if r.status_code == 200:
             try:
                 response_text = r.json()["choices"][0]["message"]["content"]
-                cleaned = re.sub(
+                    r"^\s*```(?:json)?\s*|\s*```\s*$",
                     r"^\s*```(?:json)?\s*|\s*```\s*$",
                     "",
                     str(response_text).strip(),
@@ -497,8 +496,7 @@ def openai_json(prompt: str) -> dict:
 
     url = "https://api.openai.com/v1/responses"
     body = {
-        "model": OPENAI_MODEL,
-        "input": prompt,
+        "model": OPENAI_MODEL,        "input": prompt,
         "text": {"format": {"type": "json_object"}},
         "max_output_tokens": 9000,
     }
@@ -747,8 +745,7 @@ def create_fallback_scene_image(path: Path, scene_index: int) -> None:
         )
     for _ in range(18):
         x = rng.randint(0, W)
-        y = rng.randint(0, H)
-        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
+        y = rng.randint(0, H)        size = rng.randint(max(8, int(min(W, H) * 0.006)), max(12, int(min(W, H) * 0.025)))
         draw.ellipse((x-size, y-size, x+size, y+size), outline=(235, 242, 255, 55), width=2)
     img.convert("RGB").save(path, quality=92, optimize=True)
 

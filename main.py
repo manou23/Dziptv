@@ -215,7 +215,7 @@ PROMPT = """أنت كاتب سيناريو لقناة يوتيوب عربية م
 - لا تكشف مفاجآت الحبكة.
 - الجملة الأولى خطّاف يثير الفضول ولا تزيد عن 12 كلمة.
 - 6 مشاهد بهذا الترتيب: خطّاف، فكرة العمل، ما يميّزه، التقييم والأرقام إن وُجدت، لمن يناسب، دعوة للاشتراك مع سؤال للتعليقات.
-- اكتب 6 مشاهد، في كل مشهد 18 إلى 23 كلمة منطوقة (المجموع 110 إلى 140 كلمة). لا تختصر السرد إلى عبارات قصيرة؛ اشرح الفكرة بوضوح مع الالتزام بالمعلومات المتاحة فقط. اجعل كل مشهد من جملتين إلى ثلاث جمل طبيعية سهلة النطق.
+- اكتب 6 مشاهد، في كل مشهد 15 إلى 17 كلمة منطوقة (المجموع 90 إلى 102 كلمة) لتناسب مدة صوتية فعلية تقارب 45 إلى 60 ثانية. اشرح الفكرة بوضوح مع الالتزام بالمعلومات المتاحة فقط، واجعل كل مشهد جملة أو جملتين طبيعيتين سهلتي النطق.
 - اكتب اسم العمل بالحروف العربية في السرد.
 - image_prompt: وصف بالإنجليزية لصورة سينمائية عمودية تناسب المشهد، بلا نصوص ولا شعارات ولا وجوه أشخاص حقيقيين ولا شخصيات محمية بحقوق؛ فضّل الأجواء والمناظر والأشياء الرمزية.
 - title: عنوان عربي جذاب لا يتجاوز 70 حرفًا، صادق لا يعد بما لا يقدمه الفيديو.
@@ -414,8 +414,8 @@ def write_script(work: dict) -> dict:
             active_prompt = (
                 prompt
                 + "\n\nمهمتك الآن إصلاح النص السابق، لا تبدأ من الصفر. "
-                + "احتفظ بالمعلومات الصحيحة، ووسّع السرد ليصبح بين 110 و140 كلمة بالضبط تقريباً. "
-                + "اجعل كل واحد من المشاهد الستة يحتوي 18 إلى 23 كلمة منطوقة. "
+                + "احتفظ بالمعلومات الصحيحة، واضبط السرد ليصبح بين 90 و102 كلمة. "
+                + "اجعل كل واحد من المشاهد الستة يحتوي 15 إلى 17 كلمة منطوقة. "
                 + "لا تضف حقائق غير موجودة، وأعد JSON كاملاً فقط. "
                 + f"عدد الكلمات الحالي {previous_words}، وهذا النص يحتاج إلى توسعة واضحة:\n{previous_json}"
             )
@@ -426,13 +426,13 @@ def write_script(work: dict) -> dict:
             previous_plan = None
             continue
         words = sum(len(str(s.get("narration", "")).split()) for s in scenes)
-        if len(scenes) == 6 and all(str(s.get("narration", "")).strip() for s in scenes) and 110 <= words <= 140:
+        if len(scenes) == 6 and all(str(s.get("narration", "")).strip() for s in scenes) and 90 <= words <= 102:
             plan["title"] = str(plan.get("title") or work["title_ar"])[:95]
             return plan
         previous_plan = plan
         previous_words = words
         log(f"Script rejected (scenes={len(scenes)}, words={words}), requesting expansion ({attempt + 1}/4)")
-    raise RuntimeError("Gemini could not produce a 110–140 word, six-scene script after repair attempts.")
+    raise RuntimeError("Gemini could not produce a 90–102 word, six-scene script after repair attempts.")
 
 
 LONG_PROMPT = """اكتب سيناريو فيديو تحليلي عربي لقناة VibeCritic مدته 5 إلى 8 دقائق.

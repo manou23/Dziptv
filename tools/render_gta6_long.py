@@ -102,8 +102,12 @@ def main() -> None:
     OUT.mkdir(exist_ok=True)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.exists() else {"version": 1, "items": []}
     items = manifest.setdefault("items", [])
-    if any(item.get("id") == WORK["uid"] for item in items):
-        raise SystemExit("GTA VI long video already exists in the queue; refusing to overwrite it.")
+    destination = QUEUE / "gta6-review-long.mp4"
+    existing_item = next((item for item in items if item.get("id") == WORK["uid"]), None)
+    if existing_item and destination.is_file() and destination.stat().st_size >= 500_000:
+        raise SystemExit("GTA VI long video is already complete in the queue; refusing to overwrite it.")
+    if existing_item:
+        print("Recovering the already-registered GTA VI long queue item: its MP4 file is missing.")
     pipeline.W, pipeline.H = 1920, 1080
     pipeline.VOICE = "ar-SA-HamedNeural"
     pipeline.ai_image = credited_screenshot
@@ -115,12 +119,11 @@ def main() -> None:
     if _image_index < 8:
         video.unlink(missing_ok=True)
         raise SystemExit(f"Visual quality gate failed: only {_image_index}/12 credited screenshots downloaded.")
-    destination = QUEUE / "gta6-review-long.mp4"
     shutil.copy2(video, destination)
     if destination.stat().st_size < 500_000:
         destination.unlink(missing_ok=True)
         raise SystemExit("MP4 size validation failed.")
-    items.append({
+    queue_record = {
         "id": WORK["uid"],
         "file": "queue/gta6-review-long.mp4",
         "title_ar": WORK["title_ar"],
@@ -137,7 +140,12 @@ def main() -> None:
         "source": "VibeCritic",
         "duration_seconds": round(seconds, 2),
         "visual_credit": "Creative Bloq review screenshots, credited to Rockstar Games",
-    })
+    }
+    if existing_item:
+        existing_item.clear()
+        existing_item.update(queue_record)
+    else:
+        items.append(queue_record)
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"QUEUE_READY: {destination} | duration={seconds:.2f}s | bytes={destination.stat().st_size} | screenshots={_image_index}/12 | words={words}")
 

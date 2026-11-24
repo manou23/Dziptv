@@ -41,9 +41,14 @@ W, H = 1080, 1920
 TMDB_KEY = os.getenv("TMDB_API_KEY", "")
 RAWG_KEY = os.getenv("RAWG_API_KEY", "")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+# Keep the model order configurable: primary first, then independent fallbacks.
+# These are stable Flash models listed in Google's current Gemini API model catalog.
 GEMINI_MODELS = [
     m.strip()
-    for m in os.getenv("GEMINI_MODELS", "gemini-3.8-flash,gemini-3.5-flash-lite").split(",")
+    for m in os.getenv(
+        "GEMINI_MODELS",
+        "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite",
+    ).split(",")
     if m.strip()
 ]
 VOICE = os.getenv("TTS_VOICE", "ar-SA-HamedNeural")
@@ -231,8 +236,11 @@ def gemini_json(prompt: str) -> dict:
         "generationConfig": {"temperature": 0.8, "responseMimeType": "application/json"},
     }
     last = "no attempt"
+    transient_statuses = {408, 429, 500, 502, 503, 504}
+
     for model in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        # Retry temporary service overloads, then move to the next model.
         for attempt in range(3):
             try:
                 r = requests.post(
@@ -241,31 +249,60 @@ def gemini_json(prompt: str) -> dict:
                 )
             except requests.RequestException as exc:
                 last = f"{model}: network error ({type(exc).__name__})"
+                log(f"Gemini temporary network error on {model} ({attempt + 1}/3).")
                 if attempt < 2:
-                    time.sleep(5 * (attempt + 1))
+                    delay = min(90, 20 * (2 ** attempt)) + random.uniform(0, 5)
+                    log(f"Gemini retrying {model} in {delay:.0f}s.")
+                    time.sleep(delay)
                     continue
                 break
+
             if r.status_code == 200:
                 try:
-                    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip()).strip())
+                    response_text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = json.loads(
+                        re.sub(r"^\\`\\`\\`(?:json)?|\\`\\`\\`$", "", response_text.strip()).strip()
+                    )
                     if not isinstance(parsed, dict):
-                        raise TypeError("Gemini response must be a JSON object, not " + type(parsed).__name__)
+                        raise TypeError(
+                            "Gemini response must be a JSON object, not " + type(parsed).__name__
+                        )
+                    log(f"Gemini script generated successfully with {model}.")
                     return parsed
                 except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
                     last = f"{model}: invalid JSON response ({type(exc).__name__})"
+                    log(f"Gemini returned an invalid response from {model}; trying the next model.")
                     break
+
             try:
                 error = r.json().get("error", {})
                 detail = str(error.get("message") or error.get("status") or "").replace("\n", " ")[:240]
             except (ValueError, AttributeError):
                 detail = ""
             last = f"{model}: HTTP {r.status_code}" + (f" - {detail}" if detail else "")
-            if r.status_code in (429, 500, 503):
-                time.sleep(15 * (attempt + 1))
+
+            if r.status_code in transient_statuses and attempt < 2:
+                retry_after = r.headers.get("Retry-After", "")
+                try:
+                    server_delay = float(retry_after)
+                except (TypeError, ValueError):
+                    server_delay = 0
+                delay = max(server_delay, min(90, 20 * (2 ** attempt)))
+                delay = min(120, delay) + random.uniform(0, 5)
+                log(
+                    f"Gemini {r.status_code} on {model} "
+                    f"({attempt + 1}/3); retrying in {delay:.0f}s."
+                )
+                time.sleep(delay)
                 continue
-            break  # Try the next configured model for model/access errors
-    raise RuntimeError(f"Gemini failed: {last}")
+
+            if r.status_code in transient_statuses:
+                log(f"Gemini {r.status_code} persists on {model}; switching to the next fallback.")
+            else:
+                log(f"Gemini request failed on {model} with HTTP {r.status_code}; switching model.")
+            break
+
+    raise RuntimeError(f"Gemini failed after all configured models: {last}")
 
 
 def write_script(work: dict) -> dict:

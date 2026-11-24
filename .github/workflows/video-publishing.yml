@@ -46,8 +46,7 @@ jobs:
           MANUAL_ARTICLE_URL: ${{ inputs.article_url }}
           VIDEO_FORMAT: ${{ inputs.video_format || 'both' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          DEEPSEEK_MODEL: deepseek-flash
+          ALLOW_PAID_DEEPSEEK: '0'
           # Free-only script fallback; the paid OpenAI path remains explicitly disabled.
           BAZAARLINK_API_KEY: ${{ secrets.BAZAARLINK_API_KEY }}
           ALLOW_PAID_OPENAI: '0'
